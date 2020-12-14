@@ -28,7 +28,7 @@
 <meta property="og:description" content="git游戏收获的经验和解答…前面好多关没去写…再补吧（爬） 远程第11关：git 远程跟踪我们需要将我们的自己创建出来的新分支side设置为跟踪origin&#x2F;master,这带来的后果是本应该跟踪origin&#x2F;master的本地master不再跟踪它了，当然这不是坏处… 下面跟踪了以后将远程的origin&#x2F;master拉下来变基（中间我们可以对冲突的内容进行修改）,再推送上去就完事喽！ 123gi">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2020-12-13T14:35:18.000Z">
-<meta property="article:modified_time" content="2020-12-14T08:22:43.072Z">
+<meta property="article:modified_time" content="2020-12-14T09:01:52.608Z">
 <meta property="article:author" content="阿德烈">
 <meta name="twitter:card" content="summary">
 
@@ -186,7 +186,7 @@
                   <i class="far fa-calendar-check"></i>
                 </span>
                 <span class="post-meta-item-text">Edited on</span>
-                <time title="Modified: 2020-12-14 16:22:43" itemprop="dateModified" datetime="2020-12-14T16:22:43+08:00">2020-12-14</time>
+                <time title="Modified: 2020-12-14 17:01:52" itemprop="dateModified" datetime="2020-12-14T17:01:52+08:00">2020-12-14</time>
               </span>
 
           
@@ -319,17 +319,16 @@
 
 
 
-<h3 id="git需要注意的事项-1"><a href="#git需要注意的事项-1" class="headerlink" title="git需要注意的事项"></a>git需要注意的事项</h3><p>git 回退的三种方式：</p>
-<p>git clean会删除那些未tracked的文件，也就是上一次commit没有，这次新创建的文件</p>
+<h3 id="git需要注意的事项-1"><a href="#git需要注意的事项-1" class="headerlink" title="git需要注意的事项"></a>git需要注意的事项</h3><h4 id="git-回退的三种方式："><a href="#git-回退的三种方式：" class="headerlink" title="git 回退的三种方式："></a>git 回退的三种方式：</h4><p>git clean会删除那些未tracked的文件，也就是上一次commit没有，这次新创建的文件</p>
 <ol>
 <li>未add没啥事吧　<code>git clean -df</code></li>
 <li>add 后未commit回退　<code>git reset --hard&amp;&amp;git clean -df</code></li>
 <li>commit 后未push回退   <code>git reset --hard HEAD^</code></li>
 <li>push 后回退 <code> git revert HEAD</code></li>
+<li>当我们需要删除暂存区或分支上的文件, 但本地又需要使用, 只是不希望这个文件被版本控制，我们用 <code>git rm --cached</code>,这样之后就可以将文件写入<code>.gitignore</code>并不再被追踪了</li>
 </ol>
-<p>git 初始化连接远程库的正确顺序</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">git init</span><br><span class="line">git remote add origin git@github.com:adlternative/gitTest.git</span><br><span class="line">git pull origin master --rebase=<span class="literal">false</span></span><br><span class="line">......</span><br><span class="line">git add .</span><br><span class="line">git commit -m <span class="string">&quot;..&quot;</span></span><br><span class="line">git push --set-upstream origin master //将master设置跟踪origin/master再可以push</span><br><span class="line"></span><br></pre></td></tr></table></figure>
-
+<h4 id="git-初始化连接远程库的正确顺序"><a href="#git-初始化连接远程库的正确顺序" class="headerlink" title="git 初始化连接远程库的正确顺序"></a>git 初始化连接远程库的正确顺序</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">git init</span><br><span class="line">git remote add origin git@github.com:adlternative/gitTest.git</span><br><span class="line">git pull origin master --rebase=<span class="literal">false</span></span><br><span class="line">......</span><br><span class="line">git add .</span><br><span class="line">git commit -m <span class="string">&quot;..&quot;</span></span><br><span class="line">git push --set-upstream origin master //将master设置跟踪origin/master再可以push</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h4 id="git-secret-用法简介"><a href="#git-secret-用法简介" class="headerlink" title="git secret　用法简介"></a>git secret　用法简介</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"></span><br></pre></td></tr></table></figure>
 
     </div>
 
@@ -410,7 +409,7 @@
 
       <!--noindex-->
       <div class="post-toc-wrap sidebar-panel">
-          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#git%E6%B8%B8%E6%88%8F%E6%94%B6%E8%8E%B7%E7%9A%84%E7%BB%8F%E9%AA%8C%E5%92%8C%E8%A7%A3%E7%AD%94"><span class="nav-number">1.</span> <span class="nav-text">git游戏收获的经验和解答</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E8%BF%9C%E7%A8%8B"><span class="nav-number">1.0.1.</span> <span class="nav-text">远程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#git%E9%9C%80%E8%A6%81%E6%B3%A8%E6%84%8F%E7%9A%84%E4%BA%8B%E9%A1%B9"><span class="nav-number">2.</span> <span class="nav-text">git需要注意的事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#git%E6%B8%B8%E6%88%8F%E6%94%B6%E8%8E%B7%E7%9A%84%E7%BB%8F%E9%AA%8C%E5%92%8C%E8%A7%A3%E7%AD%94-1"><span class="nav-number">3.</span> <span class="nav-text">git游戏收获的经验和解答</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E8%BF%9C%E7%A8%8B-1"><span class="nav-number">3.0.1.</span> <span class="nav-text">远程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#git%E9%9C%80%E8%A6%81%E6%B3%A8%E6%84%8F%E7%9A%84%E4%BA%8B%E9%A1%B9-1"><span class="nav-number">4.</span> <span class="nav-text">git需要注意的事项</span></a></li></ol></div>
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#git%E6%B8%B8%E6%88%8F%E6%94%B6%E8%8E%B7%E7%9A%84%E7%BB%8F%E9%AA%8C%E5%92%8C%E8%A7%A3%E7%AD%94"><span class="nav-number">1.</span> <span class="nav-text">git游戏收获的经验和解答</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E8%BF%9C%E7%A8%8B"><span class="nav-number">1.0.1.</span> <span class="nav-text">远程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#git%E9%9C%80%E8%A6%81%E6%B3%A8%E6%84%8F%E7%9A%84%E4%BA%8B%E9%A1%B9"><span class="nav-number">2.</span> <span class="nav-text">git需要注意的事项</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#git%E6%B8%B8%E6%88%8F%E6%94%B6%E8%8E%B7%E7%9A%84%E7%BB%8F%E9%AA%8C%E5%92%8C%E8%A7%A3%E7%AD%94-1"><span class="nav-number">3.</span> <span class="nav-text">git游戏收获的经验和解答</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E8%BF%9C%E7%A8%8B-1"><span class="nav-number">3.0.1.</span> <span class="nav-text">远程</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#git%E9%9C%80%E8%A6%81%E6%B3%A8%E6%84%8F%E7%9A%84%E4%BA%8B%E9%A1%B9-1"><span class="nav-number">4.</span> <span class="nav-text">git需要注意的事项</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#git-%E5%9B%9E%E9%80%80%E7%9A%84%E4%B8%89%E7%A7%8D%E6%96%B9%E5%BC%8F%EF%BC%9A"><span class="nav-number">4.1.</span> <span class="nav-text">git 回退的三种方式：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#git-%E5%88%9D%E5%A7%8B%E5%8C%96%E8%BF%9E%E6%8E%A5%E8%BF%9C%E7%A8%8B%E5%BA%93%E7%9A%84%E6%AD%A3%E7%A1%AE%E9%A1%BA%E5%BA%8F"><span class="nav-number">4.2.</span> <span class="nav-text">git 初始化连接远程库的正确顺序</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#git-secret-%E7%94%A8%E6%B3%95%E7%AE%80%E4%BB%8B"><span class="nav-number">4.3.</span> <span class="nav-text">git secret　用法简介</span></a></li></ol></li></ol></div>
       </div>
       <!--/noindex-->
 
@@ -426,7 +425,7 @@
       <div class="site-state-item site-state-posts">
           <a href="/archives/">
         
-          <span class="site-state-item-count">4</span>
+          <span class="site-state-item-count">5</span>
           <span class="site-state-item-name">posts</span>
         </a>
       </div>
