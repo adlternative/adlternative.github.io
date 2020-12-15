@@ -1,0 +1,281 @@
+---
+title: 我的git学习之路
+date: 2020-12-13 22:35:18
+tags:
+
+---
+
+
+### git游戏收获的经验和解答
+...前面好多关没去写...
+再补吧（爬）
+
+##### 远程
+
+第11关：git 远程跟踪
+我们需要将我们的自己创建出来的新分支`side`设置为跟踪`origin/master`,这带来的后果是本应该跟踪`origin/master`
+的本地`master`不再跟踪它了，当然这不是坏处...
+
+下面跟踪了以后将远程的`origin/master`拉下来变基（中间我们可以对冲突的内容进行修改）,再推送上去就完事喽！
+
+```bash
+git branch -u o/master side
+git pull --rebase
+git push
+```
+
+第12关：
+
+get到的点：
+
+* `git push origin master`是将本地的master分支比远程的master分支没有的提交添加上去，可以同步master和origin/master
+
+* 在我们HEAD没有指向一个分支的情况下，直接git push会失效，这时候我们会需要`git push origin master`,在这种场景下我们需要考虑到的是我们是否应该让HEAD checkout 到某个分支，或者将git pull一下
+
+
+```
+git push origin foo 
+```
+
+第13关：
+
+`git push origin foo^:master`可以将foo之前的一个提交上传给远程的master,origin/master将会指向`foo^`
+
+`git push origin origin master:newBranch`可以将master提交给远程的newBranch(本地会出现o/newBranch)即使newBranch不存在
+
+```bash
+git push origin master^:foo
+```
+
+```
+git push origin foo:master 
+```
+
+第14关：
+
+git fetch就是下载远程`origin/xxx`放到本地`orgin/xxx`这样我们就可以先对远程分支进行检查，之后再合并
+
+git fetch更像是含有git push 相反意义
+
+需求是从远程的master前一个提交下载到本地的foo,再将远程的foo下载到本地的master,再将本地的foo和master进行合并，见答案即可
+
+```bash
+git fetch origin master^:foo
+git fetch origin foo:master
+git checkout foo
+git merge master
+```
+
+
+
+第15关：
+
+```bash
+git push origin :foo
+```
+
+将空push会删除远程分支foo...这真诡异
+
+```
+git fetch orgin :bar
+```
+
+将空fetch会创建本地分支bar...这...
+
+
+
+第16关：
+
+`git pull origin foo` 相当于：
+
+```bash
+git fetch origin foo; git merge o/foo
+```
+
+`git pull origin bar~1:bugFix` 相当于：
+
+```bash
+git fetch origin bar~1:bugFix; git merge bugFix
+```
+
+pull = fetch+merge
+
+如果当前本地在bar分支
+
+```bash
+git pull origin master:foo	
+```
+
+它先在本地创建了一个叫 `foo`的分支，从远程仓库中的 master 分支中下载提交记录，并合并到 `foo`，然后再 merge 到我们的当前检出的分支 `bar`上。
+
+我们使用fetch从远程下载的时候如果指定的本地分支不存在，会在本地创建一个新的分支指向我们的下载
+
+如果我们只是fetch,带来的后果是下载到本地的o/master,o/bar(当然这是一个好处)
+
+```bash
+git checkout c1
+git fetch origin master:side
+git fetch origin bar:foo
+git checkout master
+git merge foo
+git merge side
+```
+
+
+
+### git需要注意的事项
+
+
+it游戏收获的经验和解答
+…前面好多关没去写
+git 回退的三种方式：
+
+git clean会删除那些未tracked的文件，也就是上一次commit没有，这次新创建的文件
+### git游戏收获的经验和解答
+...前面好多关没去写...
+再补吧（爬）
+
+##### 远程
+
+第11关：git 远程跟踪
+我们需要将我们的自己创建出来的新分支`side`设置为跟踪`origin/master`,这带来的后果是本应该跟踪`origin/master`
+的本地`master`不再跟踪它了，当然这不是坏处...
+
+下面跟踪了以后将远程的`origin/master`拉下来变基（中间我们可以对冲突的内容进行修改）,再推送上去就完事喽！
+
+```bash
+git branch -u o/master side
+git pull --rebase
+git push
+```
+
+第12关：
+
+get到的点：
+
+* `git push origin master`是将本地的master分支比远程的master分支没有的提交添加上去，可以同步master和origin/master
+
+* 在我们HEAD没有指向一个分支的情况下，直接git push会失效，这时候我们会需要`git push origin master`,在这种场景下我们需要考虑到的是我们是否应该让HEAD checkout 到某个分支，或者将git pull一下
+
+
+```
+git push origin foo 
+```
+
+第13关：
+
+`git push origin foo^:master`可以将foo之前的一个提交上传给远程的master,origin/master将会指向`foo^`
+
+`git push origin origin master:newBranch`可以将master提交给远程的newBranch(本地会出现o/newBranch)即使newBranch不存在
+
+```bash
+git push origin master^:foo
+```
+
+```
+git push origin foo:master 
+```
+
+第14关：
+
+git fetch就是下载远程`origin/xxx`放到本地`orgin/xxx`这样我们就可以先对远程分支进行检查，之后再合并
+
+git fetch更像是含有git push 相反意义
+
+需求是从远程的master前一个提交下载到本地的foo,再将远程的foo下载到本地的master,再将本地的foo和master进行合并，见答案即可
+
+```bash
+git fetch origin master^:foo
+git fetch origin foo:master
+git checkout foo
+git merge master
+```
+
+
+
+第15关：
+
+```bash
+git push origin :foo
+```
+
+将空push会删除远程分支foo...这真诡异
+
+```
+git fetch orgin :bar
+```
+
+将空fetch会创建本地分支bar...这...
+
+
+
+第16关：
+
+`git pull origin foo` 相当于：
+
+```bash
+git fetch origin foo; git merge o/foo
+```
+
+`git pull origin bar~1:bugFix` 相当于：
+
+```bash
+git fetch origin bar~1:bugFix; git merge bugFix
+```
+
+pull = fetch+merge
+
+如果当前本地在bar分支
+
+```bash
+git pull origin master:foo	
+```
+
+它先在本地创建了一个叫 `foo`的分支，从远程仓库中的 master 分支中下载提交记录，并合并到 `foo`，然后再 merge 到我们的当前检出的分支 `bar`上。
+
+我们使用fetch从远程下载的时候如果指定的本地分支不存在，会在本地创建一个新的分支指向我们的下载
+
+如果我们只是fetch,带来的后果是下载到本地的o/master,o/bar(当然这是一个好处)
+
+```bash
+git checkout c1
+git fetch origin master:side
+git fetch origin bar:foo
+git checkout master
+git merge foo
+git merge side
+```
+
+
+
+### git需要注意的事项
+
+
+
+#### git 回退的三种方式：
+
+git clean会删除那些未tracked的文件，也就是上一次commit没有，这次新创建的文件
+
+1. 未add没啥事吧　`git clean -df`
+2. add 后未commit回退　`git reset --hard&&git clean -df`
+3. commit 后未push回退   `git reset --hard HEAD^`
+4. push 后回退 ` git revert HEAD`
+5. 当我们需要删除暂存区或分支上的文件, 但本地又需要使用, 只是不希望这个文件被版本控制，我们用 `git rm --cached`,这样之后就可以将文件写入`.gitignore`并不再被追踪了
+
+#### git 初始化连接远程库的正确顺序
+
+```bash
+git init
+git remote add origin git@github.com:adlternative/gitTest.git
+git pull origin master --rebase=false
+......
+git add .
+git commit -m ".."
+git push --set-upstream origin master //将master设置跟踪origin/master再可以push
+
+```
+#### git secret　用法简介
+
+```bash
+
+```
