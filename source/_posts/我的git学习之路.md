@@ -228,7 +228,7 @@ pull = fetch+merge
 如果当前本地在bar分支
 
 ```bash
-git pull origin master:foo	
+git pull origin master:foo
 ```
 
 它先在本地创建了一个叫 `foo`的分支，从远程仓库中的 master 分支中下载提交记录，并合并到 `foo`，然后再 merge 到我们的当前检出的分支 `bar`上。
@@ -247,20 +247,28 @@ git merge side
 ```
 
 
+<!-- ### git需要注意的事项 -->
 
-### git需要注意的事项
+#### git 回退的n种场景：
 
-
-
-#### git 回退的三种方式：
-
-git clean会删除那些未tracked的文件，也就是上一次commit没有，这次新创建的文件
-
-1. 未add没啥事吧　`git clean -df`
-2. add 后未commit回退　`git reset --hard&&git clean -df`
-3. commit 后未push回退   `git reset --hard HEAD^`
-4. push 后回退 ` git revert HEAD`
-5. 当我们需要删除暂存区或分支上的文件, 但本地又需要使用, 只是不希望这个文件被版本控制，我们用 `git rm --cached`,这样之后就可以将文件写入`.gitignore`并不再被追踪了
+* answer:
+  1. 需求:删除add后的文件`a.c`:`git reset HEAD`或者`git restore --staged a.c`,将这些暂存区中的文件回退到工作区,在vscode中也可看到`暂存的更改`变成了`更改`,证明文件已经回滚到工作区了,
+  但这些文件仍然在我们的目录,这时候手动`rm`删除(如有更好方法请告诉我)
+  2. 需求:如果之前已经被提交的文件`a.c`本次只修改后`add`,想要恢复上一次提交的模样:
+  `git reset HEAD`或者`git restore --staged a.c`将文件从暂存区中恢复到工作区,
+  `git restore a.c`可以恢复到上一次commit时的状态
+  3. 需求:本次新建的文件`a.c`在add,commit未push的情况下如何回滚并删除:
+  `git reset HEAD a.c`或者`git reset HEAD`后删除`a.c`并add,commit说明已经删除ok
+  4. 需求:如果之前已经被提交的文件`a.c`本次修改后`add`+`commit`如何回退上个版本:
+  `git reset HEAD^ a.c`,`git restore a.c`接着再add,commit说明已经回退ok
+  5. push 后回退 ` git revert HEAD`接着再add,commit说明已经回退ok
+<!--下面注释掉的可能有误>
+<!-- git clean会删除那些未tracked的文件，也就是上一次commit没有，这次新创建的文件 -->
+<!-- 1. 未add使用`git clean -df `后那些本地的所有更改全部消失(注:有风险,未tracked的所有文件都没了...)
+1. add 后未commit回退　`git reset --hard&&git clean -df`
+2. commit 后未push回退   `git reset --hard HEAD^`
+3. push 后回退 ` git revert HEAD`
+4. 当我们需要删除暂存区或分支上的文件, 但本地又需要使用, 只是不希望这个文件被版本控制，我们用 `git rm --cached`,这样之后就可以将文件写入`.gitignore`并不再被追踪了 -->
 
 #### git 初始化连接远程库的正确顺序
 
@@ -279,3 +287,18 @@ git push --set-upstream origin master //将master设置跟踪origin/master再可
 ```bash
 
 ```
+
+#### git reset的三种模式 hard/soft/mixed(默认)
+`git reset`的原理:让最新提交的指针回到以前某个时点，这个时间点之后的提交都从历史中消失。
+`git checkout` 是在修改HEAD的指向，和`git reset`原理上有些不同
+
+|模式 |  缓存区|提交|工作目录|
+|--|--|--|--|
+| soft |会回退到过去|不变|不变|
+| hard |会回退到过去|会回退到过去|会回退到过去(危险!那些gitignore中标记的文件因为在工作目录所以也会被删除掉)|
+| mixed(默认)| 会回退到过去 |会回退到过去|不变|
+`git reset --soft HEAD`
+`git reset --hard HEAD`
+`git reset HEAD`
+个人觉得经过上次的教训之后只敢使用默认的reset了(那些没有被Tracked的.gitignore中标记的文件全被删除了by use hard way)
+
