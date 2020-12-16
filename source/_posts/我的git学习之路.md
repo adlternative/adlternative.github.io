@@ -261,14 +261,7 @@ git merge side
   `git reset HEAD a.c`或者`git reset HEAD`后删除`a.c`并add,commit说明已经删除ok
   4. 需求:如果之前已经被提交的文件`a.c`本次修改后`add`+`commit`如何回退上个版本:
   `git reset HEAD^ a.c`,`git restore a.c`接着再add,commit说明已经回退ok
-  5. push 后回退 ` git revert HEAD`接着再add,commit说明已经回退ok
-<!--下面注释掉的可能有误>
-<!-- git clean会删除那些未tracked的文件，也就是上一次commit没有，这次新创建的文件 -->
-<!-- 1. 未add使用`git clean -df `后那些本地的所有更改全部消失(注:有风险,未tracked的所有文件都没了...)
-1. add 后未commit回退　`git reset --hard&&git clean -df`
-2. commit 后未push回退   `git reset --hard HEAD^`
-3. push 后回退 ` git revert HEAD`
-4. 当我们需要删除暂存区或分支上的文件, 但本地又需要使用, 只是不希望这个文件被版本控制，我们用 `git rm --cached`,这样之后就可以将文件写入`.gitignore`并不再被追踪了 -->
+  5. 需求push 后回退:` git revert HEAD`接着再add,commit说明已经回退ok
 
 #### git 初始化连接远程库的正确顺序
 
@@ -280,12 +273,11 @@ git pull origin master --rebase=false
 git add .
 git commit -m ".."
 git push --set-upstream origin master //将master设置跟踪origin/master再可以push
-
 ```
 #### git secret　用法简介
 
 ```bash
-
+暂时还没写
 ```
 
 #### git reset的三种模式 hard/soft/mixed(默认)
