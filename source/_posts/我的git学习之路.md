@@ -294,3 +294,10 @@ git push --set-upstream origin master //将master设置跟踪origin/master再可
 `git reset HEAD`
 个人觉得经过上次的教训之后只敢使用默认的reset了(那些没有被Tracked的.gitignore中标记的文件全被删除了by use hard way)
 
+
+#### git rebase 究竟在做什么
+![图片](/home/adl/图片/Screenshot_20201216_214640.png)
+如图所示，master分支
+
+我们在adl分支通过`git rebase master`将自己的内容分支私有的部分**移动**到master分支上，接着这条暗线就消亡了，接着我们可以通过`git checkout  master`切换到master分支，再`git rebase adl`将master快速前进到adl节点（这时候没有啥移动分支私有部分，因为master和adl在同一条提交链表上，于是乎作用就是快速移动）
+
