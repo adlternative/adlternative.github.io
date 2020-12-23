@@ -1,0 +1,200 @@
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>git命令大全 | 阿德烈的惊奇历险</title><meta name="robots" content="noindex"><meta name="author" content="阿德烈"><meta name="copyright" content="阿德烈"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="git ls-tree -l HEAD  ls-tree可以读取head指向的目录树的所有信息 -l查看对象大小  git ls-files --stage *查看暂存区文件 git checkout &lt;commit&gt; -- path会将提交中的文件覆盖本地和暂存区中的同名文件，无论你当前有没有add,这个提交中的文件都会覆盖你的工作区和暂存区 git checkout -- path">
+<meta property="og:type" content="article">
+<meta property="og:title" content="git命令大全">
+<meta property="og:url" content="https://adlternative.github.io/git%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8/index.html">
+<meta property="og:site_name" content="阿德烈的惊奇历险">
+<meta property="og:description" content="git ls-tree -l HEAD  ls-tree可以读取head指向的目录树的所有信息 -l查看对象大小  git ls-files --stage *查看暂存区文件 git checkout &lt;commit&gt; -- path会将提交中的文件覆盖本地和暂存区中的同名文件，无论你当前有没有add,这个提交中的文件都会覆盖你的工作区和暂存区 git checkout -- path">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg">
+<meta property="article:published_time" content="2020-12-19T14:40:28.000Z">
+<meta property="article:modified_time" content="2020-12-23T10:45:25.952Z">
+<meta property="article:author" content="阿德烈">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://adlternative.github.io/git%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: 'Copy successfully',
+    error: 'Copy error',
+    noSupport: 'The browser does not support'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: 'Just',
+    min: 'minutes ago',
+    hour: 'hours ago',
+    day: 'days ago',
+    month: 'months ago'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: true,
+  postUpdate: '2020-12-23 18:45:25'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><meta name="generator" content="Hexo 5.2.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="/null" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">6</div></a></div></div></div><hr/></div></div><div id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">阿德烈的惊奇历险</a></span><div id="menus"><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">git命令大全</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2020-12-19T14:40:28.000Z" title="Created 2020-12-19 22:40:28">2020-12-19</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2020-12-23T10:45:25.952Z" title="Updated 2020-12-23 18:45:25">2020-12-23</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post View:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p><code>git ls-tree -l HEAD</code></p>
+<ul>
+<li><code>ls-tree</code>可以读取head指向的目录树的所有信息</li>
+<li><code>-l</code>查看对象大小</li>
+</ul>
+<p><code>git ls-files --stage </code><br>*查看暂存区文件</p>
+<p><code>git checkout &lt;commit&gt; -- path</code>会将提交中的文件覆盖本地和暂存区中的同名文件，无论你当前有没有add,这个提交中的文件都会覆盖你的工作区和暂存区</p>
+<h3 id="git-checkout-path"><a href="#git-checkout-path" class="headerlink" title="git checkout -- path"></a><code>git checkout -- path</code></h3><p>根据上面所言,应该会默认当前分支的提交覆盖本地和暂存区才对,但其实默认未指定commit情况下是会将暂存区中的内容覆盖本地</p>
+<h3 id="git-checkout-branch"><a href="#git-checkout-branch" class="headerlink" title="git checkout branch"></a><code>git checkout branch</code></h3><ul>
+<li>情况1:如果另外一个分支没有提交过本文件<br>不会修改本分支本地的文件，也不会修改暂存区，只是修改了头指针的指向，（WARN!!!：另一个分支会看到本地和暂存区的变化,你在本地修改了a.c,那么把版本库切过来的时候,它当时本地或暂存区若没有a.c,a.c对于它来说是＂新建＂的,若存在,a.c对它来说是＂修改＂的．其实这里也不能这么算：因为根本上就是暂存区和本地的该文件仍然保留着，不会被另一个分支的＂空白＂意外删去：正如情况所言，它没有提交过本文件）</li>
+<li>情况2:如果另外一个分支提交过本文件<br>会阻止<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">error: 您对下列文件的本地修改将被检出操作覆盖：</span><br><span class="line">        haha.c</span><br><span class="line">请在切换分支前提交或贮藏您的修改。</span><br><span class="line">正在终止</span><br></pre></td></tr></table></figure></li>
+<li>综上所述:本分支checkout到另外一个分支，本分支会将看本地和暂存区中的文件是不是另一个分支之前没有过的文件,如果提交记录中没有则本地的未提交的（(add or no add)and no commit）会保留下来,如果之前提交记录中有就报错,当然其余本分支没有修改的文件会被另一个分支直接覆盖(如果另一个分支有此文件)，当然那些本分支没有的文件而另一个分支有，切换到另一个分支也会创建出来</li>
+</ul>
+<p><code>git rev-parse refs/heads/master</code>可以用来显示引用对象的哈希</p>
+<p><code>git cat-file commit HEAD</code>可以用来查看HEAD提交对应的提交对象信息</p>
+<p><code>git cat-file blob HEAD:xxx</code>可以用来查看HEAD提交对应的blob对象对应的文件内容</p>
+<p><code>git rev-parse HEAD^^&#123;tree&#125;</code>可以用来解析并打印HEAD的父提交的tree对象hash,注意这里第二个^应该是表示寻找HEAD对应的tree对象，第一个才是找父提交</p>
+<p><code>git reset --hard master@&#123;2&#125;</code>将master重置为两次改变以前的值（这个改变是针对命令的改变,see as git reflog）</p>
+<p><code>git reset --hard HEAD^</code>会将HEAD引用指向新的commit,并用引用指向的commit上的目录树替换暂存区，已经变化的暂存区替换工作区，注意那些没有被git跟踪的文件并没有消失,而add后的文件却消失了.奇怪的特性…</p>
+<p><code>git reset --hard HEAD</code>会将暂存区的回退成和HEAD commit相同,但是工作区未跟踪的新文件不受影响…,受跟踪的才回退.</p>
+<p><code>git reset --soft &lt;commit&gt;</code>会将将HEAD引用指向新的commit,但暂存区和本地内容不变，这样一般来说我们本次做的修改和已经添加到暂存区的内容就会被保存下来．</p>
+<p><code>git reset --mixed &lt;commit&gt;</code>(默认)，工作区不改变，暂存区回退到上一次提交，这意味着我那些add上去的内容都没了，本地的都还在</p>
+<p>commit 对象的哈希计算公式:<code>hash=sha1sum(&quot;commit (messageSize)(null)(message)&quot;)</code>其中<code>message=tree treeHash\nparent parentHash\nauthor XXX &lt;mail&gt; timestmp (时差)\ncommitter XXX &lt;mail&gt; timestmp (时差)\n\n(提交信息)</code></p>
+<p>blob 对象的哈希计算公式:<code>hash=sha1sum(&quot;blob (messageSize)(null)(message)&quot;)</code>其中<code>message=原文件内容</code></p>
+<p>tree 对象的哈希计算公式:<code>hash=sha1sum(&quot;tree (messageSize)(null)(message)&quot;)</code>其中<code>message=...</code></p>
+<p>git 使用sha1作为提交ID的原因：需要”全球唯一”,当然现在已经证明可能有冲突</p>
+<p>git stash的影响:<br>  默认重置工作区和index -&gt;版本库,-k不修改index,下次工作区加回来会有冲突须手动解决</p>
+<ul>
+<li>workD:上次版本库没有本文件则不变,上次有则变上次,下次会变回来</li>
+<li>index:删,下次若有index同名文件,则冲突并手动解决;下次若有workD同名文件,则阻止除非你重新将这个文件add</li>
+<li>index+(w修改)下次一起放回index</li>
+<li>workD -&gt;workD</li>
+</ul>
+<!-- flag of hidden posts --></article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">Author: </span><span class="post-copyright-info"><a href="mailto:undefined">阿德烈</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">Link: </span><span class="post-copyright-info"><a href="https://adlternative.github.io/git%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8/">https://adlternative.github.io/git%E5%91%BD%E4%BB%A4%E5%A4%A7%E5%85%A8/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">Copyright Notice: </span><span class="post-copyright-info">All articles in this blog are licensed under <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> unless stating additionally.</span></div></div><div class="tag_share"><div class="post-meta__tag-list"></div><div class="post_share"><div class="social-share" data-image="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"></nav></div><div class="aside_content" id="aside_content"><div class="card-widget card-info"><div class="card-content"><div class="card-info-avatar is-center"><img class="avatar-img" src="/null" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">阿德烈</div><div class="author-info__description">阿德烈将会成为一名绝地</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">6</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/adlternative"><i class="fab fa-github"></i><span>我只是一只孤苦伶仃的小阿德烈</span></a></div></div><div class="card-widget card-announcement"><div class="card-content"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>Announcement</span></div><div class="announcement_content">This is my Blog</div></div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="card-content"><div class="item-headline"><i class="fas fa-stream"></i><span>Catalog</span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#git-checkout-path"><span class="toc-number">1.</span> <span class="toc-text">git checkout -- path</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#git-checkout-branch"><span class="toc-number">2.</span> <span class="toc-text">git checkout branch</span></a></li></ol></div></div></div><div class="card-widget card-recent-post"><div class="card-content"><div class="item-headline"><i class="fas fa-history"></i><span>Recent Post</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/git%E9%A1%B9%E7%9B%AE%E7%BB%8F%E9%AA%8C%E7%A7%AF%E7%B4%AF/" title="git项目经验积累"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="git项目经验积累"/></a><div class="content"><a class="title" href="/git%E9%A1%B9%E7%9B%AE%E7%BB%8F%E9%AA%8C%E7%A7%AF%E7%B4%AF/" title="git项目经验积累">git项目经验积累</a><time datetime="2020-12-23T09:14:35.000Z" title="Created 2020-12-23 17:14:35">2020-12-23</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/archlinux%E4%B8%8A%E7%9A%84git-send-email%E9%97%AE%E9%A2%98%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/" title="archlinux上的git_send_email问题的解决方案"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="archlinux上的git_send_email问题的解决方案"/></a><div class="content"><a class="title" href="/archlinux%E4%B8%8A%E7%9A%84git-send-email%E9%97%AE%E9%A2%98%E7%9A%84%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88/" title="archlinux上的git_send_email问题的解决方案">archlinux上的git_send_email问题的解决方案</a><time datetime="2020-12-18T13:53:12.000Z" title="Created 2020-12-18 21:53:12">2020-12-18</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/how-to-use-a-irc-chatroom/" title="how to use a irc-chatroom"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="how to use a irc-chatroom"/></a><div class="content"><a class="title" href="/how-to-use-a-irc-chatroom/" title="how to use a irc-chatroom">how to use a irc-chatroom</a><time datetime="2020-12-14T13:45:18.000Z" title="Created 2020-12-14 21:45:18">2020-12-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/%E9%82%A3%E4%BA%9B%E6%88%91%E7%8F%8D%E8%97%8F%E5%B7%B2%E4%B9%85%E7%9A%84%E7%BD%91%E7%AB%99%E6%88%96%E8%80%85%E8%B5%84%E6%BA%90%E4%BB%AC/" title="那些我珍藏已久的网站或者资源们"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="那些我珍藏已久的网站或者资源们"/></a><div class="content"><a class="title" href="/%E9%82%A3%E4%BA%9B%E6%88%91%E7%8F%8D%E8%97%8F%E5%B7%B2%E4%B9%85%E7%9A%84%E7%BD%91%E7%AB%99%E6%88%96%E8%80%85%E8%B5%84%E6%BA%90%E4%BB%AC/" title="那些我珍藏已久的网站或者资源们">那些我珍藏已久的网站或者资源们</a><time datetime="2020-12-14T08:31:45.000Z" title="Created 2020-12-14 16:31:45">2020-12-14</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/%E6%88%91%E7%9A%84git%E5%AD%A6%E4%B9%A0%E4%B9%8B%E8%B7%AF/" title="我的git学习之路"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="我的git学习之路"/></a><div class="content"><a class="title" href="/%E6%88%91%E7%9A%84git%E5%AD%A6%E4%B9%A0%E4%B9%8B%E8%B7%AF/" title="我的git学习之路">我的git学习之路</a><time datetime="2020-12-13T14:35:18.000Z" title="Created 2020-12-13 22:35:18">2020-12-13</time></div></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 By 阿德烈</div><div class="framework-info"><span>Framework </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>Theme </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="Read Mode"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="Switch Between Light And Dark Mode"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="Toggle between single-column and double-column"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="Setting"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="Table Of Contents"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="Back To Top"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></div></body></html>
