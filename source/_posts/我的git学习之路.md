@@ -2,7 +2,7 @@
 title: 我的git学习之路
 date: 2020-12-13 22:35:18
 tags:
-
+hide: true
 ---
 
 
@@ -279,6 +279,11 @@ git push --set-upstream origin master //将master设置跟踪origin/master再可
 ```bash
 暂时还没写
 ```
+#### git lfs　用法简介
+
+```bash
+暂时还没写
+```
 
 #### git reset的三种模式 hard/soft/mixed(默认)
 `git reset`的原理:让最新提交的指针回到以前某个时点，这个时间点之后的提交都从历史中消失。
@@ -293,6 +298,7 @@ git push --set-upstream origin master //将master设置跟踪origin/master再可
 `git reset --hard HEAD`
 `git reset HEAD`
 个人觉得经过上次的教训之后只敢使用默认的reset了(那些没有被Tracked的.gitignore中标记的文件全被删除了by use hard way)
+`git commit`完后悔用`git reset --soft HEAD^`放弃最新提交
 
 
 #### git rebase 究竟在做什么
