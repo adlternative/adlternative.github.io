@@ -53,3 +53,23 @@ git cat-file -p 22ae76e
 可以看到这个真实的普通文件内容
 
 还剩tag对象:
+
+通过`git tag -a v1.4 -m "my version 1.4"`生成,在`.git/refs/tags/v1.4`可以看到一串hash`254571375f2a56e67ce188b6116ea9bdd77cbdbc `
+```
+git cat-file -p 254571375f2a56e67ce188b6116ea9bdd77cbdbc
+object 0d6b00b5597013767a52b020de6d0e03a75763e1
+type commit
+tag v1.4
+tagger ZheNing Hu <adlternative@gmail.com> 1608809095 +0800
+
+my version 1.4
+```
+可以发现这个tag对象存储的内容是
+它所指向的提交对象的hash,对象类型,标签名,标记者,标记信息
+再`git cat-file -p 0d6b00`,就是我们标记时的commit提交
+
+
+我们可以推测:git底层靠着文件内容生成哈希,再将文件内容和类型信息压缩存入到对应哈希的`.git/objects/xx/xxxxxxx...`的位置,接着git再生成目录树存储各个blob对象和子树的hash和信息,接着提交的时候再记录最顶端树的hash,和当前HEAD提交的hash,我们整条git仿佛通过hash联系在一起,不愧linus当初说做git是为了实现一个文件系统
+
+通过hash(指针),数据库存放的四种对象(类),HEAD(引用),git能够在客户端实现高效的版本控制
+
