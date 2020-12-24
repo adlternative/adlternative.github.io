@@ -3,9 +3,8 @@ hide: true
 title: git命令大全
 date: 2020-12-19 22:40:28
 tags:
-hide: true
+hidden: true
 ---
-
 
 `git ls-tree -l HEAD`
 * `ls-tree`可以读取head指向的目录树的所有信息
