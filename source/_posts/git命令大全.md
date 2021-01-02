@@ -1,9 +1,8 @@
 ---
-hide: true
 title: git命令大全
 date: 2020-12-19 22:40:28
 tags:
-hidden: true
+# hidden: true
 ---
 
 `git ls-tree -l HEAD`
@@ -67,3 +66,8 @@ git stash的影响:
   * index:删,下次若有index同名文件,则冲突并手动解决;下次若有workD同名文件,则阻止除非你重新将这个文件add
   * index+(w修改)下次一起放回index
   * workD ->workD
+
+git如何合并提交:[there](https://segmentfault.com/a/1190000007748862)
+```bash
+git rebase -i 12a23b(你需要合并的commit的父节点)
+```
