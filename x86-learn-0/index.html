@@ -1,0 +1,203 @@
+<!DOCTYPE html><html lang="en" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>x86汇编 学习笔记 | 阿德烈的惊奇历险</title><meta name="keywords" content="OS 操作系统"><meta name="author" content="阿德烈"><meta name="copyright" content="阿德烈"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><meta name="description" content="将我们的汇编编译后的可执行程序写入到虚拟机的主引导扇区 1dd if&#x3D;..&#x2F;..&#x2F;nasm_dir&#x2F;c6.bin of&#x3D;learn-asm.vhd bs&#x3D;512 count&#x3D;1 conv&#x3D;notrunc  通用寄存器：ax,bx,cx,dx,si,di,bp,sp.段寄存器：cs(代码段),ds(数据段),es(附加段),ss(栈段寄存器)指令指针寄存器：ip cs(2B)+ip(2B) -&amp;gt">
+<meta property="og:type" content="article">
+<meta property="og:title" content="x86汇编 学习笔记">
+<meta property="og:url" content="https://adlternative.github.io/x86-learn-0/index.html">
+<meta property="og:site_name" content="阿德烈的惊奇历险">
+<meta property="og:description" content="将我们的汇编编译后的可执行程序写入到虚拟机的主引导扇区 1dd if&#x3D;..&#x2F;..&#x2F;nasm_dir&#x2F;c6.bin of&#x3D;learn-asm.vhd bs&#x3D;512 count&#x3D;1 conv&#x3D;notrunc  通用寄存器：ax,bx,cx,dx,si,di,bp,sp.段寄存器：cs(代码段),ds(数据段),es(附加段),ss(栈段寄存器)指令指针寄存器：ip cs(2B)+ip(2B) -&amp;gt">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg">
+<meta property="article:published_time" content="2021-02-01T13:12:12.000Z">
+<meta property="article:modified_time" content="2021-02-08T16:52:12.845Z">
+<meta property="article:author" content="阿德烈">
+<meta property="article:tag" content="OS 操作系统">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="https://adlternative.github.io/x86-learn-0/"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css" media="print" onload="this.media='all'"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  highlight: {"plugin":"highlighjs","highlightCopy":true,"highlightLang":true},
+  copy: {
+    success: 'Copy successfully',
+    error: 'Copy error',
+    noSupport: 'The browser does not support'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  date_suffix: {
+    just: 'Just',
+    min: 'minutes ago',
+    hour: 'hours ago',
+    day: 'days ago',
+    month: 'months ago'
+  },
+  copyright: undefined,
+  lightbox: 'fancybox',
+  Snackbar: undefined,
+  source: {
+    jQuery: 'https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js',
+    justifiedGallery: {
+      js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+    },
+    fancybox: {
+      js: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.js',
+      css: 'https://cdn.jsdelivr.net/npm/@fancyapps/fancybox@latest/dist/jquery.fancybox.min.css'
+    }
+  },
+  isPhotoFigcaption: false,
+  islazyload: false,
+  isanchor: false
+};
+
+var saveToLocal = {
+  set: function setWithExpiry(key, value, ttl) {
+    const now = new Date()
+    const expiryDay = ttl * 86400000
+    const item = {
+      value: value,
+      expiry: now.getTime() + expiryDay,
+    }
+    localStorage.setItem(key, JSON.stringify(item))
+  },
+
+  get: function getWithExpiry(key) {
+    const itemStr = localStorage.getItem(key)
+
+    if (!itemStr) {
+      return undefined
+    }
+    const item = JSON.parse(itemStr)
+    const now = new Date()
+
+    if (now.getTime() > item.expiry) {
+      localStorage.removeItem(key)
+      return undefined
+    }
+    return item.value
+  }
+}
+
+// https://stackoverflow.com/questions/16839698/jquery-getscript-alternative-in-native-javascript
+const getScript = url => new Promise((resolve, reject) => {
+  const script = document.createElement('script')
+  script.src = url
+  script.async = true
+  script.onerror = reject
+  script.onload = script.onreadystatechange = function() {
+    const loadState = this.readyState
+    if (loadState && loadState !== 'loaded' && loadState !== 'complete') return
+    script.onload = script.onreadystatechange = null
+    resolve()
+  }
+  document.head.appendChild(script)
+})</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isToc: false,
+  postUpdate: '2021-02-09 00:52:12'
+}</script><noscript><style type="text/css">
+  #nav {
+    opacity: 1
+  }
+  .justified-gallery img {
+    opacity: 1
+  }
+
+  #recent-posts time,
+  #post-meta time {
+    display: inline !important
+  }
+</style></noscript><script>(function () {  window.activateDarkMode = function () {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+    }
+  }
+  window.activateLightMode = function () {
+    document.documentElement.setAttribute('data-theme', 'light')
+   if (document.querySelector('meta[name="theme-color"]') !== null) {
+      document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+    }
+  }
+  const autoChangeMode = 'false'
+  const t = saveToLocal.get('theme')
+  if (autoChangeMode === '1') {
+    const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+    const isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+    const isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+    const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+    if (t === undefined) {
+      if (isLightMode) activateLightMode()
+      else if (isDarkMode) activateDarkMode()
+      else if (isNotSpecified || hasNoSupport) {
+        const now = new Date()
+        const hour = now.getHours()
+        const isNight = hour <= 6 || hour >= 18
+        isNight ? activateDarkMode() : activateLightMode()
+      }
+      window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+        if (saveToLocal.get('theme') === undefined) {
+          e.matches ? activateDarkMode() : activateLightMode()
+        }
+      })
+    } else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else if (autoChangeMode === '2') {
+    const now = new Date()
+    const hour = now.getHours()
+    const isNight = hour <= 6 || hour >= 18
+    if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+    else if (t === 'light') activateLightMode()
+    else activateDarkMode()
+  } else {
+    if (t === 'dark') activateDarkMode()
+    else if (t === 'light') activateLightMode()
+  }const asideStatus = saveToLocal.get('aside-status')
+if (asideStatus !== undefined) {
+   if (asideStatus === 'hide') {
+     document.documentElement.classList.add('hide-aside')
+   } else {
+     document.documentElement.classList.remove('hide-aside')
+   }
+}})()</script><meta name="generator" content="Hexo 5.2.0"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="author-avatar"><img class="avatar-img" src="/null" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data"><div class="data-item is-center"><div class="data-item-link"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">10</div></a></div></div><div class="data-item is-center"><div class="data-item-link"><a href="/tags/"><div class="headline">Tags</div><div class="length-num">2</div></a></div></div></div><hr/></div></div><div id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg)"><nav id="nav"><span id="blog_name"><a id="site-name" href="/">阿德烈的惊奇历险</a></span><div id="menus"><div id="toggle-menu"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></div></div></nav><div id="post-info"><h1 class="post-title">x86汇编 学习笔记</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">Created</span><time class="post-meta-date-created" datetime="2021-02-01T13:12:12.000Z" title="Created 2021-02-01 21:12:12">2021-02-01</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">Updated</span><time class="post-meta-date-updated" datetime="2021-02-08T16:52:12.845Z" title="Updated 2021-02-09 00:52:12">2021-02-09</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">Post View:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="post-content" id="article-container"><p><strong>将我们的汇编编译后的可执行程序写入到虚拟机的主引导扇区</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dd <span class="keyword">if</span>=../../nasm_dir/c6.bin of=learn-asm.vhd bs=512 count=1 conv=notrunc</span><br></pre></td></tr></table></figure>
+
+<p>通用寄存器：ax,bx,cx,dx,si,di,bp,sp.<br>段寄存器：cs(代码段),ds(数据段),es(附加段),ss(栈段寄存器)<br>指令指针寄存器：ip</p>
+<p>cs(2B)+ip(2B) -&gt; 逻辑地址xxxx:xxxx -&gt;物理地址 xxxxx 20位</p>
+<p>段大小：64KB 2^16B xxxx就是一段</p>
+<p>x86 可访问1MB内存，地址范围是0x00000~0xFFFFF,20根地址线</p>
+<figure class="highlight txt"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">00000~9FFFF DRAM&#123;</span><br><span class="line">07c00:07e00主引导扇区(512字节)</span><br><span class="line">&#125;</span><br><span class="line">A0000~EFFFF 外设&#123;</span><br><span class="line">B8000~BFFFF 显卡</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line">F0000~FFFFF BIOS ROM</span><br></pre></td></tr></table></figure>
+<p>第一个扇区：主引导扇区。（0B～512B）<br>从硬盘启动的电脑，ROM-BIOS将读取硬盘主引导扇区的内容，并把它加载到一个特殊的逻辑地址0x0000:0x7c00，物理地址0x07c00上。</p>
+<p>主引导扇区这512B中，最后两字节固定的0X55,0XAA作为标志。</p>
+<p>为了让段寄存器指向显存地址，</p>
+<figure class="highlight as"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mov ax,<span class="number">0xb800</span>                 ;指向文本模式的显示缓冲区</span><br><span class="line">mov es,ax</span><br></pre></td></tr></table></figure>
+<p><code>不允许将立即数传送到段寄存器</code>，通过通用寄存器和内存单元（立即数）进行传送，接着再让通用寄存器和段寄存器进行传送。</p>
+<p>除法 <code>div</code>：</p>
+<ul>
+<li>2B/1B AX/(2B 通用寄存器 或 内存单元) = AL…AH</li>
+<li>4B/2B (DX AX)/(2B 通用寄存器 或 内存单元)=AX…DX</li>
+</ul>
+<p>跳转 <code>jmp</code>:<br>相对近寻址 <code>jmp near</code></p>
+<p>movsb movsw </p>
+<p>DS:SI -&gt; ES:DI </p>
+<p>传递的字节数或字数由CX指定<br>正向传递内存低地址到高地址，反向传递内存高地址到低地址。</p>
+<p>传一次<br>正向：SI，DI +1/+2<br>反向：SI，DI -1/-2<br>CX -1</p>
+<p>标志器存其FLAG ZF位：计算结果0 ZF-&gt;1,否则ZF-&gt;0,</p>
+<p>DF 方向标志 控制movsb movsw 方向<br>cld DF 清0 正方向 l-&gt;h<br>std DF 置位 h-&gt;l</p>
+<p>单独movsb movsw 只能执行一次，<br>加上rep则CX不为0则重复。</p>
+<p>loop CX– -&gt;0</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mov [bx],dl</span><br></pre></td></tr></table></figure>
+
+<p>cbw byte -&gt;word AL -&gt;AX<br>cwd word -&gt;double word AX-&gt;DX:AX</p>
+<p>idiv 有符号除法</p>
+<p>标志符号位 SF 1 有符号运算 0 无符号数运算</p>
+<p>or指令不允许目的操作数和源操作数都是内存单元的情况。</p>
+<p>in 目的操作数 必须 寄存器 AL AX，源操作数  DX|立即数。</p>
+<p>out 源操作数 必须 寄存器 AL AX， 目的操作数 DX|立即数</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">Author: </span><span class="post-copyright-info"><a href="mailto:undefined">阿德烈</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">Link: </span><span class="post-copyright-info"><a href="https://adlternative.github.io/x86-learn-0/">https://adlternative.github.io/x86-learn-0/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">Copyright Notice: </span><span class="post-copyright-info">All articles in this blog are licensed under <a target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> unless stating additionally.</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/OS-%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F/">OS 操作系统</a></div><div class="post_share"><div class="social-share" data-image="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="next-post pull-full"><a href="/git-mem-pool-api-learn/"><img class="next-cover" src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="pagination-info"><div class="label">Next Post</div><div class="next_info">git-mem-pool-api-learn</div></div></a></div></nav></div><div class="aside_content" id="aside_content"><div class="card-widget card-info"><div class="card-content"><div class="card-info-avatar is-center"><img class="avatar-img" src="/null" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/><div class="author-info__name">阿德烈</div><div class="author-info__description">阿德烈将会成为一名绝地</div></div><div class="card-info-data"><div class="card-info-data-item is-center"><a href="/archives/"><div class="headline">Articles</div><div class="length-num">10</div></a></div><div class="card-info-data-item is-center"><a href="/tags/"><div class="headline">Tags</div><div class="length-num">2</div></a></div></div><a class="button--animated" id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/adlternative"><i class="fab fa-github"></i><span>我只是一只孤苦伶仃的小阿德烈</span></a></div></div><div class="card-widget card-announcement"><div class="card-content"><div class="item-headline"><i class="fas fa-bullhorn card-announcement-animation"></i><span>Announcement</span></div><div class="announcement_content">This is my Blog</div></div></div><div class="sticky_layout"><div class="card-widget card-recent-post"><div class="card-content"><div class="item-headline"><i class="fas fa-history"></i><span>Recent Post</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/x86-learn-0/" title="x86汇编 学习笔记"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="x86汇编 学习笔记"/></a><div class="content"><a class="title" href="/x86-learn-0/" title="x86汇编 学习笔记">x86汇编 学习笔记</a><time datetime="2021-02-01T13:12:12.000Z" title="Created 2021-02-01 21:12:12">2021-02-01</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/git-mem-pool-api-learn/" title="git-mem-pool-api-learn"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="git-mem-pool-api-learn"/></a><div class="content"><a class="title" href="/git-mem-pool-api-learn/" title="git-mem-pool-api-learn">git-mem-pool-api-learn</a><time datetime="2021-01-30T07:02:10.000Z" title="Created 2021-01-30 15:02:10">2021-01-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/git-hashmap-api-learn/" title="git-hashmap-api-learn"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="git-hashmap-api-learn"/></a><div class="content"><a class="title" href="/git-hashmap-api-learn/" title="git-hashmap-api-learn">git-hashmap-api-learn</a><time datetime="2021-01-28T13:06:26.000Z" title="Created 2021-01-28 21:06:26">2021-01-28</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/wrapper-x-api-learn/" title="git_wrapper_x_api_learn"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="git_wrapper_x_api_learn"/></a><div class="content"><a class="title" href="/wrapper-x-api-learn/" title="git_wrapper_x_api_learn">git_wrapper_x_api_learn</a><time datetime="2021-01-25T15:21:37.000Z" title="Created 2021-01-25 23:21:37">2021-01-25</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/strbuf-api-learn/" title="git_strbuf_api_learn"><img src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1/img/default.jpg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="git_strbuf_api_learn"/></a><div class="content"><a class="title" href="/strbuf-api-learn/" title="git_strbuf_api_learn">git_strbuf_api_learn</a><time datetime="2021-01-25T11:16:01.000Z" title="Created 2021-01-25 19:16:01">2021-01-25</time></div></div></div></div></div></div></div></main><footer id="footer"><div id="footer-wrap"><div class="copyright">&copy;2020 - 2021 By 阿德烈</div><div class="framework-info"><span>Framework </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>Theme </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="Read Mode"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="Switch Between Light And Dark Mode"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="Toggle between single-column and double-column"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="Setting"><i class="fas fa-cog fa-spin"></i></button><button id="go-up" type="button" title="Back To Top"><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></div></body></html>
