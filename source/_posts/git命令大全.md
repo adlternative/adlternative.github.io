@@ -46,7 +46,7 @@ tags:
 
 `git reset --hard HEAD`会将暂存区的回退成和HEAD commit相同,但是工作区未跟踪的新文件不受影响...,受跟踪的才回退.
 
-`git reset --soft <commit>`会将将HEAD引用指向新的commit,但暂存区和本地内容不变，这样一般来说我们本次做的修改和已经添加到暂存区的内容就会被保存下来．
+`git reset --soft <commit>`会将HEAD引用指向新的commit,但暂存区和本地内容不变，这样一般来说我们本次做的修改和已经添加到暂存区的内容就会被保存下来．
 
 `git reset --mixed <commit>`(默认)，工作区不改变，暂存区回退到上一次提交，这意味着我那些add上去的内容都没了，本地的都还在
 
@@ -71,3 +71,7 @@ git如何合并提交:[there](https://segmentfault.com/a/1190000007748862)
 ```bash
 git rebase -i 12a23b(你需要合并的commit的父节点)
 ```
+
+
+git merge xxx 是根据三路合并算法将提交xxx的内容和本commit拿过来做出比较后生成新版本作为公有子节点。
+git rebase xxx 是是根据三路合并算法将本提交的内容添加到xxx分支上。

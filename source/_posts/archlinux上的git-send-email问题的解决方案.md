@@ -1,7 +1,7 @@
 ---
 title: archlinux上的git_send_email问题的解决方案
 date: 2020-12-18 21:53:12
-tags:
+tags: git
 ---
 
 * 不说废话,难配置

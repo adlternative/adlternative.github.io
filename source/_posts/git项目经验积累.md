@@ -14,3 +14,10 @@ git ls-files
 -s 在输出中显示暂存内容的模式位，对象名称和暂存号
 
 -u 在输出中显示未合并的文件（forces –stage）
+
+
+
+git debug 方式：
+```bash
+GIT_DEBUGGER="/usr/bin/gdb --args" ./bin-wrappers/git ls-files -s
+```

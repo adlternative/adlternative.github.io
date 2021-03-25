@@ -1,5 +1,5 @@
 ---
-title: shell
+title: shell笔记
 date: 2020-12-23 16:41:27
 tags:
 ---

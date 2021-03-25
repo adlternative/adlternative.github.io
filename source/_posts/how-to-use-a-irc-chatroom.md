@@ -2,6 +2,7 @@
 title: how to use a irc-chatroom
 date: 2020-12-14 21:45:18
 tags:
+hidden: true
 ---
 
 ### 注册
