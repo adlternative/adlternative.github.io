@@ -1,7 +1,7 @@
 ---
 title: how-computer-start
 date: 2021-02-01 20:56:25
-tags: OS 操作系统
+tags: OS
 hidden: true
 ---
 

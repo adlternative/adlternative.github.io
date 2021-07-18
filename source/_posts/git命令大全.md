@@ -1,7 +1,7 @@
 ---
 title: git命令大全
 date: 2020-12-19 22:40:28
-tags:
+tags: git
 # hidden: true
 ---
 

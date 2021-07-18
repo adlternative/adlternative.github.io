@@ -1,7 +1,7 @@
 ---
 title: git-reset-learn
 date: 2021-01-10 19:25:18
-tags:
+tags: git
 hidden: true
 ---
 

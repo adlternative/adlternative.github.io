@@ -1,7 +1,7 @@
 ---
 title: how_to_download_individual_file_in_git_repository
 date: 2021-01-02 14:53:52
-tags:
+tags: git
 # hidden: true
 ---
 

@@ -1,7 +1,7 @@
 ---
 title: Kernel-Scheduling-Algorithm
 date: 2021-04-19 18:30:52
-tags: os
+tags: OS
 ---
 
 ## 操作系统调度算法介绍

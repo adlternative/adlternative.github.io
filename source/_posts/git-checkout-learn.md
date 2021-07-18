@@ -1,7 +1,7 @@
 ---
 title: git-checkout-learn
 date: 2021-01-10 18:15:50
-tags:
+tags: git
 hidden: true
 ---
 
