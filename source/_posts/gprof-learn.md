@@ -32,6 +32,7 @@ Each sample counts as 0.01 seconds.
 * time: 函数在总调用时间占比。
 * cumulative seconds: 当前函数执行时间和之上所有函数执行时间的总和。
 * self seconds: 当前函数单独执行时间。
+* calls: 函数被调用的总次数。如果函数从未被调用，或者无法确定它被调用的次数(可能是因为函数没有启用分析编译)，则calls字段为空。
 * self ms/call: 如果这个函数被分析，则表示每次调用该函数的平均微秒数，否则为空。
 * total ms/call: 如果这个函数被分析，则表示所有调用该函数和其子函数的平均微秒数，否则为空。
 * name: 函数的名称。
