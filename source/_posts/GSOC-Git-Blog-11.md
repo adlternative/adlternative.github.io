@@ -1,4 +1,4 @@
----
+**---
 title: 'GSOC, Git Blog 11'
 date: 2021-07-31 14:25:46
 tags: git
@@ -82,13 +82,13 @@ The number of calls to `lookup_object()` before and after using my patch are 0 a
 #7  0x00005555555859d8 in batch_object_write (scratch=0x7fffffffd060, opt=0x7fffffffd0d0, data=<optimized out>, obj_name=0x0) at builtin/cat-file.c:224
 ```
 
-After printing the call stack of `lookup_object()`, we can know that the `parse_buffer()` is calling them. A very straightforward idea, can we avoid calling this function?
+After printing the call stack of `lookup_object()`, we can know that `parse_buffer()` is calling it. A very straightforward idea, can we avoid calling this function?
 
-In `parse_object_buffer()`, `parse_blob_buffer()`, ``parse_tree_buffer()`, `parse_commit_buffer()`, and `parse_tag_buffer()` parse the object data, and then store it in `struct object *obj`, finally return it to the caller.
+In `parse_object_buffer()`, `parse_blob_buffer()`, ``parse_tree_buffer()`, `parse_commit_buffer()`, and `parse_tag_buffer()` parse the object data, and then store it in `struct object *obj`, and finally return it to the caller.
 
-`get_object()` will feed the `obj` to `grab_values()`, and then `grab_values()` will feed the `obj` to `grab_tag_values()`, `grab_commit_values`, which can fill the info in `obj` to implement some atom, e.g. `%(tag)`, `%(type)`, `%(object)`, `%(tree)`, `%(numparent)`,`%(parent)`. It is worth noting that `%(objectname)`, `%(objecttype)`, `%(objectsize)`, `%(deltabase)`, `%(rest)`, `%(raw)` are did not appear in them, this means that we can avoid parsing object buffer when we don't use those atoms which require `obj`'s information!
+`get_object()` will feed the `obj` to `grab_values()`, and then `grab_values()` will feed the `obj` to `grab_tag_values()`, `grab_commit_values`, which can fill the info in `obj` to implement some atom, e.g. `%(tag)`, `%(type)`, `%(object)`, `%(tree)`, `%(numparent)`,`%(parent)`. It is worth noting that `%(objectname)`, `%(objecttype)`, `%(objectsize)`, `%(deltabase)`, `%(rest)`, `%(raw)` don't appear in them, this means that we can avoid parsing object buffer when we don't use those atoms which require `obj`'s information!
 
-After some processing and adaptation, I made the patch which can skip `parse_object_buffer()` in some cases, this is the result of the performance test of `t/perf/p1006-cat-file.sh`:
+After some processing and adaptation, I made a patch which can skip `parse_object_buffer()` in some cases, this is the result of the performance test of `t/perf/p1006-cat-file.sh`:
 
 ```
 Test                                        HEAD~             HEAD                  
@@ -101,6 +101,8 @@ Test                                        HEAD~             HEAD
 
 We can see that the performance of `git cat-file --batch` has been a certain improvement!
 
-Tell a joke: removing 1984531500 if checking can reduce the startup time of GTA5 by 70%. :-D
+Tell a joke: removing 1984531500 if checks can reduce the startup time of GTA5 by 70%. :-D
+
+[link](https://rockstarintel.com/a-fan-reduces-gta-online-loading-times-by-70)
 
 Currently the patch has not been submitted to the mailing list, let us wait a bit...
