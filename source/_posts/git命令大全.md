@@ -2,7 +2,7 @@
 title: git命令大全
 date: 2020-12-19 22:40:28
 tags: git
-# hidden: true
+hidden: true
 ---
 
 `git ls-tree -l HEAD`

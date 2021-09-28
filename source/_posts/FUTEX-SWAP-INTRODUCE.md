@@ -1,7 +1,7 @@
 ---
 title: FUTEX_SWAP INTRODUCTION
 date: 2021-07-19 00:08:34
-tags: OS
+tags: os
 ---
 
 ## FUTEX_SWAP 介绍

@@ -1,7 +1,7 @@
 ---
 title: what-is-wrong-with-cpp-double-check-lock
 date: 2021-03-09 19:17:48
-tags: OS
+tags: cpp
 ---
 
 设计模式中有一个挺重要的模式叫单例模式，
@@ -105,6 +105,12 @@ Address range 0x555555555080 to 0x555555555094:
 
 但是它对于#v0的优点是什么呢？
 #v0每次拿对对象都要加锁，而#v2只需要在static局部变量初始化的时候初始化一次就好...
+
+
+后续：
+
+上次看 `__cxa_guard_acquire`，`__cxa_guard_abort`，好像是里面用了双检查锁，所以到头来，c++11 以后 单例 是编译器帮我们做了双检查锁的工作，
+而无需 c++ 程序员苦逼的继续自己写双检查锁。
 
 参考：
 [wiki: 单例模式](https://en.wikipedia.org/wiki/Singleton_pattern)

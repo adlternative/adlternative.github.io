@@ -1,7 +1,7 @@
 ---
 title: 'pthread_lock_source_code_learn'
 date: 2021-03-28 07:58:23
-tags: OS
+tags: os
 ---
 
 ## pthread_mutex_lock

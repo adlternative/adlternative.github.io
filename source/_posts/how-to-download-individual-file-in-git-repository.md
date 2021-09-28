@@ -2,7 +2,6 @@
 title: how_to_download_individual_file_in_git_repository
 date: 2021-01-02 14:53:52
 tags: git
-# hidden: true
 ---
 
 when we are using git to download some books,because of network speed limit,it often takes a lot of time to download a large warehouse.we ofen have such confuse ,why we couldn't just download only one file or one/two catalog?

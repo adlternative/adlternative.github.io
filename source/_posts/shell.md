@@ -1,8 +1,10 @@
 ---
-title: shell笔记
+title: shell scripts notes
 date: 2020-12-23 16:41:27
 tags: shell
+hidden: true
 ---
+
 [Linux shell 中$() ` `，${}，$[] $(())，[ ] (( )) [[ ]]作用与区别](https://blog.csdn.net/x1269778817/article/details/46535729)
 [shell脚本中的if 参数-a至-z](https://blog.csdn.net/shenhuxi_yu/article/details/53047012)
 `$?`:
