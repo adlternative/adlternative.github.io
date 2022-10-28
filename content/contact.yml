@@ -1,0 +1,21 @@
+---
+title: Contact
+pages:
+    - name: Home
+      link: /
+    - name: About
+      link: /about.html
+    - name: Projects
+      link: /projects.html
+    - name: Contact
+      link: /contact.html
+      selected: true
+
+contacts:
+    - name: GitHub
+      link: https://github.com/adlternative/
+    - name: LinkedIn
+      link: https://www.linkedin.com/in/zhening-hu-10a0b1202/
+    - name: Email
+      link: mailto:adlternative@gmail.com
+---

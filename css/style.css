@@ -1,0 +1,113 @@
+html, body {
+	margin: 0 auto;
+	width: 100%;
+	height: 100%;
+	max-width: 85em;
+	background-color: black;
+	color: lime;
+	font-family: monospace;
+}
+
+a {
+	color: inherit;
+}
+
+hr {
+	border: 1px dashed lime;
+}
+
+header {
+	text-align: right;
+	padding-bottom: 1em;
+	border-bottom: 1px dashed lime;
+}
+
+.textcontent, p, h1, h2, h3, h4, h5, h6 {
+	text-align: left;
+}
+
+#outerwrapper {
+	min-height: 95%;
+	margin-bottom: -4em;
+}
+
+#footerspacer, footer {
+	height: 4em;
+}
+
+footer {
+	width: 100%;
+	border-top: 1px dashed lime;
+}
+
+.horizontallist {
+	margin: 0;
+	padding: 1em;
+}
+
+.horizontallist li {
+	margin: 0 0.5em;
+	display: inline;
+}
+
+.button {
+	border: 1px dashed lime;
+	padding: 0.5em;
+}
+
+.button:hover, .selected {
+	color: black;
+	background-color: lime;
+}
+
+.borderbox {
+	border: 1px dashed lime;
+}
+
+.rightimage {
+	float: right;
+	padding: 2em;
+}
+
+.leftimage {
+	float: left;
+	padding: 2em;
+}
+
+.column {
+	display: table;
+}
+
+.typetarget::after {
+	content: "\A0";
+	display: inline-block;
+}
+
+@keyframes blink {
+	0%, 100% {opacity: 1;}
+	50% {opacity: 0;}
+}
+
+#cursor::after {
+	content: "\2587";
+	animation-name: blink;
+	animation-duration: 1s;
+	animation-timing-function: steps(1);
+	animation-iteration-count: infinite;
+}
+
+#content {
+	display: block;
+	text-align: center;
+	padding: 1em;
+}
+
+#copyright {
+	font-size: 75%;
+	text-align: center;
+}
+
+#otherperson {
+	font-size: 50%;
+	text-align: right;
+}

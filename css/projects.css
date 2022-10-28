@@ -1,0 +1,40 @@
+html, body {
+	min-width: 70em;
+}
+
+.imagesection {
+	height: 30em;
+	background-size: auto 100%;
+	background-repeat: no-repeat;
+	background-position: center;
+}
+
+.projectbutton {
+	height: inherit;
+	display: none;
+	cursor: pointer;
+}
+
+.projectbutton .arrownormal {
+	display: inline;
+}
+
+.projectbutton .arrowhover {
+	display: none;
+}
+
+.projectbutton:hover .arrownormal {
+	display: none;
+}
+
+.projectbutton:hover .arrowhover {
+	display: inline;
+}
+
+#leftbutton {
+	float: left;
+}
+
+#rightbutton {
+	float: right;
+}

@@ -1,0 +1,17 @@
+---
+title: About
+pages:
+    - name: Home
+      link: /
+    - name: About
+      link: /about.html
+      selected: true
+    - name: Projects
+      link: /projects.html
+    - name: Contact
+      link: /contact.html
+
+paragraphs:
+    - paragraph: |
+        Hello, my name is ZheNing Hu.
+---

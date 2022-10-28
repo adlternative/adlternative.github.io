@@ -1,0 +1,37 @@
+---
+title: Software Developer
+additionalHeadMaterial: |
+    <link rel="stylesheet" href="/css/boxcontent.css" />
+
+pages:
+    - name: Home
+      link: /
+      selected: true
+    - name: About
+      link: /about.html
+    - name: Projects
+      link: /projects.html
+    - name: Contact
+      link: /contact.html
+
+asciiart: |
+    ######  ####### #     # ####### ####### #     #    #       ### #     #
+    #     # #       ##    #    #    #     # ##    #    #        #  #     #
+    #     # #       # #   #    #    #     # # #   #    #        #  #     #
+    #     # #####   #  #  #    #    #     # #  #  #    #        #  #     #
+    #     # #       #   # #    #    #     # #   # #    #        #  #     #
+    #     # #       #    ##    #    #     # #    ##    #        #  #     #
+    ######  ####### #     #    #    ####### #     #    ####### ###  #####&nbsp;
+
+subtitle:
+    text:
+        Software Developer
+
+paragraphs:
+    paragraph: |
+        I am a student at the XiYouLinuxGroup studying Software Engineering!
+
+button:
+    link: /about.html
+    text: Learn more!
+---

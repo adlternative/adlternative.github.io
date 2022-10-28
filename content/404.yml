@@ -1,0 +1,28 @@
+---
+title: Page Not Found
+additionalHeadMaterial: |
+    <link rel="stylesheet" href="/css/boxcontent.css" />
+
+pages:
+    - name: Home
+      link: /
+    - name: About
+      link: /about.html
+    - name: Projects
+      link: /projects.html
+    - name: Contact
+      link: /contact.html
+
+asciiart: |
+    4     4 0000000 4     4
+    4     4 0     0 4     4
+    4     4 0     0 4     4
+    4444444 0     0 4444444
+          4 0     0       4
+          4 0     0       4
+          4 0000000       4
+
+paragraphs:
+    paragraph: |
+        Segmentation fault (core dumped)
+---

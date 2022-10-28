@@ -1,0 +1,21 @@
+<div>
+	<span id="leftbutton" class="projectbutton" onclick="changeProject(-1)">
+		<img src="/images/leftchevron.svg" class="arrownormal" alt="<" />
+		<img src="/images/invertleftchevron.svg" class="arrowhover" alt="<" />
+	</span>
+	<span id="rightbutton" class="projectbutton" onclick="changeProject(1)">
+		<img src="/images/rightchevron.svg" class="arrownormal" alt=">" />
+		<img src="/images/invertrightchevron.svg" class="arrowhover" alt=">" />
+	</span>
+	{{#projects}}
+		<div id="{{id}}" class="project">
+			<div class="imagesection" style="background-image: url({{image}})"></div>
+			<br />
+			<hr />
+			<h2 class="projecttitle">{{title}}</h2>
+			{{#description}}
+				<p>{{{paragraph}}}</p>
+			{{/description}}
+		</div>
+	{{/projects}}
+</div>

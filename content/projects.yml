@@ -1,0 +1,27 @@
+---
+title: Projects
+additionalHeadMaterial: |
+    <link rel="stylesheet" href="/css/projects.css" />
+    <script src="/js/projects.js"></script>
+
+pages:
+    - name: Home
+      link: /
+    - name: About
+      link: /about.html
+    - name: Projects
+      link: /projects.html
+      selected: true
+    - name: Contact
+      link: /contact.html
+
+projects:
+    - title: git
+      id: git
+      image: /images/git.svg
+      description:
+          - paragraph: |
+              Git is a free and open source distributed version control system designed to handle everything from small to very large projects with speed and efficiency. It is written for Linux in C .
+          - paragraph: |
+              <a href="https://github.com/adlternative/git/tree/cat-file-reuse-ref-filter-logic" target="_blank">Check out the source code for the project here!</a>
+---
