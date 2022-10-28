@@ -14,13 +14,13 @@ pages:
       link: /contact.html
 
 asciiart: |
-    4     4 0000000 4     4
+    4     4 4444444 4     4
     4     4 0     0 4     4
     4     4 0     0 4     4
     4444444 0     0 4444444
           4 0     0       4
           4 0     0       4
-          4 0000000       4
+          4 4444444       4
 
 paragraphs:
     paragraph: |
