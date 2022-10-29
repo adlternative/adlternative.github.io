@@ -10,6 +10,8 @@ pages:
     - name: Contact
       link: /contact.html
       selected: true
+    - name: Blog
+      link: /blog.html
 
 contacts:
     - name: GitHub

@@ -12,34 +12,7 @@ pages:
       selected: true
 
 mdlinks:
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-    - name: FirstPost
-      link: /articles/first.html
-  
+    - name: learn git for-each-ref
+      link: https://github.com/adlternative/adlternative.github.io/blob/old-master/source/_posts/Git-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90-%E4%B8%80-git-for-each-ref.md
+    - name: learn futex swap
+      link: https://github.com/adlternative/adlternative.github.io/blob/old-master/source/_posts/FUTEX-SWAP-INTRODUCE.md
