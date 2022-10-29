@@ -111,3 +111,9 @@ footer {
 	font-size: 50%;
 	text-align: right;
 }
+
+.adl-text{
+  text-align: left;
+  display: inline-block;
+  margin-left: 0 auto;
+}
