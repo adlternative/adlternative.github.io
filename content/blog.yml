@@ -1,0 +1,45 @@
+pages:
+    - name: Home
+      link: /
+    - name: About
+      link: /about.html
+    - name: Projects
+      link: /projects.html
+    - name: Contact
+      link: /contact.html
+    - name: Blog
+      link: /blog.html
+      selected: true
+
+mdlinks:
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+    - name: FirstPost
+      link: /articles/first.html
+  

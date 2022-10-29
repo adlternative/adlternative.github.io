@@ -100,6 +100,8 @@ footer {
 	display: block;
 	text-align: center;
 	padding: 1em;
+  height: 70vh;
+  overflow: auto;
 }
 
 #copyright {

@@ -7,7 +7,7 @@ MUSTACHE = mustache $(CONTENT_DIR)/$(1) $(TEMPLATE_DIR)/$(2) > $(3)
 .NOTPARALLEL:
 .PHONY: all clean deploy
 
-all: index.html about.html projects.html contact.html 404.html
+all: index.html about.html projects.html contact.html 404.html blog.html
 	rm -f *.mustache
 
 index.html: $(CONTENT_DIR)/index.yml $(TEMPLATE_DIR)/boxcontent.mustache $(HEADFOOT)
@@ -32,6 +32,12 @@ contact.html: $(CONTENT_DIR)/contact.yml $(TEMPLATE_DIR)/contact.mustache $(HEAD
 404.html: $(CONTENT_DIR)/404.yml $(TEMPLATE_DIR)/boxcontent.mustache $(HEADFOOT)
 	$(call MUSTACHE,404.yml,boxcontent.mustache,headfootPart.mustache)
 	$(call MUSTACHE,404.yml,headfoot.mustache,404.html)
+
+blog.html: $(CONTENT_DIR)/blog.yml $(TEMPLATE_DIR)/boxcontent.mustache $(HEADFOOT)
+	$(call MUSTACHE,blog.yml,blog.mustache,nonindexPart.mustache)
+	$(call MUSTACHE,blog.yml,blog.mustache,headfootPart.mustache)
+	$(call MUSTACHE,blog.yml,headfoot.mustache,blog.html)
+
 
 clean:
 	rm -f *.html *.mustache

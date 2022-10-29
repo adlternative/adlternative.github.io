@@ -13,6 +13,8 @@ pages:
       link: /projects.html
     - name: Contact
       link: /contact.html
+    - name: Blog
+      link: /blog.html
 
 asciiart: |
    44      4444    44
