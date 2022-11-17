@@ -12,7 +12,15 @@ pages:
       selected: true
 
 mdlinks:
-    - name: learn git for-each-ref
-      link: https://github.com/adlternative/adlternative.github.io/blob/old-master/source/_posts/Git-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90-%E4%B8%80-git-for-each-ref.md
-    - name: learn futex swap
-      link: https://github.com/adlternative/adlternative.github.io/blob/old-master/source/_posts/FUTEX-SWAP-INTRODUCE.md
+    - name: c++
+      link: https://github.com/adlternative/adlternative.github.io/tree/gh-pages/blogs/c%2B%2B/
+    - name: git
+      link: https://github.com/adlternative/adlternative.github.io/tree/gh-pages/blogs/git
+    - name: gsoc
+      link: https://github.com/adlternative/adlternative.github.io/tree/gh-pages/blogs/gsoc/
+    - name: life
+      link: https://github.com/adlternative/adlternative.github.io/tree/gh-pages/blogs/life/
+    - name: linux
+      link: https://github.com/adlternative/adlternative.github.io/tree/gh-pages/blogs/linux/
+    - name: perf
+      link: https://github.com/adlternative/adlternative.github.io/tree/gh-pages/blogs/perf/
