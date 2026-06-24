@@ -9,3 +9,5 @@ npm-debug.log*
 
 # Astro generated
 src/env.d.ts
+
+package-lock.json
