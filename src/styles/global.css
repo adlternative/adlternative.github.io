@@ -311,3 +311,105 @@ footer img {
   padding: 0.6em 1em;
   margin-bottom: 0.6em;
 }
+
+/* ------------------------- blog head / search -------------------- */
+.blog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  border-bottom: 1px dashed var(--fg);
+}
+
+.blog-head h1 {
+  border-bottom: none;
+}
+
+.blog-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.search-box {
+  background-color: var(--bg);
+  color: var(--fg);
+  border: 1px dashed var(--fg);
+  font-family: inherit;
+  font-size: 0.9em;
+  padding: 0.45em 0.6em;
+  outline: none;
+  min-width: 14em;
+}
+
+.search-box::placeholder {
+  color: var(--fg-dim);
+}
+
+.search-box:focus {
+  box-shadow: 0 0 6px var(--fg);
+}
+
+/* ----------------------------- pager ----------------------------- */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5em;
+  padding-top: 1em;
+  border-top: 1px dashed var(--fg);
+}
+
+.pager-info {
+  color: var(--fg-dim);
+  font-size: 0.9em;
+}
+
+.button.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ----------------------------- archive --------------------------- */
+.year-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+  margin: 1em 0;
+}
+
+.archive-list {
+  margin-top: 0.3em;
+}
+
+.archive-item {
+  border: none;
+  padding: 0.25em 0;
+  margin: 0;
+}
+
+.archive-item:hover {
+  background: none;
+}
+
+.archive-item a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7em;
+  border-bottom: 1px dashed transparent;
+}
+
+.archive-item a:hover {
+  border-bottom-color: var(--fg);
+}
+
+.archive-date {
+  color: var(--fg-dim);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.archive-title {
+  flex: 1;
+}

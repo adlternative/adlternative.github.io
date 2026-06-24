@@ -1,0 +1,151 @@
+---
+import Base from "../../layouts/Base.astro";
+import type { GetStaticPaths, Page } from "astro";
+import {
+  getPosts,
+  categoryOf,
+  categoryLabel,
+  postUrl,
+  fmtDate,
+  type Post,
+} from "../../utils/posts";
+
+export const getStaticPaths = (async ({ paginate }) => {
+  const posts = await getPosts();
+  return paginate(posts, { pageSize: 10 });
+}) satisfies GetStaticPaths;
+
+type Props = { page: Page<Post> };
+const { page } = Astro.props;
+---
+
+<Base current="Blog" title="Blog">
+  <div class="blog-head">
+    <h1>Blog</h1>
+    <div class="blog-actions">
+      <a href="/archive" class="button">Archive</a>
+      <input
+        id="search-box"
+        class="search-box"
+        type="search"
+        placeholder="search posts..."
+        autocomplete="off"
+      />
+    </div>
+  </div>
+  <p class="post-meta">
+    {page.total} posts · page {page.currentPage} / {page.lastPage}
+  </p>
+
+  <!-- search results (hidden until typing) -->
+  <ul id="search-results" class="post-list" hidden></ul>
+  <p id="search-empty" class="post-meta" hidden>no matches.</p>
+
+  <!-- normal paginated list -->
+  <ul id="post-list" class="post-list">
+    {
+      page.data.map((post) => (
+        <li class="post-item">
+          <a href={postUrl(post)}>
+            <div class="post-title">{post.data.title}</div>
+            <div class="post-meta">
+              <span>{fmtDate(post.data.date)}</span>{" "}
+              <span class="tag">{categoryLabel(categoryOf(post))}</span>
+              {post.data.tags.map((t) => (
+                <span class="tag">{t}</span>
+              ))}
+            </div>
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+
+  <nav id="pager" class="pager">
+    {page.url.prev ? <a href={page.url.prev} class="button">&larr; newer</a> : <span class="button disabled">&larr; newer</span>}
+    <span class="pager-info">{page.currentPage} / {page.lastPage}</span>
+    {page.url.next ? <a href={page.url.next} class="button">older &rarr;</a> : <span class="button disabled">older &rarr;</span>}
+  </nav>
+</Base>
+
+<script>
+  // Client-side search over a prebuilt JSON index.
+  type Item = {
+    title: string;
+    url: string;
+    date: string;
+    category: string;
+    tags: string[];
+    text: string;
+  };
+
+  const box = document.getElementById("search-box") as HTMLInputElement | null;
+  const results = document.getElementById("search-results");
+  const empty = document.getElementById("search-empty");
+  const list = document.getElementById("post-list");
+  const pager = document.getElementById("pager");
+
+  let index: Item[] | null = null;
+
+  async function loadIndex(): Promise<Item[]> {
+    if (index) return index;
+    const res = await fetch("/search-index.json");
+    index = (await res.json()) as Item[];
+    return index;
+  }
+
+  function render(items: Item[]) {
+    if (!results) return;
+    results.innerHTML = items
+      .map(
+        (it) => `
+        <li class="post-item">
+          <a href="${it.url}">
+            <div class="post-title">${it.title}</div>
+            <div class="post-meta">
+              <span>${it.date}</span>
+              <span class="tag">${it.category}</span>
+              ${it.tags.map((t) => `<span class="tag">${t}</span>`).join("")}
+            </div>
+          </a>
+        </li>`,
+      )
+      .join("");
+  }
+
+  function showSearch(on: boolean) {
+    if (list) list.hidden = on;
+    if (pager) pager.hidden = on;
+    if (results) results.hidden = !on;
+  }
+
+  async function onInput() {
+    if (!box) return;
+    const q = box.value.trim().toLowerCase();
+    if (!q) {
+      showSearch(false);
+      if (empty) empty.hidden = true;
+      return;
+    }
+    const data = await loadIndex();
+    const terms = q.split(/\s+/);
+    const matches = data.filter((it) => {
+      const hay = (
+        it.title +
+        " " +
+        it.category +
+        " " +
+        it.tags.join(" ") +
+        " " +
+        it.text
+      ).toLowerCase();
+      return terms.every((t) => hay.includes(t));
+    });
+    showSearch(true);
+    render(matches);
+    if (empty) empty.hidden = matches.length > 0;
+    if (results) results.hidden = matches.length === 0;
+  }
+
+  box?.addEventListener("input", onInput);
+</script>

@@ -1,0 +1,55 @@
+---
+import Base from "../layouts/Base.astro";
+import {
+  getPosts,
+  categoryOf,
+  categoryLabel,
+  postUrl,
+  fmtDate,
+  type Post,
+} from "../utils/posts";
+
+const posts = await getPosts();
+
+// Group by year, newest year first.
+const byYear = new Map<number, Post[]>();
+for (const post of posts) {
+  const y = post.data.date.getFullYear();
+  if (!byYear.has(y)) byYear.set(y, []);
+  byYear.get(y)!.push(post);
+}
+const years = [...byYear.keys()].sort((a, b) => b - a);
+---
+
+<Base current="Blog" title="Archive">
+  <div class="blog-head">
+    <h1>Archive</h1>
+    <a href="/blog" class="button">&larr; back to blog</a>
+  </div>
+  <p class="post-meta">{posts.length} posts across {years.length} years</p>
+
+  <nav class="year-nav">
+    {years.map((y) => <a href={`#y${y}`} class="button">{y}</a>)}
+  </nav>
+
+  {
+    years.map((y) => (
+      <section>
+        <h2 id={`y${y}`} class="category-heading">
+          {y} <span class="post-meta">({byYear.get(y)!.length})</span>
+        </h2>
+        <ul class="post-list archive-list">
+          {byYear.get(y)!.map((post) => (
+            <li class="archive-item">
+              <a href={postUrl(post)}>
+                <span class="archive-date">{fmtDate(post.data.date)}</span>
+                <span class="archive-title">{post.data.title}</span>
+                <span class="tag">{categoryLabel(categoryOf(post))}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</Base>
