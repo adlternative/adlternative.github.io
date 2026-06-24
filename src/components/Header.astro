@@ -1,0 +1,24 @@
+---
+const { current } = Astro.props;
+const pages = [
+  { name: "Home", link: "/" },
+  { name: "About", link: "/about" },
+  { name: "Projects", link: "/projects" },
+  { name: "Contact", link: "/contact" },
+  { name: "Blog", link: "/blog" },
+];
+---
+
+<header>
+  <ul class="horizontallist">
+    {
+      pages.map((p) => (
+        <a href={p.link}>
+          <li class={`button${current === p.name ? " selected" : ""}`}>
+            {p.name}
+          </li>
+        </a>
+      ))
+    }
+  </ul>
+</header>

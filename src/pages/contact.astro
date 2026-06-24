@@ -1,0 +1,28 @@
+---
+import Base from "../layouts/Base.astro";
+
+const contacts = [
+  { name: "GitHub", link: "https://github.com/adlternative/" },
+  {
+    name: "LinkedIn",
+    link: "https://www.linkedin.com/in/zhening-hu-10a0b1202/",
+  },
+  { name: "Email", link: "mailto:adlternative@gmail.com" },
+];
+---
+
+<Base current="Contact" title="Contact">
+  <h1>Contact</h1>
+  <ul class="contact-list">
+    {
+      contacts.map((c) => (
+        <li>
+          <strong>{c.name}:</strong>{" "}
+          <a href={c.link} target="_blank">
+            {c.link.replace("mailto:", "")}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</Base>

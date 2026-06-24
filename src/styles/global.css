@@ -1,0 +1,313 @@
+/* ---------------------------------------------------------------
+   adlternative — terminal / cyberpunk aesthetic
+   Black background, lime-green monospace, dashed borders.
+   Faithfully ported from the original site, extended for
+   real Markdown rendering.
+----------------------------------------------------------------- */
+
+:root {
+  --bg: #000000;
+  --fg: #00ff00; /* lime */
+  --fg-dim: #00b300;
+  --accent: #00ff00;
+  --code-bg: #0a0f0a;
+  --max-width: 85em;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0 auto;
+  width: 100%;
+  min-height: 100%;
+  max-width: var(--max-width);
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  line-height: 1.6;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0 1em;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+}
+
+a:hover {
+  border-bottom: 1px dashed var(--fg);
+}
+
+hr {
+  border: none;
+  border-top: 1px dashed var(--fg);
+  margin: 1.5em 0;
+}
+
+/* ----------------------------- header ----------------------------- */
+header {
+  text-align: right;
+  padding: 1em 0;
+  border-bottom: 1px dashed var(--fg);
+}
+
+.horizontallist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.horizontallist li {
+  margin: 0 0.25em;
+  display: inline-block;
+}
+
+.button {
+  border: 1px dashed var(--fg);
+  padding: 0.4em 0.6em;
+  display: inline-block;
+  transition: all 0.1s ease;
+}
+
+.button:hover,
+.button.selected {
+  color: var(--bg);
+  background-color: var(--fg);
+  border-bottom: 1px dashed var(--fg);
+}
+
+/* ----------------------------- layout ----------------------------- */
+#outerwrapper {
+  flex: 1 0 auto;
+  padding: 1.5em 0;
+}
+
+footer {
+  flex-shrink: 0;
+  border-top: 1px dashed var(--fg);
+  padding: 1em 0;
+}
+
+footer .horizontallist {
+  text-align: center;
+}
+
+footer img {
+  filter: drop-shadow(0 0 2px var(--fg));
+}
+
+#copyright {
+  font-size: 75%;
+  text-align: center;
+  margin-top: 0.5em;
+}
+
+/* --------------------------- home / ascii ------------------------- */
+.home-center {
+  text-align: center;
+}
+
+.adl-text {
+  text-align: left;
+  display: inline-block;
+  color: var(--fg);
+  text-shadow: 0 0 6px var(--fg);
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 1em 0;
+  font-size: 1.2em;
+}
+
+/* typing animation cursor */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+#cursor::after {
+  content: "\2587";
+  animation: blink 1s steps(1) infinite;
+}
+
+.typetarget {
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+/* ----------------------------- blog list -------------------------- */
+.post-list {
+  list-style: none;
+  padding: 0;
+}
+
+.post-item {
+  border: 1px dashed var(--fg);
+  padding: 0.8em 1em;
+  margin-bottom: 1em;
+  transition: all 0.1s ease;
+}
+
+.post-item:hover {
+  background-color: rgba(0, 255, 0, 0.07);
+}
+
+.post-item a {
+  border-bottom: none;
+}
+
+.post-title {
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.post-meta {
+  font-size: 0.8em;
+  color: var(--fg-dim);
+  margin-top: 0.3em;
+}
+
+.tag {
+  border: 1px dashed var(--fg-dim);
+  padding: 0 0.4em;
+  margin-right: 0.4em;
+  font-size: 0.85em;
+}
+
+.category-heading {
+  margin-top: 1.5em;
+  border-bottom: 1px dashed var(--fg);
+  padding-bottom: 0.3em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* --------------------------- article body ------------------------- */
+.prose {
+  max-width: 100%;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  color: var(--fg);
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.4);
+  margin-top: 1.4em;
+}
+
+.prose h1 {
+  border-bottom: 1px dashed var(--fg);
+  padding-bottom: 0.3em;
+}
+
+.prose p {
+  margin: 1em 0;
+}
+
+.prose a {
+  color: var(--fg);
+  border-bottom: 1px dashed var(--fg);
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border: 1px dashed var(--fg-dim);
+}
+
+.prose blockquote {
+  border-left: 3px dashed var(--fg);
+  margin: 1em 0;
+  padding: 0.2em 1em;
+  color: var(--fg-dim);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.5em;
+}
+
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.prose th,
+.prose td {
+  border: 1px dashed var(--fg-dim);
+  padding: 0.4em 0.6em;
+}
+
+/* inline code */
+.prose :not(pre) > code {
+  background-color: var(--code-bg);
+  border: 1px dashed var(--fg-dim);
+  padding: 0.1em 0.35em;
+  border-radius: 2px;
+  color: var(--fg);
+}
+
+/* code blocks (shiki) */
+.prose pre {
+  border: 1px dashed var(--fg);
+  padding: 1em;
+  overflow-x: auto;
+  border-radius: 3px;
+}
+
+.prose pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* article meta header */
+.article-header {
+  border-bottom: 1px dashed var(--fg);
+  padding-bottom: 1em;
+  margin-bottom: 1.5em;
+}
+
+.article-header h1 {
+  margin-bottom: 0.2em;
+  text-shadow: 0 0 6px var(--fg);
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 1em;
+}
+
+/* simple content blocks (about/projects/contact) */
+.textcontent {
+  text-align: left;
+}
+
+.contact-list {
+  list-style: none;
+  padding: 0;
+}
+
+.contact-list li {
+  border: 1px dashed var(--fg);
+  padding: 0.6em 1em;
+  margin-bottom: 0.6em;
+}

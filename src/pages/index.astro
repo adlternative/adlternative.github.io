@@ -1,0 +1,60 @@
+---
+import Base from "../layouts/Base.astro";
+
+const asciiart = `44      4444    44
+4444    44 44   44
+44  44  44  44  44
+444444  44  44  44
+44  44  44 44   44
+44  44  4444    444444`;
+
+const paragraphs = [
+  "I am a ghost hovering above the internet without a soul.",
+  "I am adlternative. I died yesterday.",
+  "I am adlternative. I died today.",
+];
+---
+
+<Base current="Home">
+  <div class="home-center">
+    <pre class="adl-text">{asciiart}</pre>
+    <div class="subtitle">Software Developer</div>
+    {paragraphs.map((p) => <p class="typetarget">{p}</p>)}
+    <br />
+    <a href="/about" class="button">Learn more!</a>
+  </div>
+</Base>
+
+<script>
+  // Typewriter effect, ported from the original script.js
+  function animateTyping(objects: NodeListOf<HTMLElement>) {
+    if (objects.length <= 0) return;
+    const typeobjects = Array.from(objects).map((o) => ({
+      object: o,
+      text: o.innerText,
+    }));
+    typeobjects.forEach((t) => (t.object.innerText = ""));
+    type(typeobjects);
+  }
+
+  function type(typeobjects: { object: HTMLElement; text: string }[]) {
+    let i = 0;
+    const interval = setInterval(() => {
+      const t = typeobjects[0];
+      t.object.innerText = t.text.substring(0, ++i);
+      t.object.innerHTML += '<span id="cursor"></span>';
+      if (i >= t.text.length) {
+        clearInterval(interval);
+        if (typeobjects.length > 1) {
+          t.object.innerText = t.text;
+          typeobjects.splice(0, 1);
+          type(typeobjects);
+        }
+      }
+    }, 25);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    animateTyping(document.querySelectorAll<HTMLElement>(".typetarget"));
+  });
+</script>

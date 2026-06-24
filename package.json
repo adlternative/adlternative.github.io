@@ -1,0 +1,16 @@
+{
+  "name": "adlternative-blog",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "new": "node scripts/new-post.mjs"
+  },
+  "dependencies": {
+    "astro": "^4.16.18",
+    "@astrojs/rss": "^4.0.11"
+  }
+}

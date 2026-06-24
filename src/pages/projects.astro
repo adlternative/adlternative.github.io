@@ -1,0 +1,28 @@
+---
+import Base from "../layouts/Base.astro";
+
+const projects = [
+  {
+    title: "git",
+    image: "/images/git.svg",
+    description:
+      "Git is a free and open source distributed version control system designed to handle everything from small to very large projects with speed and efficiency. It is written for Linux in C.",
+    link: "https://github.com/adlternative/git/tree/cat-file-reuse-ref-filter-logic",
+  },
+];
+---
+
+<Base current="Projects" title="Projects">
+  <h1>Projects</h1>
+  {
+    projects.map((p) => (
+      <div class="post-item">
+        <div class="post-title">{p.title}</div>
+        <p>{p.description}</p>
+        <a href={p.link} target="_blank" class="button">
+          Check out the source code &rarr;
+        </a>
+      </div>
+    ))
+  }
+</Base>

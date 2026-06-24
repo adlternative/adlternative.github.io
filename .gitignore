@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.astro/
+.DS_Store
+npm-debug.log*
+*.log
+.env
+.env.production
+
+# Astro generated
+src/env.d.ts
