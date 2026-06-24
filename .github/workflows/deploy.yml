@@ -24,13 +24,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
-        timeout-minutes: 5
+        timeout-minutes: 6
+        env:
+          # progress output keeps the step from looking dead; loglevel helps debug
+          npm_config_progress: "true"
         run: |
-          npm install --no-audit --no-fund \
-            || (echo "retrying install..." && rm -rf node_modules && npm install --no-audit --no-fund)
+          npm config set fund false
+          npm config set audit false
+          npm ci --foreground-scripts --loglevel verbose 2>&1 | tail -n 200
 
       - name: Build site
         run: npm run build
