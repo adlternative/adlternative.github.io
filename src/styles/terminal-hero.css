@@ -1,0 +1,127 @@
+/* terminal-hero.css — faux terminal banner for the homepage */
+
+.term-hero {
+  width: 100%;
+  min-height: min(60vh, 480px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  cursor: pointer;
+  font-family: "JetBrains Mono", "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+
+.term-hero-window {
+  width: min(720px, 90vw);
+  background: rgb(var(--t-bg));
+  border: 1px solid rgb(var(--t-border) / 0.5);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 16px 60px rgb(0 0 0 / 0.4);
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.term-hero:hover .term-hero-window {
+  border-color: rgb(var(--t-border) / 0.8);
+  box-shadow: 0 20px 80px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(var(--t-border) / 0.2);
+}
+
+.term-hero-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgb(var(--t-chrome));
+  border-bottom: 1px solid rgb(var(--t-border) / 0.3);
+  font-size: 12px;
+  color: rgb(var(--t-fg-dim));
+  user-select: none;
+}
+
+.term-hero-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.term-hero-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.term-hero-dot.r { background: #ff5f57; }
+.term-hero-dot.y { background: #febc2e; }
+.term-hero-dot.g { background: #28c840; }
+
+.term-hero-title {
+  flex: 1;
+  text-align: center;
+}
+
+.term-hero-body {
+  padding: 20px 24px 24px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgb(var(--t-fg));
+}
+
+.term-hero-prompt {
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.term-hero-ascii {
+  color: rgb(var(--t-accent));
+  font-size: 14px;
+  line-height: 1.2;
+  margin: 0 0 12px;
+  font-family: inherit;
+}
+
+.term-hero-welcome {
+  color: rgb(var(--t-fg));
+  margin-bottom: 12px;
+}
+
+.term-hero-lines {
+  min-height: 4.8em;
+}
+
+.term-hero-typetarget {
+  color: rgb(var(--t-fg-dim));
+  margin: 0;
+  line-height: 1.6;
+}
+
+.term-hero-divider {
+  border-top: 1px dashed rgb(var(--t-border) / 0.3);
+  margin: 16px 0 12px;
+}
+
+.term-hero-cta {
+  color: rgb(var(--t-fg-dim));
+  font-size: 12px;
+  text-align: center;
+}
+
+.term-hero-cta kbd {
+  display: inline-block;
+  padding: 2px 5px;
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid rgb(var(--t-border) / 0.4);
+  border-radius: 3px;
+  margin: 0 2px;
+}
+
+.term-hero-cta code {
+  font: inherit;
+  color: rgb(var(--t-accent));
+}
+
+/* Hide on mobile */
+@media (max-width: 640px) {
+  .term-hero {
+    display: none !important;
+  }
+}

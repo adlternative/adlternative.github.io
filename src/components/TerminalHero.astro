@@ -1,0 +1,89 @@
+---
+/**
+ * TerminalHero — a faux-terminal banner for the homepage.
+ * Looks like an already-open terminal window with ASCII art + typewriter animation.
+ * The entire banner is clickable to open the real terminal overlay.
+ * Hidden on mobile (<640px) — falls back to the original home-center layout.
+ */
+import "../styles/terminal-hero.css";
+
+const asciiart = ` __ _    __ _    _ 
+/  \\ \\  / // \\  | |
+\\_// _\\/ _\\\\_/  |_|`;
+
+const lines = [
+  "I am a ghost hovering above the internet without a soul.",
+  "I am adlternative. I died yesterday.",
+  "I am adlternative. I died today.",
+];
+---
+
+<div class="term-hero desktop-only" id="term-hero">
+  <div class="term-hero-window">
+    <div class="term-hero-bar">
+      <span class="term-hero-dots">
+        <span class="term-hero-dot r"></span>
+        <span class="term-hero-dot y"></span>
+        <span class="term-hero-dot g"></span>
+      </span>
+      <span class="term-hero-title">adl.sh — bash</span>
+    </div>
+    <div class="term-hero-body">
+      <div class="term-hero-prompt">
+        <span class="t-user">zhening</span><span class="t-dim">@</span><span class="t-host">adl</span><span class="t-dim">:</span><span class="t-pwd">~</span><span class="t-dim">$</span> <span class="t-cmd">adl.sh --intro</span>
+      </div>
+      <pre class="term-hero-ascii">{asciiart}</pre>
+      <div class="term-hero-welcome">
+        welcome to <strong>adl.sh</strong> — ZheNing Hu's interactive blog terminal.
+      </div>
+      <div class="term-hero-lines">
+        {lines.map((l) => <p class="term-hero-typetarget">> {l}</p>)}
+      </div>
+      <div class="term-hero-divider"></div>
+      <div class="term-hero-cta">
+        press <kbd>⌘K</kbd> · click anywhere · or type <code>`</code> to enter the real shell
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Typewriter animation for the hero terminal lines
+  const hero = document.getElementById("term-hero");
+  if (hero) {
+    // Typewriter effect
+    const targets = hero.querySelectorAll<HTMLElement>(".term-hero-typetarget");
+    if (targets.length > 0) {
+      const items = Array.from(targets).map((el) => ({
+        el,
+        text: el.textContent ?? "",
+      }));
+      items.forEach((it) => (it.el.textContent = ""));
+
+      let itemIdx = 0;
+      let charIdx = 0;
+
+      function tick() {
+        if (itemIdx >= items.length) return;
+        const item = items[itemIdx];
+        charIdx++;
+        item.el.textContent = item.text.substring(0, charIdx);
+        if (charIdx >= item.text.length) {
+          itemIdx++;
+          charIdx = 0;
+          if (itemIdx < items.length) setTimeout(tick, 200);
+        } else {
+          setTimeout(tick, 28);
+        }
+      }
+      // Slight delay before starting
+      setTimeout(tick, 600);
+    }
+
+    // Click anywhere on hero opens terminal
+    hero.addEventListener("click", () => {
+      const getApi = (window as any).__termGetApi;
+      if (getApi) getApi().then((api: any) => api.open());
+    });
+  }
+</script>

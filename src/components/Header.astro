@@ -20,5 +20,46 @@ const pages = [
         </a>
       ))
     }
+    <a href="#" class="term-nav-link desktop-only" data-terminal-open>
+      <li class="button term-nav-btn">$ shell</li>
+    </a>
   </ul>
 </header>
+
+<style>
+  .term-nav-link {
+    text-decoration: none;
+  }
+  .term-nav-btn {
+    font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
+    font-size: 0.85em;
+    letter-spacing: 0.03em;
+    position: relative;
+  }
+  .term-nav-btn::after {
+    content: "▌";
+    display: inline-block;
+    margin-left: 2px;
+    animation: blink-caret 1s step-end infinite;
+    opacity: 0.7;
+  }
+  @keyframes blink-caret {
+    50% { opacity: 0; }
+  }
+  @media (max-width: 640px) {
+    .desktop-only {
+      display: none !important;
+    }
+  }
+</style>
+
+<script>
+  const termLink = document.querySelector<HTMLAnchorElement>("[data-terminal-open]");
+  if (termLink) {
+    termLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      const getApi = (window as any).__termGetApi;
+      if (getApi) getApi().then((api: any) => api.open());
+    });
+  }
+</script>

@@ -1,6 +1,6 @@
 ---
 /**
- * Pseudo-terminal overlay.
+ * Pseudo-terminal overlay — tmux-style 4-pane layout.
  * - Rendered on every page (via Base.astro)
  * - Hidden by default, opens on ⌘K / Ctrl+K / backtick
  * - Disabled on screens < 640px via CSS
@@ -17,30 +17,48 @@ import "../styles/terminal.css";
   aria-label="adl.sh interactive terminal"
   aria-hidden="true"
 >
-  <div class="t-window">
-    <div class="t-bar">
-      <span class="t-dots">
-        <span class="t-dot r"></span>
-        <span class="t-dot y"></span>
-        <span class="t-dot g"></span>
-      </span>
-      <span class="t-title-bar">zhening@adl — bash</span>
-      <button type="button" class="t-close" aria-label="Close terminal (Esc)">esc</button>
+  <div class="t-grid">
+    <!-- pane[3]: sidebar tree (left 18%) -->
+    <div class="t-pane t-pane-sidebar" data-pane="3">
+      <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div>
+      <div class="t-pane-body t-tree-container"></div>
     </div>
-    <div class="t-screen" role="log" aria-live="polite"></div>
-    <div class="t-promptline">
-      <span class="t-prompt"></span>
-      <input
-        type="text"
-        class="t-input"
-        autocomplete="off"
-        autocapitalize="off"
-        autocorrect="off"
-        spellcheck="false"
-        aria-label="Terminal input"
-        placeholder="type `help` and press Enter"
-      />
+
+    <!-- pane[0]: main shell (center 52%) -->
+    <div class="t-pane t-pane-shell" data-pane="0">
+      <div class="t-pane-titlebar"><span class="t-pane-idx">[0]</span> $ shell</div>
+      <div class="t-pane-body t-shell-body">
+        <div class="t-screen" role="log" aria-live="polite"></div>
+        <div class="t-promptline">
+          <span class="t-prompt"></span>
+          <input
+            type="text"
+            class="t-input"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            aria-label="Terminal input"
+            placeholder="type `help` and press Enter"
+          />
+        </div>
+      </div>
     </div>
+
+    <!-- pane[1]: help/manual (right 30%) -->
+    <div class="t-pane t-pane-help" data-pane="1">
+      <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div>
+      <div class="t-pane-body t-help-container"></div>
+    </div>
+
+    <!-- pane[2]: preview (bottom full-width 35%) -->
+    <div class="t-pane t-pane-preview" data-pane="2">
+      <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div>
+      <div class="t-pane-body t-preview-container"></div>
+    </div>
+
+    <!-- status bar (bottom 28px) -->
+    <div class="t-pane-statusbar" data-statusbar></div>
   </div>
 </div>
 
@@ -81,6 +99,7 @@ import "../styles/terminal.css";
       close: () => void;
       toggle: () => void;
       isOpen: () => boolean;
+      openWith: (cmd: string) => void;
     };
     let apiPromise: Promise<Api> | null = null;
     function getApi(): Promise<Api> {
@@ -92,6 +111,9 @@ import "../styles/terminal.css";
       return apiPromise;
     }
 
+    // Expose getApi globally for hero/header/CTA entry points
+    (window as any).__termGetApi = getApi;
+
     if (launcher) {
       launcher.addEventListener("click", (e) => {
         e.preventDefault();
@@ -101,8 +123,6 @@ import "../styles/terminal.css";
 
     window.addEventListener("keydown", (e) => {
       const target = e.target as HTMLElement | null;
-      // Don't hijack ⌘K when the user is mid-input in a real form field
-      // outside the terminal overlay.
       const inEditable =
         target &&
         (target.tagName === "INPUT" ||

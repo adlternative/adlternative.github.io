@@ -1,0 +1,43 @@
+/* terminal-cta.css — inline call-to-action for article pages */
+
+.term-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0 16px;
+  padding: 10px 14px;
+  font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  background: rgb(var(--t-bg) / 0.6);
+  border-left: 3px solid rgb(var(--t-accent));
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.term-cta:hover {
+  background: rgb(var(--t-bg) / 0.85);
+}
+
+.term-cta-prompt {
+  color: rgb(var(--t-accent));
+  font-weight: 600;
+}
+
+.term-cta-cmd {
+  color: rgb(var(--t-fg));
+}
+
+.term-cta-hint {
+  color: rgb(var(--t-fg-dim));
+  font-size: 11px;
+  margin-left: auto;
+}
+
+/* Hide on mobile */
+@media (max-width: 640px) {
+  .term-cta {
+    display: none !important;
+  }
+}

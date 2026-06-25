@@ -2,6 +2,7 @@
 import Base from "../../layouts/Base.astro";
 import type { CollectionEntry } from "astro:content";
 import { getPosts, fmtDateTime } from "../../utils/posts";
+import "../../styles/terminal-cta.css";
 
 export async function getStaticPaths() {
   const posts = await getPosts();
@@ -14,6 +15,8 @@ export async function getStaticPaths() {
 type Props = { post: CollectionEntry<"blog"> };
 const { post } = Astro.props;
 const { Content } = await post.render();
+const firstTag = post.data.tags?.[0] ?? "";
+const ctaCmd = firstTag ? `ls posts --tag ${firstTag}` : "ls posts";
 ---
 
 <Base current="Blog" title={post.data.title} description={post.data.title}>
@@ -30,5 +33,30 @@ const { Content } = await post.render();
     <div class="prose">
       <Content />
     </div>
+    <!-- Terminal inline CTA -->
+    <div class="term-cta desktop-only" data-launch-cmd={ctaCmd}>
+      <span class="term-cta-prompt">$</span>
+      <span class="term-cta-cmd">{ctaCmd}</span>
+      <span class="term-cta-hint">&larr; explore more in terminal</span>
+    </div>
   </article>
 </Base>
+
+<style>
+  @media (max-width: 640px) {
+    .desktop-only {
+      display: none !important;
+    }
+  }
+</style>
+
+<script>
+  const cta = document.querySelector<HTMLElement>("[data-launch-cmd]");
+  if (cta) {
+    cta.addEventListener("click", () => {
+      const cmd = cta.getAttribute("data-launch-cmd") ?? "";
+      const getApi = (window as any).__termGetApi;
+      if (getApi) getApi().then((api: any) => api.openWith(cmd));
+    });
+  }
+</script>

@@ -1,11 +1,17 @@
-// Pseudo-terminal dispatcher.
+// Pseudo-terminal dispatcher — tmux-style 4-pane edition.
 // - Loads /posts.json once
 // - Handles input, history, Tab completion, IME guard
 // - Wires command registry to render output and theme controls
+// - Integrates event bus for pane-to-pane communication
+// - Manages Ctrl-B prefix keys and active pane switching
 // Keep this small — no extra deps. Output HTML is responsibility of commands.
 
 import { commands } from "./commands";
 import { esc, type Ctx, type Post } from "./types";
+import { createBus, type EventBus } from "./event-bus";
+import { initStatusBar } from "./tmux-statusbar";
+import { initHelpPane, initPreviewPane } from "./tmux-panes";
+import { initTreePane } from "./tmux-tree";
 
 const HISTORY_KEY = "zn.term.history.v1";
 const THEME_KEY = "zn.term.theme.v1";
@@ -17,13 +23,25 @@ export type TerminalApi = {
   close: () => void;
   toggle: () => void;
   isOpen: () => boolean;
+  openWith: (cmd: string) => void;
 };
 
 export function bootTerminal(root: HTMLElement): TerminalApi {
   const screen = root.querySelector<HTMLDivElement>(".t-screen")!;
   const input = root.querySelector<HTMLInputElement>(".t-input")!;
   const promptEl = root.querySelector<HTMLSpanElement>(".t-prompt")!;
-  const closeBtn = root.querySelector<HTMLButtonElement>(".t-close");
+  const statusbarEl = root.querySelector<HTMLElement>("[data-statusbar]")!;
+  const helpContainer = root.querySelector<HTMLElement>(".t-help-container")!;
+  const previewContainer = root.querySelector<HTMLElement>(".t-preview-container")!;
+  const treeContainer = root.querySelector<HTMLElement>(".t-tree-container")!;
+
+  // Pane elements
+  const paneEls = [
+    root.querySelector<HTMLElement>('[data-pane="0"]')!,
+    root.querySelector<HTMLElement>('[data-pane="1"]')!,
+    root.querySelector<HTMLElement>('[data-pane="2"]')!,
+    root.querySelector<HTMLElement>('[data-pane="3"]')!,
+  ];
 
   const PROMPT_HTML =
     `<span class="t-user">zhening</span>` +
@@ -33,6 +51,24 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
     `<span class="t-pwd">~</span>` +
     `<span class="t-dim">$</span> `;
   promptEl.innerHTML = PROMPT_HTML;
+
+  // --- event bus -----------------------------------------------------------
+  const bus: EventBus = createBus();
+
+  // --- active pane ---------------------------------------------------------
+  let activePane = 0;
+
+  function setActivePane(idx: number) {
+    activePane = idx;
+    paneEls.forEach((el, i) => {
+      el.classList.toggle("t-pane-active", i === idx);
+    });
+    statusbar.setActivePane(idx);
+    if (idx === 0) input.focus();
+  }
+
+  // Set initial active pane
+  paneEls[0].classList.add("t-pane-active");
 
   // --- theme ---------------------------------------------------------------
   const initialTheme = (() => {
@@ -77,6 +113,8 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Post[]) => {
         posts = data ?? [];
+        // Notify tree sidebar that posts are ready
+        bus.emit("posts-ready", { posts });
       })
       .catch(() => {
         posts = [];
@@ -108,6 +146,7 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
       } catch {
         /* noop */
       }
+      bus.emit("theme-change", { name });
       return true;
     },
     history() {
@@ -118,6 +157,32 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
     },
   };
 
+  // --- status bar ----------------------------------------------------------
+  const statusbar = initStatusBar(statusbarEl, bus, (idx) => setActivePane(idx));
+
+  // --- help pane -----------------------------------------------------------
+  initHelpPane(helpContainer, bus, commands);
+
+  // --- preview pane --------------------------------------------------------
+  initPreviewPane(previewContainer, bus);
+
+  // --- tree sidebar --------------------------------------------------------
+  const treePaneApi = initTreePane(treeContainer, bus, {
+    initialTheme: currentTheme,
+    runCommand(cmd: string) {
+      // Inject command into shell pane and execute
+      setActivePane(0);
+      input.value = "";
+      ctx.out(
+        `<div class="t-line"><span class="t-prompt-static">${PROMPT_HTML}</span>${esc(cmd)}</div>`,
+      );
+      if (!history.length || history[history.length - 1] !== cmd) history.push(cmd);
+      cursor = history.length;
+      persistHistory();
+      ensurePosts().then(() => run(cmd));
+    },
+  });
+
   // --- banner --------------------------------------------------------------
   function renderBanner() {
     ctx.out(
@@ -127,11 +192,69 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
         `\\_// _\\/ _\\\\_/  |_|\n` +
         `</pre>` +
         `<div class="t-mono">welcome to <b>adl.sh</b> — ZheNing Hu's interactive blog terminal.</div>` +
-        `<div class="t-dim">type <b>help</b> to begin · <b>neofetch</b> · <b>ls posts</b> · <b>fortune</b> · <b>cowsay hi</b> · <b>Esc</b> to leave.</div>` +
+        `<div class="t-dim">type <b>help</b> to begin · <b>neofetch</b> · <b>ls posts</b> · <b>fortune</b> · <b>cowsay hi</b> · <b>^B ?</b> for keys.</div>` +
         `</div>`,
     );
   }
   renderBanner();
+
+  // --- Ctrl-B prefix key handling ------------------------------------------
+  let prefixActive = false;
+  let prefixTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function clearPrefix() {
+    prefixActive = false;
+    if (prefixTimer) { clearTimeout(prefixTimer); prefixTimer = null; }
+  }
+
+  root.addEventListener("keydown", (e) => {
+    // Only handle prefix logic when overlay is visible
+    if (root.classList.contains("t-hidden")) return;
+
+    // Ctrl-B sets prefix
+    if (e.key.toLowerCase() === "b" && e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      prefixActive = true;
+      if (prefixTimer) clearTimeout(prefixTimer);
+      prefixTimer = setTimeout(clearPrefix, 1500);
+      return;
+    }
+
+    if (prefixActive) {
+      e.preventDefault();
+      clearPrefix();
+
+      switch (e.key) {
+        case "0": setActivePane(0); break;
+        case "1": setActivePane(1); break;
+        case "2": setActivePane(2); break;
+        case "3": setActivePane(3); break;
+        case "?":
+          setActivePane(1);
+          bus.emit("show-cheatsheet", {});
+          break;
+        case "d":
+          api.close();
+          break;
+        case ",":
+          // Rename pane — toy feature, prompt in status area
+          // For now just flash the titlebar
+          break;
+        default:
+          break;
+      }
+      return;
+    }
+
+    // Sidebar keyboard navigation when pane[3] is active
+    if (activePane === 3) {
+      if (e.key === "j" || e.key === "k" || e.key === "Enter" || e.key === "o") {
+        e.preventDefault();
+        bus.emit("tree-keypress", { key: e.key });
+        return;
+      }
+    }
+  });
 
   // --- input handling ------------------------------------------------------
   let composing = false;
@@ -139,8 +262,6 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
     composing = true;
   });
   input.addEventListener("compositionend", () => {
-    // small delay: the trailing Enter that confirms the IME selection
-    // sometimes arrives as keydown right after compositionend.
     composing = true;
     setTimeout(() => {
       composing = false;
@@ -175,7 +296,6 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
       e.preventDefault();
       if (cursor > 0) cursor--;
       input.value = history[cursor] ?? "";
-      // place caret at end
       input.setSelectionRange(input.value.length, input.value.length);
       return;
     }
@@ -254,6 +374,10 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
   async function run(line: string) {
     const tokens = line.trim().split(/\s+/);
     const head = tokens[0];
+
+    // Emit command execution to status bar
+    bus.emit("cmd-exec", { cmd: line.trim() });
+
     // special-case "hack the planet" so it dispatches as one phrase
     if (head === "hack") {
       const cmd = commands["hack"];
@@ -278,6 +402,60 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
     } catch (err) {
       ctx.out(`<div class="t-err">${esc(String(err))}</div>`);
     }
+
+    // Emit preview events based on command type
+    if (head === "ls") {
+      const target = tokens[1] ?? "posts";
+      if (target === "posts") {
+        // Re-run filter logic to get data for preview
+        const filteredPosts = filterPostsForPreview(posts, tokens.slice(2));
+        bus.emit("preview", { type: "list", data: filteredPosts, cmd: line.trim() });
+      } else if (target === "tags") {
+        bus.emit("preview", { type: "tags", data: posts, cmd: line.trim() });
+      }
+    } else if (head === "cat") {
+      const slug = tokens.slice(1).join(" ");
+      const post = posts.find((p) => p.slug === slug);
+      if (post) {
+        bus.emit("preview", { type: "cat", data: post, cmd: line.trim() });
+      }
+    } else if (head === "grep") {
+      const kw = tokens.slice(1).join(" ").toLowerCase();
+      if (kw) {
+        const matches = posts.filter(
+          (p) =>
+            p.title.toLowerCase().includes(kw) ||
+            p.tags.some((t) => t.toLowerCase().includes(kw)) ||
+            (p.description ?? "").toLowerCase().includes(kw),
+        );
+        bus.emit("preview", { type: "grep", data: matches, keyword: kw, cmd: line.trim() });
+      }
+    } else if (head === "help" || head === "man") {
+      const cmdName = tokens[1];
+      if (cmdName && commands[cmdName]) {
+        bus.emit("manual", { cmd: cmdName, content: commands[cmdName].manual || commands[cmdName].brief });
+      }
+    } else if (head === "theme") {
+      // theme-change already emitted by ctx.setTheme
+    }
+  }
+
+  // Helper: filter posts (mirrors ls command logic)
+  function filterPostsForPreview(allPosts: Post[], args: string[]): Post[] {
+    let result = allPosts.slice();
+    for (let i = 0; i < args.length; i++) {
+      const a = args[i];
+      if (a === "--tag" && args[i + 1]) {
+        const t = args[++i].toLowerCase();
+        result = result.filter((p) =>
+          p.tags.some((x) => x.toLowerCase() === t),
+        );
+      } else if (a === "--year" && args[i + 1]) {
+        const y = args[++i];
+        result = result.filter((p) => p.date.startsWith(y));
+      }
+    }
+    return result;
   }
 
   // Clicking on any rendered slug acts like `open <slug>`.
@@ -304,12 +482,21 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
     }
   });
 
-  // Focus the input when the user clicks anywhere on the terminal chrome.
-  root.addEventListener("click", (e) => {
-    const t = e.target as HTMLElement;
-    if (t.closest("[data-slug]") || t.closest("a[data-internal]")) return;
-    if (t.closest(".t-close")) return;
-    input.focus();
+  // Focus the input when the user clicks anywhere on the shell pane.
+  const shellPane = root.querySelector('[data-pane="0"]');
+  if (shellPane) {
+    shellPane.addEventListener("click", (e) => {
+      const t = e.target as HTMLElement;
+      if (t.closest("[data-slug]") || t.closest("a[data-internal]")) return;
+      setActivePane(0);
+    });
+  }
+
+  // Click on any pane to activate it
+  paneEls.forEach((el, idx) => {
+    el.addEventListener("mousedown", () => {
+      if (activePane !== idx) setActivePane(idx);
+    });
   });
 
   // --- open/close ----------------------------------------------------------
@@ -321,7 +508,6 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
       lastFocused = (document.activeElement as HTMLElement) ?? null;
       root.classList.remove("t-hidden");
       root.setAttribute("aria-hidden", "false");
-      // Kick off posts.json fetch the moment the terminal first opens.
       void ensurePosts();
       setTimeout(() => input.focus(), 0);
     },
@@ -329,6 +515,7 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
       if (root.classList.contains("t-hidden")) return;
       root.classList.add("t-hidden");
       root.setAttribute("aria-hidden", "true");
+      clearPrefix();
       if (lastFocused && typeof lastFocused.focus === "function") {
         try {
           lastFocused.focus();
@@ -344,14 +531,20 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
     isOpen() {
       return !root.classList.contains("t-hidden");
     },
+    openWith(cmd: string) {
+      api.open();
+      ensurePosts().then(() => {
+        input.value = "";
+        ctx.out(
+          `<div class="t-line"><span class="t-prompt-static">${PROMPT_HTML}</span>${esc(cmd)}</div>`,
+        );
+        if (!history.length || history[history.length - 1] !== cmd) history.push(cmd);
+        cursor = history.length;
+        persistHistory();
+        run(cmd);
+      });
+    },
   };
-
-  if (closeBtn) {
-    closeBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      api.close();
-    });
-  }
 
   return api;
 }
