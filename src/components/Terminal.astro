@@ -1,10 +1,11 @@
 ---
 /**
- * Pseudo-terminal overlay — tmux-style 4-pane layout.
+ * Pseudo-terminal overlay — tmux-style 4-pane layout on desktop,
+ * single-pane full-screen with mobile FAB + quick-actions on portrait phones.
  * - Rendered on every page (via Base.astro)
- * - Hidden by default, opens on ⌘K / Ctrl+K / backtick
- * - Disabled on screens < 640px via CSS
- * - Lazy-imports the dispatcher only on pointer:fine devices
+ * - Hidden by default, opens on ⌘K / Ctrl+K / backtick / launcher click
+ * - Mobile portrait: only the shell pane renders, plus a quick-action strip
+ *   and an explicit close button (Esc isn't available on touch keyboards).
  */
 import "../styles/terminal.css";
 ---
@@ -18,22 +19,38 @@ import "../styles/terminal.css";
   aria-hidden="true"
 >
   <div class="t-grid">
-    <!-- pane[3]: sidebar tree (left 18%) -->
+    <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) -->
     <div class="t-pane t-pane-sidebar" data-pane="3">
       <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div>
       <div class="t-pane-body t-tree-container"></div>
     </div>
 
-    <!-- pane[0]: main shell (center 52%) -->
+    <!-- pane[0]: main shell (center 52%) — only pane shown on mobile -->
     <div class="t-pane t-pane-shell" data-pane="0">
-      <div class="t-pane-titlebar"><span class="t-pane-idx">[0]</span> $ shell</div>
+      <div class="t-pane-titlebar">
+        <span class="t-pane-idx">[0]</span> $ shell
+        <button
+          type="button"
+          class="t-close-btn"
+          id="term-close"
+          aria-label="Close terminal"
+        >[<span class="t-close-x">&times;</span>&nbsp;close]</button>
+      </div>
       <div class="t-pane-body t-shell-body">
         <div class="t-screen" role="log" aria-live="polite"></div>
+        <div class="t-quick-actions" role="toolbar" aria-label="Quick commands">
+          <button type="button" class="t-qa" data-cmd="help">help</button>
+          <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button>
+          <button type="button" class="t-qa" data-cmd="whoami">whoami</button>
+          <button type="button" class="t-qa" data-cmd="about">about</button>
+          <button type="button" class="t-qa" data-cmd="clear">clear</button>
+        </div>
         <div class="t-promptline">
           <span class="t-prompt"></span>
           <input
             type="text"
             class="t-input"
+            inputmode="text"
             autocomplete="off"
             autocapitalize="off"
             autocorrect="off"
@@ -79,18 +96,23 @@ import "../styles/terminal.css";
 </button>
 
 <script>
-  // Lazy: only desktop / fine-pointer devices boot the dispatcher.
-  const isFine =
-    window.matchMedia &&
-    window.matchMedia("(pointer: fine)").matches &&
-    window.innerWidth >= 640;
+  // Boot on any device that can plausibly use the terminal:
+  // - desktop (pointer:fine) for the full 4-pane experience
+  // - mobile/tablet (no fine pointer) for the single-pane portrait mode
+  // The CSS handles the layout split; JS only needs to gate on the
+  // existence of matchMedia (i.e. real browser, not crawlers).
+  const canBoot =
+    typeof window !== "undefined" && typeof window.matchMedia === "function";
 
   const root = document.getElementById("term") as HTMLElement | null;
   const launcher = document.getElementById(
     "term-launcher",
   ) as HTMLButtonElement | null;
+  const closeBtn = document.getElementById(
+    "term-close",
+  ) as HTMLButtonElement | null;
 
-  if (!isFine) {
+  if (!canBoot) {
     if (root) root.remove();
     if (launcher) launcher.remove();
   } else {
@@ -118,6 +140,26 @@ import "../styles/terminal.css";
       launcher.addEventListener("click", (e) => {
         e.preventDefault();
         getApi().then((api) => api.open());
+      });
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        getApi().then((api) => api.close());
+      });
+    }
+
+    // Quick-action chips (mobile portrait): fill input + execute the command
+    if (root) {
+      root.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement | null;
+        const chip = target?.closest<HTMLButtonElement>(".t-qa");
+        if (!chip) return;
+        e.preventDefault();
+        const cmd = chip.getAttribute("data-cmd");
+        if (!cmd) return;
+        getApi().then((api) => api.openWith(cmd));
       });
     }
 

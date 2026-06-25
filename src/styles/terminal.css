@@ -549,10 +549,152 @@ mark {
   display: none !important;
 }
 
-/* Mobile: do not render the terminal at all. */
+/* ---- close button (mobile only; Esc isn't available on touch) ---- */
+.t-close-btn {
+  display: none;
+  margin-left: auto;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px dashed rgb(var(--t-border) / 0.55);
+  border-radius: 3px;
+  color: rgb(var(--t-fg));
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.t-close-btn:active,
+.t-close-btn:focus-visible {
+  background: rgb(var(--t-border) / 0.12);
+  outline: none;
+}
+.t-close-btn .t-close-x {
+  color: rgb(var(--t-accent));
+  font-weight: 700;
+}
+
+/* ---- quick-actions strip (mobile only) ---- */
+.t-quick-actions {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px 4px;
+  border-top: 1px dashed rgb(var(--t-border) / 0.25);
+  background: rgb(var(--t-bg));
+  flex-shrink: 0;
+}
+.t-qa {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: rgb(var(--t-fg));
+  background: transparent;
+  border: 1px dashed rgb(var(--t-border) / 0.6);
+  border-radius: 2px;
+  padding: 4px 9px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+.t-qa::before {
+  content: "$ ";
+  color: rgb(var(--t-accent));
+  font-weight: 600;
+}
+.t-qa:active,
+.t-qa:focus-visible {
+  background: rgb(var(--t-border) / 0.12);
+  border-style: solid;
+  outline: none;
+}
+
+/* ----------------------- mobile portrait layout -----------------------
+   Single-pane shell, full-screen with safe-area padding. The 4-pane
+   tmux grid collapses; only the shell pane and statusbar render.
+   Launcher becomes a slightly larger tap-friendly FAB anchored above
+   the home indicator. */
 @media (max-width: 640px) {
-  .term-overlay,
-  .t-launcher {
+  .term-overlay {
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    background: rgb(var(--t-bg));
+  }
+
+  .t-grid {
+    grid-template-rows: 1fr 28px;
+    grid-template-columns: 1fr;
+    border-radius: 0;
+    gap: 0;
+    background: rgb(var(--t-bg));
+  }
+
+  /* Hide the non-shell panes; only show shell pane + statusbar */
+  .t-pane-sidebar,
+  .t-pane-help,
+  .t-pane-preview {
     display: none !important;
+  }
+
+  .t-pane-shell {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .t-pane-statusbar {
+    grid-row: 2;
+    grid-column: 1;
+  }
+
+  /* Reveal mobile-only chrome */
+  .t-close-btn {
+    display: inline-block;
+  }
+  .t-quick-actions {
+    display: flex;
+  }
+
+  /* Slightly larger touch targets in the shell */
+  .t-shell-body .t-screen {
+    padding: 10px 12px 4px;
+    font-size: 13.5px;
+  }
+  .t-promptline {
+    padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .t-input,
+  .t-prompt,
+  .t-prompt-static {
+    font-size: 14px;
+  }
+
+  /* Tighten the statusbar to a single line */
+  .t-pane-statusbar {
+    padding: 0 10px;
+    font-size: 10px;
+  }
+  .t-sb-mid {
+    display: none;
+  }
+
+  /* Launcher becomes a more visible FAB above the home indicator */
+  .t-launcher {
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    padding: 6px 10px 6px 8px;
+    font-size: 11px;
+    opacity: 0.92;
+    background: rgb(var(--t-bg) / 0.92);
+    border-style: solid;
+    border-color: rgb(var(--t-border) / 0.7);
+    border-radius: 4px;
+    max-width: 120px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .t-launcher-kbd {
+    display: none;
   }
 }
