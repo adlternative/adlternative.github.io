@@ -9,10 +9,28 @@ import { help, man } from "./help";
 import { about, aboutAlias } from "./about";
 import { clear } from "./clear";
 import { history } from "./history";
-import { sudo, vim, hack } from "./_easter-eggs";
+import { fortune } from "./fortune";
+import { cowsay } from "./cowsay";
+import { tree } from "./tree";
+import { neofetch } from "./neofetch";
+import { date, echo, coin, roll, coffee, exitCmd } from "./misc";
+import {
+  sudo,
+  vim,
+  hack,
+  fortytwo,
+  xyzzy,
+  please,
+  matrixCmd,
+  rm,
+  qBang,
+  wqBang,
+  make,
+} from "./_easter-eggs";
 
 // Canonical registry. Keys must match the .name field.
 const list: Cmd[] = [
+  // visible — listed in `help`
   help,
   man,
   ls,
@@ -24,19 +42,51 @@ const list: Cmd[] = [
   aboutAlias,
   clear,
   history,
-  // easter eggs intentionally not listed in `help`
+  fortune,
+  cowsay,
+  tree,
+  neofetch,
+  date,
+  echo,
+  coin,
+  roll,
+  coffee,
+  exitCmd,
+  // easter eggs — registered but filtered from `help`
   sudo,
   vim,
   hack,
+  fortytwo,
+  xyzzy,
+  please,
+  matrixCmd,
+  rm,
+  qBang,
+  wqBang,
+  make,
 ];
 
 export const commands: Record<string, Cmd> = Object.fromEntries(
   list.map((c) => [c.name, c]),
 );
 
-// Names that should NOT be advertised by `help`. We render `help` from
-// the registry; easter eggs filter themselves out by setting a marker.
-const HIDDEN = new Set(["man", "about", "sudo", "vim", "hack"]);
+// Names that should NOT be advertised by `help`.
+const HIDDEN = new Set([
+  "man",
+  "about",
+  // easter eggs
+  "sudo",
+  "vim",
+  "hack",
+  "42",
+  "xyzzy",
+  "please",
+  "matrix",
+  "rm",
+  ":q",
+  ":wq",
+  "make",
+]);
 
 // Re-export a filtered view for `help` to consume.
 (commands as any).__visible = Object.fromEntries(

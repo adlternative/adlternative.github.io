@@ -127,7 +127,7 @@ export function bootTerminal(root: HTMLElement): TerminalApi {
         `\\_// _\\/ _\\\\_/  |_|\n` +
         `</pre>` +
         `<div class="t-mono">welcome to <b>adl.sh</b> — ZheNing Hu's interactive blog terminal.</div>` +
-        `<div class="t-dim">type <b>help</b> to begin · <b>ls posts</b> to browse · <b>open &lt;slug&gt;</b> to read · <b>Esc</b> to leave.</div>` +
+        `<div class="t-dim">type <b>help</b> to begin · <b>neofetch</b> · <b>ls posts</b> · <b>fortune</b> · <b>cowsay hi</b> · <b>Esc</b> to leave.</div>` +
         `</div>`,
     );
   }

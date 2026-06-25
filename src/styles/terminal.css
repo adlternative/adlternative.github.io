@@ -301,33 +301,105 @@ mark {
   color: rgb(var(--t-fg-dim) / 0.6);
 }
 
-/* hint chip outside the overlay (only when overlay is closed) */
-.t-hint-chip {
+/* ---- launcher button (right-bottom, persistent when overlay closed) ---- */
+.t-launcher {
   position: fixed;
-  right: 12px;
-  bottom: 12px;
+  right: 16px;
+  bottom: 16px;
   z-index: 50;
-  padding: 4px 10px;
-  font-size: 11px;
-  font-family: "JetBrains Mono", "SFMono-Regular", monospace;
-  color: var(--fg-dim, #00b300);
-  background: rgba(0, 0, 0, 0.55);
-  border: 1px dashed currentColor;
-  border-radius: 3px;
-  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 6px 10px 6px 8px;
+  font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1;
   letter-spacing: 0.04em;
-  opacity: 0.65;
-  transition: opacity 120ms ease;
+  color: rgb(var(--t-fg) / 0.85);
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px dashed rgb(var(--t-border) / 0.55);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.78;
+  transform: translateY(0);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease,
+    border-color 140ms ease,
+    border-style 140ms ease;
+  -webkit-font-smoothing: antialiased;
 }
 
-.t-hint-chip:hover {
+.t-launcher:hover,
+.t-launcher:focus-visible {
   opacity: 1;
+  border-style: solid;
+  border-color: rgb(var(--t-border) / 0.85);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.t-launcher-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 4px;
+}
+
+.t-launcher-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.t-launcher-dot.r {
+  background: #ff5f57;
+}
+
+.t-launcher-dot.y {
+  background: #febc2e;
+}
+
+.t-launcher-dot.g {
+  background: #28c840;
+}
+
+.t-launcher-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: rgb(var(--t-fg) / 0.9);
+}
+
+.t-launcher-prompt {
+  color: rgb(var(--t-accent));
+  font-weight: 600;
+}
+
+.t-launcher-kbd {
+  display: inline-block;
+  padding: 2px 5px;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1;
+  color: rgb(var(--t-fg-dim));
+  border: 1px solid rgb(var(--t-border) / 0.45);
+  border-radius: 3px;
+  background: transparent;
+  letter-spacing: 0.05em;
+}
+
+/* Hide launcher while the terminal overlay is open. */
+.term-overlay:not(.t-hidden) ~ .t-launcher {
+  display: none !important;
 }
 
 /* Mobile: do not render the terminal at all. */
 @media (max-width: 640px) {
   .term-overlay,
-  .t-hint-chip {
+  .t-launcher {
     display: none !important;
   }
 }

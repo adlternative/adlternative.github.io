@@ -26,7 +26,7 @@ export const help: Cmd = {
       .map(
         (c) =>
           `<div class="t-row"><span class="t-cmd">${esc(
-            c.name.padEnd(10, " "),
+            c.name.padEnd(12, " "),
           )}</span> <span class="t-dim">${esc(c.brief)}</span></div>`,
       )
       .join("");

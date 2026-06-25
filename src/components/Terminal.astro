@@ -44,32 +44,38 @@ import "../styles/terminal.css";
   </div>
 </div>
 
-<div class="t-hint-chip" id="term-hint" aria-hidden="true">⌘K · `</div>
+<button
+  type="button"
+  class="t-launcher"
+  id="term-launcher"
+  aria-label="Open adl.sh terminal (⌘K)"
+  aria-controls="term"
+>
+  <span class="t-launcher-dots" aria-hidden="true">
+    <span class="t-launcher-dot r"></span>
+    <span class="t-launcher-dot y"></span>
+    <span class="t-launcher-dot g"></span>
+  </span>
+  <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span>
+  <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd>
+</button>
 
 <script>
   // Lazy: only desktop / fine-pointer devices boot the dispatcher.
-  const HINT_KEY = "zn.term.hintseen.v1";
   const isFine =
     window.matchMedia &&
     window.matchMedia("(pointer: fine)").matches &&
     window.innerWidth >= 640;
 
   const root = document.getElementById("term") as HTMLElement | null;
-  const hint = document.getElementById("term-hint");
+  const launcher = document.getElementById(
+    "term-launcher",
+  ) as HTMLButtonElement | null;
 
   if (!isFine) {
     if (root) root.remove();
-    if (hint) hint.remove();
+    if (launcher) launcher.remove();
   } else {
-    // Hide hint after first open.
-    let hintSeen = false;
-    try {
-      hintSeen = localStorage.getItem(HINT_KEY) === "1";
-    } catch {
-      hintSeen = false;
-    }
-    if (hintSeen && hint) hint.remove();
-
     type Api = {
       open: () => void;
       close: () => void;
@@ -84,6 +90,13 @@ import "../styles/terminal.css";
         );
       }
       return apiPromise;
+    }
+
+    if (launcher) {
+      launcher.addEventListener("click", (e) => {
+        e.preventDefault();
+        getApi().then((api) => api.open());
+      });
     }
 
     window.addEventListener("keydown", (e) => {
@@ -103,17 +116,7 @@ import "../styles/terminal.css";
 
       if (isToggle) {
         e.preventDefault();
-        getApi().then((api) => {
-          api.toggle();
-          if (hint && api.isOpen()) {
-            try {
-              localStorage.setItem(HINT_KEY, "1");
-            } catch {
-              /* noop */
-            }
-            hint.remove();
-          }
-        });
+        getApi().then((api) => api.toggle());
         return;
       }
 
