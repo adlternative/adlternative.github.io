@@ -6,6 +6,7 @@ npm-debug.log*
 *.log
 .env
 .env.production
+.qoder/
 
 # Astro generated
 src/env.d.ts
