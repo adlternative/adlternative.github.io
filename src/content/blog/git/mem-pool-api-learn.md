@@ -1,8 +1,245 @@
 ---
-title: git-mem-pool-api-learn
+title: git mem-pool API notes
+titleZh: git 内存池 API 学习
 date: 2021-01-30 15:02:10
 tags: git
 ---
+
+<div class="lang-section" data-lang="en">
+
+Memory pools are often a good helper for saving overhead: a pool allocates a large chunk of space at once, users take memory from it and return it when done, instead of calling `malloc` every time dynamic allocation is needed, which would be very expensive.
+
+
+Generally, memory-pool structures are very complex, but Git's memory pool is not intimidating—its current API is still relatively simple.
+
+### Data Structures
+
+```c
+struct mp_block {
+	struct mp_block *next_block;
+	char *next_free;
+	char *end;
+	uintmax_t space[FLEX_ARRAY]; /* more */
+};
+
+struct mem_pool {
+	struct mp_block *mp_block;
+
+	/*
+	 * The amount of available memory to grow the pool by.
+	 * This size does not include the overhead for the mp_block.
+	 */
+	size_t block_alloc;
+
+	/* The total amount of memory allocated by the pool. */
+	size_t pool_alloc;
+};
+
+```
+`mem_pool`: the memory pool
+  * `mp_block`: the first memory block
+  * `block_alloc`: the "standard" size used when the pool grows a block
+  * `pool_alloc`: total amount of memory allocated by the pool
+
+`mp_block`: memory block
+  * `next_block`: address of the next memory block
+  * `next_free`: next free memory address in this block
+  * `end`: end of the free memory in this block
+  * `space`: dynamically expandable array, i.e., the allocated memory space
+
+
+### API
+
+`mem_pool_init`
+```c
+#define BLOCK_GROWTH_SIZE 1024*1024 - sizeof(struct mp_block);
+
+void mem_pool_init(struct mem_pool *pool, size_t initial_size)
+{
+	memset(pool, 0, sizeof(*pool));
+	pool->block_alloc = BLOCK_GROWTH_SIZE;
+
+	if (initial_size > 0)
+		mem_pool_alloc_block(pool, initial_size, NULL);
+}
+```
+The design of `BLOCK_GROWTH_SIZE` is quite odd: it is `1024*1024` minus the size of a memory-block structure. Since the size we allocate for a block is the size of the block structure plus the usable memory space, `BLOCK_GROWTH_SIZE` is the standard value of memory space used when the pool grows (see below).
+
+Next, look at `mem_pool_alloc_block`:
+```c
+static struct mp_block *mem_pool_alloc_block(struct mem_pool *pool,
+										 size_t block_alloc,
+										 struct mp_block *insert_after)
+{
+	struct mp_block *p;
+
+	pool->pool_alloc += sizeof(struct mp_block) + block_alloc;
+	p = xmalloc(st_add(sizeof(struct mp_block), block_alloc));
+
+	p->next_free = (char *)p->space;
+	p->end = p->next_free + block_alloc;
+
+	if (insert_after) {
+		p->next_block = insert_after->next_block;
+		insert_after->next_block = p;
+	} else {
+		p->next_block = pool->mp_block;
+		pool->mp_block = p;
+	}
+
+	return p;
+}
+```
+First, the pool's `pool_alloc` is increased by `sizeof(struct mp_block) + block_alloc`, i.e., the size of one `mp_block` structure plus the requested allocation size. Then `malloc` allocates a memory-block structure of that total size. `next_free` is initially set to the start address of the `space` member, which is the start address of usable memory.
+
+Then, because this is a newly created pool, `insert_after == NULL`, so the new block is inserted at the head of the pool's "linked list"; its `next_block` is `NULL` at this time. Now the pool has only one block.
+
+
+`mem_pool_alloc`
+```c
+void *mem_pool_alloc(struct mem_pool *pool, size_t len)
+{
+	struct mp_block *p = NULL;
+	void *r;
+
+	/* round up to a 'uintmax_t' alignment */
+	if (len & (sizeof(uintmax_t) - 1))
+		len += sizeof(uintmax_t) - (len & (sizeof(uintmax_t) - 1));
+
+	if (pool->mp_block &&
+	    pool->mp_block->end - pool->mp_block->next_free >= len)
+		p = pool->mp_block;
+
+	if (!p) {
+		if (len >= (pool->block_alloc / 2))
+			return mem_pool_alloc_block(pool, len, pool->mp_block);
+
+		p = mem_pool_alloc_block(pool, pool->block_alloc, NULL);
+	}
+
+	r = p->next_free;
+	p->next_free += len;
+	return r;
+}
+```
+This is the interface for users to take memory from the pool. First, the requested size `len` is rounded up to a multiple of `uintmax_t` alignment. Then it checks whether the remaining space in the first block of the pool is sufficient; if so, it uses the current block. Otherwise, it checks whether the requested size is greater than or equal to half of the pool's growth standard `pool->block_alloc`. If it is greater than or equal to half the standard, `mem_pool_alloc_block` is called to allocate a new block of size `len`, and the new block is inserted after the first block of the pool, then returned. If it is less than half the standard, a block of standard size is allocated and inserted at the head of the pool's block linked list; then the block's `next_free` is advanced by the requested size `len`, and the memory-space address is returned. The user can freely use the returned space within `len` bytes. If the user overflows, they may write into wrong memory.
+
+`mem_pool_calloc`, `mem_pool_strdup`, `mem_pool_strndup`
+```c
+void *mem_pool_calloc(struct mem_pool *pool, size_t count, size_t size)
+{
+	size_t len = st_mult(count, size);
+	void *r = mem_pool_alloc(pool, len);
+	memset(r, 0, len);
+	return r;
+}
+char *mem_pool_strdup(struct mem_pool *pool, const char *str)
+{
+	size_t len = strlen(str) + 1;
+	char *ret = mem_pool_alloc(pool, len);
+
+	return memcpy(ret, str, len);
+}
+
+char *mem_pool_strndup(struct mem_pool *pool, const char *str, size_t len)
+{
+	char *p = memchr(str, '\0', len);
+	size_t actual_len = (p ? p - str : len);
+	char *ret = mem_pool_alloc(pool, actual_len+1);
+
+	ret[actual_len] = '\0';
+	return memcpy(ret, str, actual_len);
+}
+```
+These three interfaces are very simple: they are thin wrappers around `mem_pool_alloc`.
+`mem_pool_calloc` obtains memory from the pool and zeros it.
+`mem_pool_strdup` obtains memory of string size from the pool and copies the string into it—yes, it's the memory-pool version of `strdup`.
+`mem_pool_strndup` is analogous to `mem_pool_strdup`, with a specified copy length. Memory-pool version of `strndup`.
+
+`mem_pool_contains`
+```c
+int mem_pool_contains(struct mem_pool *pool, void *mem)
+{
+	struct mp_block *p;
+
+	/* Check if memory is allocated in a block */
+	for (p = pool->mp_block; p; p = p->next_block)
+		if ((mem >= ((void *)p->space)) &&
+		    (mem < ((void *)p->end)))
+			return 1;
+
+	return 0;
+}
+```
+Iterate over the pool's block linked list to find a block that contains the specified memory. As the comment says: `Check if memory is allocated in a block`.
+
+`mem_pool_combine`
+```c
+void mem_pool_combine(struct mem_pool *dst, struct mem_pool *src)
+{
+	struct mp_block *p;
+
+	/* Append the blocks from src to dst */
+	if (dst->mp_block && src->mp_block) {
+		/*
+		 * src and dst have blocks, append
+		 * blocks from src to dst.
+		 */
+		p = dst->mp_block;
+		while (p->next_block)
+			p = p->next_block;
+
+		p->next_block = src->mp_block;
+	} else if (src->mp_block) {
+		/*
+		 * src has blocks, dst is empty.
+		 */
+		dst->mp_block = src->mp_block;
+	} else {
+		/* src is empty, nothing to do. */
+	}
+
+	dst->pool_alloc += src->pool_alloc;
+	src->pool_alloc = 0;
+	src->mp_block = NULL;
+}
+
+```
+`mem_pool_combine` merges two memory pools, appending `src`'s block linked list to the end of `dst`'s list.
+
+`mem_pool_discard`
+```c
+void mem_pool_discard(struct mem_pool *pool, int invalidate_memory)
+{
+	struct mp_block *block, *block_to_free;
+
+	block = pool->mp_block;
+	while (block)
+	{
+		block_to_free = block;
+		block = block->next_block;
+
+		if (invalidate_memory)
+			memset(block_to_free->space, 0xDD, ((char *)block_to_free->end) - ((char *)block_to_free->space));
+
+		free(block_to_free);
+	}
+
+	pool->mp_block = NULL;
+	pool->pool_alloc = 0;
+}
+
+```
+`mem_pool_discard` iterates over the entire pool block linked list. Depending on `invalidate_memory`, it first fills every byte of the memory space with `0xDD` to invalidate it, then frees the memory, and clears the pool.
+
+That concludes Git's memory pool. You might wonder: when does the user return memory to the pool after use? In fact, with this design, the pool releases all memory when it is destroyed at some point; perhaps this is more "centralized." Therefore, we don't see any block merging in this memory pool; perhaps it is only designed for convenient use and to reduce the performance cost of multiple allocations.
+
+I even have a question: there must be a lot of fragmentation in the unused block linked list; how can that space be utilized?
+
+</div>
+
+<div class="lang-section" data-lang="zh">
+
 内存池往往是我们节省开销的好帮手，内存池一次分配大量空间，用户从内存池中取出，用完了放回内存池;而不是每次需要动态分配的时候调用一次`malloc`,这样会非常消耗性能。
 
 
@@ -64,8 +301,8 @@ void mem_pool_init(struct mem_pool *pool, size_t initial_size)
 接着看`mem_pool_alloc_block`
 ```c
 static struct mp_block *mem_pool_alloc_block(struct mem_pool *pool,
-					     size_t block_alloc,
-					     struct mp_block *insert_after)
+										 size_t block_alloc,
+										 struct mp_block *insert_after)
 {
 	struct mp_block *p;
 
@@ -234,4 +471,4 @@ void mem_pool_discard(struct mem_pool *pool, int invalidate_memory)
 
 甚至我还有一个疑问：不用的内存块链表中肯定有大量的碎片，如何去利用这些空间？
 
-
+</div>

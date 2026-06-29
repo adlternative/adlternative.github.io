@@ -1,8 +1,121 @@
 ---
 title: Kernel-Scheduling-Algorithm
+titleZh: "内核调度算法"
 date: 2021-04-19 18:30:52
 tags: os
 ---
+
+<div class="lang-section" data-lang="en">
+
+## Introduction to Operating System Scheduling Algorithms
+
+### Why Do We Need Scheduling?
+
+1. The operating system needs to make full use of system resources; efficient resource utilization is an important foundation for the OS to run efficiently.
+2. The operating system needs to satisfy the goal of concurrent execution of multiple processes.
+3. The operating system needs to respond to users as quickly as possible.
+
+### What Are the Scheduling Metrics?
+
+- Performance:
+  * Batch tasks: throughput, turnaround time.
+  * Interactive tasks: response time.
+- Non-performance:
+  * Fairness.
+  * Resource utilization.
+  * Real-time tasks: timeliness.
+  * Energy consumption.
+
+Although we hope that a good scheduling policy can improve all metrics at the same time, in reality improving some metrics may affect others. For example, in power-saving mode on our phones, brightness is often limited or the number of apps is restricted, because there is a conflict between performance and energy consumption.
+
+### Scheduling Types
+
+* Scheduling content: task scheduling, I/O scheduling, memory scheduling, energy-aware scheduling.
+* Scheduling scenarios: priority scheduling, fair-share scheduling, real-time scheduling, co-scheduling.
+* Single-core scheduling, multi-core scheduling.
+
+### What Task Scheduling Algorithms Are There?
+
+#### Classic Scheduling
+
+* FCFS (First-Come, First-Served): maintains a task queue; arriving tasks are pushed to the tail, and each scheduling decision picks the task at the head. Non-preemptive.
+  * Advantage: simple and intuitive, friendly to CPU-bound tasks.
+  * Disadvantage: not very friendly to short tasks; later short tasks may have long turnaround times.
+  * Disadvantage: not very friendly to I/O-bound tasks; when I/O arrives, a task that voluntarily gives up the CPU cannot preempt the CPU in time after the I/O request returns, and must wait, resulting in poor I/O performance.
+
+* SJF (Shortest Job First): when a scheduling decision occurs, pick the task with the shortest running time. Non-preemptive.
+  * Disadvantage: requires knowing the task running time in advance, which is hard to predict in normal cases.
+  * Disadvantage: depends on task arrival time; short tasks that arrive later still have to wait for earlier long tasks.
+
+* STJF (Shortest Time-to-Completion First): the preemptive version of SJF.
+  * Advantage: short tasks are preferred, resulting in fast response time.
+  * Disadvantage: long tasks may starve. Because short tasks can preempt the CPU from long tasks, a large number of short tasks may prevent long tasks from getting CPU resources in time, and long-running background tasks will not work properly.
+
+* RR (Round-Robin): each task gets a fixed time slice; every time slice, the scheduler checks whether a task has used up its slice and switches to another task in the queue. After all tasks have run, the time slices are reset.
+  * Advantage: strong fairness; different types of tasks all run for a short period before yielding the CPU to other tasks.
+  * Advantage: relatively short response time.
+  * Disadvantage: if the time slice is too long, response time is long and other tasks wait longer; if the time slice is too short, there are many context switches and high overhead.
+  * Disadvantage: long turnaround time.
+
+#### Priority Scheduling
+
+* MLQ (Multi-Level Queue): introduces the concept of priority; different-level queues have different priorities and can use different scheduling policies; the scheduler picks the head task from the highest-priority non-empty queue.
+  * Advantage: because different queues can use different policies, it is easy to distinguish different tasks.
+  * Disadvantage: tasks in low-priority queues are prone to starvation. If the high-priority queue has a large number of tasks, tasks in low-priority queues cannot execute for a long time.
+
+* MLFQ (Multi-Level Feedback Queue): multi-level queue plus dynamic priority adjustment. It evaluates task execution time to judge short and long tasks, giving short tasks the highest priority. Each queue has a maximum running time; tasks that exceed it are demoted (long tasks are easily demoted). Lower-priority queues are given longer time slices, and all tasks are periodically boosted to the highest priority to avoid starvation.
+  * Advantage: dynamically adjusts task priorities, short tasks run first, and long tasks do not starve.
+  * Disadvantage: requires parameter tuning. If the priority-boost interval is too short, all tasks stay in the highest-priority queue and the policy degenerates into RR. If the interval is too long, low-priority long tasks cannot execute.
+
+#### Real-Time Scheduling
+
+Real-time operating systems have different considerations: tasks have explicit upper bounds on completion time, with deterministic and predictable latency. (Not expanded here.)
+
+* RM (Rate-Monotonic): a higher rate means a shorter task period and a more urgent deadline, so higher priority is assigned. Preemptive. It has stable task latency but cannot guarantee deadline requirements.
+
+* EDF (Earliest Deadline First): uses the deadline as the basis for priority. It can meet task deadline requirements when CPU utilization <= 1.
+
+#### Other Scheduling
+
+* BVT (Borrowed Virtual Time): tasks are prioritized by reducing their effective virtual time.
+* ...
+
+#### What Are the Current Linux Scheduling Algorithms?
+
+* O(N) (v <= 2.4)
+  * Based on the RR policy.
+  * The scheduler dynamically computes priorities at scheduling time and picks the highest-priority task.
+  * Completed tasks are removed and placed at the tail of the queue when scheduled again.
+  * During a scheduling period, the scheduler traverses the queue and updates every task's time slice, adding half of the remaining time slice to the next scheduling period.
+  * Disadvantage: high scheduling overhead.
+  * Disadvantage: poor multi-core scalability.
+
+* O(1) (v == 2.6.0)
+  * Each CPU has an active queue and an expired queue. Both are multi-level queues, and a bitmap allows O(1) lookup of the first task in the first non-empty queue in the active queue.
+  * Low scheduling overhead.
+  * Guarantees small latency for interactive tasks.
+  * Disadvantage: uses static time slices, so scheduling latency depends on the number of tasks.
+  * Disadvantage: the heuristic for judging task types is overly complex.
+
+* CFS (Completely Fair Scheduler)
+  * Uses a red-black tree as the task queue, indexed by virtual time, so the task with the smallest virtual time can be found in O(1), and the scheduler picks that task.
+  * Every task is executed once within a scheduling period, ensuring fairness.
+  * Assigns dynamic time slices. Within a scheduling period, tasks with different priorities run for different amounts of physical time, but their virtual time increases by the same amount.
+  * Tasks that are woken up from blocking are preferred.
+  * Used for non-real-time tasks.
+  * Scheduling policies: SCHED_OTHER, SCHED_BATCH, SCHED_IDLE.
+
+* RT (Real-Time Scheduler)
+  * Uses a multi-level priority queue to schedule real-time tasks.
+  * Scheduling policies: SCHED_FIFO, SCHED_RR.
+
+* DL (Deadline Scheduler)
+  * Similar to the EDF scheduling policy.
+  * Scheduling policy: SCHED_DEADLINE.
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 ## 操作系统调度算法介绍
 ### 为什么需要调度？
@@ -83,3 +196,5 @@ tags: os
   * DL（截止时间调度器）
     * 类似EDF调度策略。
     * 调度策略： SCHED_DEADLINE。
+
+</div>

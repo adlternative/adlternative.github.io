@@ -1,8 +1,11 @@
 ---
 title: 'GSOC, Git Blog 6'
+titleZh: "GSOC，Git 博客 6"
 date: 2021-06-27 20:38:11
 tags: git
 ---
+
+<div class="lang-section" data-lang="en">
 
 ## Week6: Performance Testing
 
@@ -151,3 +154,156 @@ We can already come to a conclusion: A lot of the time of `cat-file --batch` is 
 
 --
 ZheNing Hu
+
+</div>
+
+<div class="lang-section" data-lang="zh">
+
+## 第六周：性能测试
+
+这周，`Christan`、`Hariom` 和 `Bagas` 审阅了我的补丁。我根据他们的建议修改了提交信息并做了一些内容调整。补丁在这里：[[PATCH v6 00/15] [GSOC][RFC] cat-file: reuse ref-filter logic](https://lore.kernel.org/git/pull.980.v6.git.1624797350.gitgitgadget@gmail.com/)。
+
+与前几周让 `git cat-file` 复用 `ref-filter` 逻辑的大幅改动相比，这周的整体改动不是很大。
+
+尽管从功能角度看，当前版本的 `git cat-file` 可以支持更多原子，但从性能角度看，它远不如之前的版本。
+
+以下是 `[GSOC] cat-file: reuse ref-filter logic` 提交信息的一段摘录：
+
+```
+The performance for `git cat-file --batch-all-objects
+--batch-check` on the Git repository itself with performance
+testing tool `hyperfine` changes from 669.4 ms ± 31.1 ms to
+1.134 s ± 0.063 s.
+
+The performance for `git cat-file --batch-all-objects --batch
+>/dev/null` on the Git repository itself with performance testing
+tool `time` change from "27.37s user 0.29s system 98% cpu 28.089
+total" to "33.69s user 1.54s system 87% cpu 40.258 total".
+```
+
+现在 `cat-file --batch` 的性能几乎只有之前的一半，这是因为 `ref-filter` 中的复杂逻辑。所以我在想，如何找到 `ref-filter` 中的性能瓶颈并优化它？
+
+于是我尝试寻找并使用性能测试工具来分析 `git cat-file --batch` 的耗时步骤。
+
+* 使用 Google 的 `gperftools`：
+1. 在 `config.mak` 中添加链接参数 `-lprofiler`：`CFLAGS += -lprofiler`。
+2. `make`。
+3. 使用 `CPUPROFILE=/tmp/prof.out /<path>/git cat-file --batch-check --batch-all-objects` 运行 git 并生成 `prof.out`，其中包含性能分析结果。
+4. 使用 `pprof --text /<path>/git /tmp/prof.out` 在终端中显示结果。
+
+* 复用 `ref-filter` 逻辑后的 `git cat-file`：
+
+```
+Using local file /<path>/git.
+Using local file /<path>/prof.out.
+/usr/bin/addr2line: /<path>/git: file format not recognized
+Total: 283 samples
+62 21.9% 21.9% 62 21.9% __GI___libc_write
+34 12.0% 33.9% 34 12.0% 000055d9164cdc36
+20 7.1% 41.0% 20 7.1% inflate
+12 4.2% 45.2% 12 4.2% inflateCodesUsed@@ZLIB_1.2.9
+8 2.8% 48.1% 8 2.8% __memcmp_avx2_movbe
+7 2.5% 50.5% 7 2.5% 000055d9164cdc33
+5 1.8% 52.3% 5 1.8% __libc_open64
+5 1.8% 54.1% 5 1.8% __memmove_avx_unaligned_erms
+5 1.8% 55.8% 5 1.8% _int_malloc
+3 1.1% 56.9% 3 1.1% 000055d9164ccbce
+3 1.1% 58.0% 3 1.1% malloc_consolidate
+2 0.7% 58.7% 2 0.7% 000055d916478d78
+2 0.7% 59.4% 2 0.7% 000055d9164cc821
+2 0.7% 60.1% 2 0.7% 000055d9164cc8f5
+2 0.7% 60.8% 2 0.7% 000055d9164ccc49
+2 0.7% 61.5% 2 0.7% 000055d91659dc02
+2 0.7% 62.2% 2 0.7% __GI___libc_free
+2 0.7% 62.9% 2 0.7% __calloc
+2 0.7% 63.6% 2 0.7% __fstatat64
+2 0.7% 64.3% 2 0.7% __memset_avx2_unaligned_erms
+2 0.7% 65.0% 2 0.7% __strlen_avx2
+2 0.7% 65.7% 2 0.7% __vfprintf_internal
+...
+1 0.4% 92.9% 1 0.4% _IO_new_do_write
+1 0.4% 93.3% 1 0.4% _IO_new_file_write
+1 0.4% 93.6% 1 0.4% _IO_old_init
+1 0.4% 94.0% 1 0.4% _IO_str_init_static_internal
+1 0.4% 94.3% 1 0.4% __GI__IO_default_xsputn
+1 0.4% 94.7% 1 0.4% __GI__IO_fwrite
+1 0.4% 95.1% 1 0.4% __GI__IO_setb
+1 0.4% 95.4% 1 0.4% __GI___libc_malloc
+1 0.4% 95.8% 1 0.4% __GI___mmap64
+1 0.4% 96.1% 1 0.4% __GI___qsort_r
+1 0.4% 96.5% 1 0.4% __GI_munmap
+1 0.4% 96.8% 1 0.4% __abi_tag
+1 0.4% 97.2% 1 0.4% __strchr_avx2
+1 0.4% 97.5% 1 0.4% _int_free
+1 0.4% 97.9% 1 0.4% _itoa_word
+1 0.4% 98.2% 1 0.4% adler32_z@@ZLIB_1.2.9
+1 0.4% 98.6% 1 0.4% inflateBackEnd@@ZLIB_1.2.0
+1 0.4% 98.9% 1 0.4% inflateReset2@@ZLIB_1.2.3.4
+1 0.4% 99.3% 4 1.4% msort_with_tmp.part.0
+1 0.4% 99.6% 1 0.4% unlink_chunk.constprop.0
+1 0.4% 100.0% 1 0.4% zError
+...
+0 0.0% 100.0% 150 53.0% __libc_start_main
+```
+
+* 复用 `ref-filter` 逻辑之前的 `git cat-file`：
+
+```
+Using local file /<path>/git.
+Using local file /tmp/prof.out2.
+/usr/bin/addr2line: /<path>/git: file format not recognized
+Total: 234 samples
+52 22.2% 22.2% 52 22.2% __GI___libc_write
+24 10.3% 32.5% 24 10.3% 00005564fbe6b0da
+23 9.8% 42.3% 23 9.8% inflateCodesUsed@@ZLIB_1.2.9
+11 4.7% 47.0% 11 4.7% inflate
+9 3.8% 50.9% 9 3.8% 00005564fbe6b0d7
+7 3.0% 53.8% 7 3.0% __memcmp_avx2_movbe
+5 2.1% 56.0% 5 2.1% _int_malloc
+4 1.7% 57.7% 4 1.7% __libc_open64
+3 1.3% 59.0% 3 1.3% __GI__IO_default_xsputn
+3 1.3% 60.3% 3 1.3% __memmove_avx_unaligned_erms
+3 1.3% 61.5% 3 1.3% __strchrnul_avx2
+2 0.9% 62.4% 2 0.9% 00005564fbe1621c
+2 0.9% 63.2% 2 0.9% 00005564fbe6813a
+2 0.9% 64.1% 2 0.9% 00005564fbe6b0dd
+2 0.9% 65.0% 2 0.9% 00005564fbe6b0e9
+2 0.9% 65.8% 2 0.9% 00005564fbe6b8f6
+2 0.9% 66.7% 2 0.9% 00005564fbef4ce6
+2 0.9% 67.5% 2 0.9% __GI___libc_malloc
+...
+1 0.4% 97.4% 1 0.4% _IO_new_file_write
+1 0.4% 97.9% 1 0.4% _IO_new_file_xsputn
+1 0.4% 98.3% 1 0.4% __GI___libc_free
+1 0.4% 98.7% 1 0.4% __strlen_avx2
+1 0.4% 99.1% 1 0.4% __vsnprintf_internal
+1 0.4% 99.6% 1 0.4% adler32_z@@ZLIB_1.2.9
+1 0.4% 100.0% 1 0.4% inflateBackEnd@@ZLIB_1.2.0
+...
+0 0.0% 100.0% 118 50.4% __libc_start_main
+0 0.0% 100.0% 4 1.7% msort_with_tmp.part.0
+```
+
+忽略 `write`、`inflate` 和 `000055d9164cdc36`，`memcmp` 和 `memmove` 的执行时间占比很大。
+
+然而，无论是复用 `ref-filter` 逻辑之前还是之后的 `git cat-file`，
+它们调用的函数所占的时间比例都相似。
+
+* 使用 `perf`：
+`perf top -p <git-pid>`
+
+```
+12.72% libc-2.33.so [.] __memmove_avx_unaligned_erms
+7.39% libz.so.1.2.11 [.] inflate
+5.56% libz.so.1.2.11 [.] 0x00000000000088ba
+5.27% libz.so.1.2.11 [.] adler32_z
+3.46% git [.] patch_delta
+```
+我们可以看到，`memmove` 仍然是占比最大的部分。
+
+我们已经可以得出结论：`cat-file --batch` 的大量时间都用于数据拷贝，这可能是我们后续性能优化的重点。
+
+--
+ZheNing Hu
+
+</div>

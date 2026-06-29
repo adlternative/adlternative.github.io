@@ -1,8 +1,360 @@
 ---
 title: resource_limit
+titleZh: "资源限制"
 date: 2021-03-22 20:26:35
 tags: os
 ---
+
+<div class="lang-section" data-lang="en">
+
+When we write programs, we often don't pay attention to some critical values of system resources.
+However, these critical values can sometimes hurt us badly, such as a forgotten
+file descriptor, `malloc` unexpectedly returning an error, or a stack overflow.
+How can we solve or prevent these problems?
+
+The following experiments only take effect under the system environment of this machine:
+
+```zsh
+uname -a
+Linux ADLADL 5.11.6-arch1-1 #1 SMP PREEMPT Thu, 11 Mar 2021 13:48:23 +0000 x86_64 GNU/Linux
+```
+
+First, we need to know how to view system resources.
+
+### User-Level Resource Limits
+
+The `ulimit` command can be used to view user-level system resource limits.
+
+This is the description of `/etc/security/limits.conf`:
+
+```
+该文件为通过PAM登录的用户设置资源限制。
+它不会影响系统服务的资源限制。
+
+还要注意/etc/security/limits.d目录中的配置文件，
+以字母顺序阅读的内容，请覆盖此设置
+域相同或更具体的情况下使用文件。
+例如，这意味着在此处设置通配符域的限制
+可以使用配置文件中的通配符设置覆盖
+子目录，但此处的用户特定设置只能被覆盖
+在子目录中具有特定于用户的设置。
+```
+
+We can view all our resource limits through `ulimit -a`:
+
+```zsh
+$ ulimit -a
+-t: cpu time (seconds)              unlimited
+-f: file size (blocks)              unlimited
+-d: data seg size (kbytes)          unlimited
+-s: stack size (kbytes)             8192
+-c: core file size (blocks)         unlimited
+-m: resident set size (kbytes)      unlimited
+-u: processes                       30689
+-n: file descriptors                1024
+-l: locked-in-memory size (kbytes)  64
+-v: address space (kbytes)          unlimited
+-x: file locks                      unlimited
+-i: pending signals                 30689
+-q: bytes in POSIX msg queues       819200
+-e: max nice                        0
+-r: max rt priority                 0
+-N 15:                              unlimited
+```
+
+Let's only talk about the ones we care about more:
+
+`-s` stack size: 8 MB
+
+`-u` process limit: around 30000
+
+`-n` file descriptor limit: 1024
+
+You can also use `ulimit -Ha` or `ulimit -Sa` to view hard and soft limits. The hard limit is the absolute limit on resource nodes and data blocks, set by the root user. Although other users can lower the hard limit, only the root user can increase it.
+As for the soft limit, online materials don't say much; roughly, non-root users cannot exceed the soft limit, but what non-root users can do is increase their soft limit up to the hard limit.
+
+Our server programs may need to open more than 1024 file descriptors.
+Is there any way to modify these resource limits?
+
+```zsh
+cat /etc/security/limits.conf
+
+#<domain>      <type>  <item>         <value>
+#
+
+#*               soft    core            0
+#*               hard    rss             10000
+#@student        hard    nproc           20
+#@faculty        soft    nproc           20
+#@faculty        hard    nproc           50
+#ftp             hard    nproc           0
+#@student        -       maxlogins       4
+```
+
+E.g. `ulimit -n 1024` can modify the system's limit on file descriptors, but it only takes effect temporarily in the current shell. If you use `which ulimit`, you will find that `ulimit` is a shell built-in command.
+
+We should modify `/etc/security/limits.conf` to make our changes permanent (requires a restart; there may be a direct way to load the configuration, but I don't know it for now).
+
+### Experiment 1: Modify the File Descriptor Limit
+
+Add the following snippet to `/etc/security/limits.conf`:
+
+```
+adl soft nofile 10240
+adl hard nofile 20480
+```
+
+After restarting, check whether the resources have really been modified:
+
+```zsh
+$ ulimit -Hn
+20480
+$ ulimit -Sn
+10240
+```
+
+This indicates the modification succeeded.
+Now let's test whether our program can open this many file descriptors.
+Do a small test; the following opens 10240 temporary files:
+
+```cpp
+#include <bits/stdc++.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+using namespace std;
+
+int main(int argc, char const *argv[]) {
+  for (size_t i = 0; i < 10240; i++) {
+    FILE *p = tmpfile();
+    if (p == NULL) {
+      perror("tempfile:");
+      std::cout << i << std::endl;
+      exit(1);
+    }
+  }
+  return 0;
+}
+
+```
+
+Now let's look at the result:
+
+```
+tempfile:: Too many open files
+10217
+```
+
+Before modification, the default `ulimit` value was 1024, and the maximum number of open file descriptors tested was `1001`. Now after modifying it to `10240`, we can open `10217` file descriptors, so the experiment succeeded. Why isn't the total number we can open exactly `10240`? This is because the program itself opens some files or loads some content, such as `stdin/stdout/stderr`, `/etc/ld.so.cache`, `/usr/lib/libm.so.6`, `/usr/lib/libstdc++.so.6`, etc.
+
+### Experiment 2: Modify the Stack Space Limit
+
+Similarly, add these two lines to `/etc/security/limits.conf`:
+
+```
+* soft stack 8192
+* hard stack 16384
+```
+
+Then test the stack frame limit in a C program:
+
+```cpp
+int main(int argc, char const *argv[]) {
+  char stack[8192 * 1000];
+  return 0;
+}
+```
+
+The program runs normally.
+
+```cpp
+int main(int argc, char const *argv[]) {
+  char stack[8192 * 1024];
+  return 0;
+}
+```
+
+The program segfaults.
+
+```
+[1]    8620 segmentation fault (core dumped)  "/home/adl/桌面/linux/resource_test_dir/"max_nofile
+```
+
+But here we can only conservatively say: after adjustment, a process's stack space is roughly around `8192000` bytes.
+
+### System-Level Resource Limits
+
+Maximum number of file handles a single process can open / maximum file descriptor count: 1 billion
+
+```
+$ cat /proc/sys/fs/nr_open
+1073741816
+```
+
+The system's allocated PID upper limit is over 4 million:
+
+```
+$ cat /proc/sys/kernel/pid_max
+4194304
+```
+
+`file-max` is the maximum number of file descriptors (FDs) enforced at the kernel level:
+
+```
+$ cat /proc/sys/fs/file-max
+6578523
+```
+
+Allocated file descriptors, allocated but unused file descriptors, and the maximum number of file descriptors (not tunable):
+
+```
+cat /proc/sys/fs/file-nr
+21536   0       9223372036854775807
+```
+
+System-wide total thread limit:
+
+```
+$ cat /proc/sys/kernel/threads-max
+61379
+```
+
+Limit on the number of memory mapping areas a single program can use:
+
+```
+cat /proc/sys/vm/max_map_count
+65530
+```
+
+The total number of threads that can be created is related to these:
+
+```
+sys.vm.max_map_count // limit on number of memory mapping areas
+sys.kernel.pid_max // system allocated process ID upper limit
+sys.kernel.threads-max // system-wide total thread limit
+sys.fs.cgroup -name “pids.max” // cgroup process limit configuration
+ulimit.max memory size // maximum memory limit
+ulimit.max user processes // maximum processes per user
+ulimit.virtual memory // virtual memory limit
+...
+```
+
+View the resource limits of a process:
+
+```
+cat /proc/10511/limits 
+Limit                     Soft Limit           Hard Limit           Units     
+Max cpu time              unlimited            unlimited            seconds   
+Max file size             unlimited            unlimited            bytes     
+Max data size             unlimited            unlimited            bytes     
+Max stack size            16777216             33554432             bytes     
+Max core file size        unlimited            unlimited            bytes     
+Max resident set          unlimited            unlimited            bytes     
+Max processes             30689                30689                processes 
+Max open files            10240                20460                files     
+Max locked memory         65536                65536                bytes     
+Max address space         unlimited            unlimited            bytes     
+Max file locks            unlimited            unlimited            locks     
+Max pending signals       30689                30689                signals   
+Max msgqueue size         819200               819200               bytes     
+Max nice priority         0                    0                    
+Max realtime priority     0                    0                    
+Max realtime timeout      unlimited            unlimited            us        
+
+```
+
+View the status of a process:
+
+```
+Name:   zsh
+Umask:  0022
+State:  S (sleeping)
+Tgid:   548567
+Ngid:   0
+Pid:    548567
+PPid:   1655
+TracerPid:      0
+Uid:    1000    1000    1000    1000
+Gid:    1000    1000    1000    1000
+FDSize: 128
+Groups: 150 972 998 1000 
+NStgid: 548567
+NSpid:  548567
+NSpgid: 548567
+NSsid:  548567
+VmPeak:    16616 kB
+VmSize:    16360 kB
+VmLck:         0 kB
+VmPin:         0 kB
+VmHWM:      9376 kB
+VmRSS:      7144 kB
+RssAnon:            4736 kB
+RssFile:            2408 kB
+RssShmem:              0 kB
+VmData:     4644 kB
+VmStk:       132 kB
+VmExe:       592 kB
+VmLib:      2808 kB
+VmPTE:        76 kB
+VmSwap:        0 kB
+HugetlbPages:          0 kB
+CoreDumping:    0
+THP_enabled:    1
+Threads:        1
+SigQ:   0/30689
+SigPnd: 0000000000000000
+ShdPnd: 0000000000000000
+SigBlk: 0000000000000000
+SigIgn: 0000000000384004
+SigCgt: 0000000008013003
+CapInh: 0000000000000000
+CapPrm: 0000000000000000
+CapEff: 0000000000000000
+CapBnd: 000001ffffffffff
+CapAmb: 0000000000000000
+NoNewPrivs:     0
+Seccomp:        0
+Seccomp_filters:        0
+Speculation_Store_Bypass:       thread vulnerable
+SpeculationIndirectBranch:      conditional enabled
+Cpus_allowed:   ff
+Cpus_allowed_list:      0-7
+Mems_allowed:   00000001
+Mems_allowed_list:      0
+voluntary_ctxt_switches:        149
+nonvoluntary_ctxt_switches:     5
+```
+
+Another command similar to `ulimit` is `prlimit`:
+
+```
+prlimit
+RESOURCE   DESCRIPTION                            SOFT     HARD UNITS
+AS         address space limit                  无限制   无限制 字节
+CORE       max core file size                   无限制   无限制 字节
+CPU        CPU time                             无限制   无限制 秒数
+DATA       max data size                        无限制   无限制 字节
+FSIZE      max file size                        无限制   无限制 字节
+LOCKS      max number of file locks held        无限制   无限制 锁
+MEMLOCK    max locked-in-memory address space    65536    65536 字节
+MSGQUEUE   max bytes in POSIX mqueues           819200   819200 字节
+NICE       max nice prio allowed to raise            0        0 
+NOFILE     max number of open files              10240    20460 文件
+NPROC      max number of processes               30689    30689 进程
+RSS        max resident set size                无限制   无限制 字节
+RTPRIO     max real-time priority                    0        0 
+RTTIME     timeout for real-time tasks          无限制   无限制 毫秒数
+SIGPENDING max number of pending signals         30689    30689 信号
+STACK      max stack size                     16777216 33554432 字节
+```
+
+</div>
+
+<div class="lang-section" data-lang="zh">
+
 在我们写程序的时候往往都没有注意到一些系统资源的临界值，
 然而这些临界值在有的时候会把我们害的很惨，比如一个忘掉
 关的文件描述符，比如`malloc`竟然会返回错误，又或者是爆栈，
@@ -313,3 +665,5 @@ RTTIME     timeout for real-time tasks          无限制   无限制 毫秒数
 SIGPENDING max number of pending signals         30689    30689 信号
 STACK      max stack size                     16777216 33554432 字节
 ```
+
+</div>

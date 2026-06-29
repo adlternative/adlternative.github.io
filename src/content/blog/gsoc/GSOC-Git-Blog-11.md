@@ -1,8 +1,11 @@
 ---
 title: 'GSOC, Git Blog 11'
+titleZh: "GSoC Git 博客 11"
 date: 2021-07-31 14:25:46
 tags: git
 ---
+
+<div class="lang-section" data-lang="en">
 
 ### Attempt to optimize performance
 
@@ -58,7 +61,7 @@ unpack_object_header_buffer
   0.92      1.96     0.02  1394836     0.00     0.00  grab_sub_body_contents
   0.92      1.98     0.02   348709     0.00     0.00  create_object
   0.92      2.00     0.02   348709     0.00     0.00  format_ref_array_item
-  0.92      2.02     0.02    74557     0.00     0.00  fill_commit_graph_info
+  0.92      2.02      0.02    74557     0.00     0.00  fill_commit_graph_info
 ```
 
 Before, I might think that the proportion of `lookup_object()` is not very large(11.47%), so I didn't care about it. But Christian strongly recommends that I use `trace_printf()` to observe the number of calls to `lookup_object()`.
@@ -106,3 +109,112 @@ Tell a joke: removing 1984531500 if checks can reduce the startup time of GTA5 b
 [link](https://rockstarintel.com/a-fan-reduces-gta-online-loading-times-by-70)
 
 Currently the patch has not been submitted to the mailing list, let us wait a bit...
+
+</div>
+
+<div class="lang-section" data-lang="zh">
+
+### 尝试优化性能
+
+本周，在导师 Christian 的提示下，我使用 `gprof` 对 `git cat-file --batch` 做了一些性能测试：[Re: [GSOC] How to improve the performance of git cat-file --batch](https://lore.kernel.org/git/CAOLTT8TdL7UhfVSOzbpmo-WFNrcKwmy=E720tNt4KM9o_p=keg@mail.gmail.com/)
+
+```
+This is my test for git cat-file --batch --batch-all-objects >/dev/null:
+
+daab8a564: The fifth batch (upstream/master)
+
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls   s/call   s/call  name
+ 38.13      0.61     0.61  1968866     0.00     0.00  patch_delta
+ 13.75      0.83     0.22  6568488     0.00     0.00
+unpack_object_header_buffer
+ 11.25      1.01     0.18   344036     0.00     0.00  unpack_entry
+  7.50      1.13     0.12  1964667     0.00     0.00  hashmap_remove
+  6.88      1.24     0.11  6153182     0.00     0.00  hashmap_get
+  1.88      1.27     0.03  7746299     0.00     0.00  zlib_post_call
+  1.88      1.30     0.03   842731     0.00     0.00  bsearch_hash
+  1.88      1.33     0.03   827663     0.00     0.00  nth_packed_object_offset
+  1.25      1.35     0.02 15385422     0.00     0.00  use_pack
+  1.25      1.37     0.02  6236120     0.00     0.00  get_delta_base
+  1.25      1.39     0.02  2581859     0.00     0.00  git_inflate_end
+  1.25      1.41     0.02   826650     0.00     0.00
+do_oid_object_info_extended
+  1.25      1.43     0.02   826650     0.00     0.00  find_pack_entry
+  1.25      1.45     0.02   825692     0.00     0.00  packed_to_object_type
+  1.25      1.47     0.02   378521     0.00     0.00  get_size_from_delta
+
+
+d3b5272a94: [GSOC] cat-file: reuse ref-filter logic
+
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total
+ time   seconds   seconds    calls   s/call   s/call  name
+ 27.06      0.59     0.59  1968866     0.00     0.00  patch_delta
+ 16.51      0.95     0.36  2202293     0.00     0.00
+unpack_object_header_buffer
+ 13.76      1.25     0.30  5327015     0.00     0.00  hashmap_get
+ 11.47      1.50     0.25   344036     0.00     0.00  unpack_entry
+  8.72      1.69     0.19   521278     0.00     0.00  lookup_object
+  4.13      1.78     0.09  1964667     0.00     0.00  hashmap_remove
+  2.75      1.84     0.06   348709     0.00     0.00  get_object
+  2.29      1.89     0.05        1     0.05     2.17  oid_array_for_each_unique
+  1.38      1.92     0.03  6373452     0.00     0.00  use_pack
+  0.92      1.94     0.02  2202293     0.00     0.00  unpack_compressed_entry
+  0.92      1.96     0.02  1394836     0.00     0.00  grab_sub_body_contents
+  0.92      1.98     0.02   348709     0.00     0.00  create_object
+  0.92      2.00     0.02   348709     0.00     0.00  format_ref_array_item
+  0.92      2.02      0.02    74557     0.00     0.00  fill_commit_graph_info
+```
+
+以前，我可能会认为 `lookup_object()` 的占比不是很高（11.47%），所以没太在意。但 Christian 强烈建议我使用 `trace_printf()` 观察 `lookup_object()` 的调用次数。
+
+这里有一个惊人的事实：
+
+使用我的补丁前后，`lookup_object()` 的调用次数分别是 0 和 522709。因此我非常惊讶，为什么会产生这些额外的调用？
+
+```
+(gdb) bt
+#0  lookup_object (r=r@entry=0x5555558b8cc0 <the_repo>, oid=oid@entry=0x5555558b8980 <oi>) at object.c:92
+#1  0x0000555555665572 in lookup_commit (r=0x5555558b8cc0 <the_repo>, oid=0x5555558b8980 <oi>) at commit.c:62
+#2  0x00005555556edff5 in parse_object_buffer (r=0x5555558b8cc0 <the_repo>, oid=oid@entry=0x5555558b8980 <oi>, type=OBJ_COMMIT, size=788, buffer=0x5555558d0080, eaten_p=eaten_p@entry=0x7fffffffcc0c)
+    at object.c:214
+#3  0x000055555571da42 in get_object (ref=ref@entry=0x7fffffffcf30, deref=deref@entry=0, obj=obj@entry=0x7fffffffcc90, oi=oi@entry=0x5555558b8980 <oi>, err=err@entry=0x7fffffffcf10)
+    at ref-filter.c:1774
+#4  0x000055555571fdc2 in populate_value (ref=ref@entry=0x7fffffffcf30, err=err@entry=0x7fffffffcf10) at ref-filter.c:1999
+#5  0x00005555557202eb in get_ref_atom_value (ref=ref@entry=0x7fffffffcf30, atom=0, v=v@entry=0x7fffffffcea8, err=err@entry=0x7fffffffcf10) at ref-filter.c:2033
+#6  0x00005555557212d6 in format_ref_array_item (info=info@entry=0x7fffffffcf30, format=format@entry=0x7fffffffd0f0, final_buf=final_buf@entry=0x7fffffffd060,
+    error_buf=error_buf@entry=0x7fffffffcf10) at ref-filter.c:2627
+#7  0x00005555555859d8 in batch_object_write (scratch=0x7fffffffd060, opt=0x7fffffffd0d0, data=<optimized out>, obj_name=0x0) at builtin/cat-file.c:224
+```
+
+打印 `lookup_object()` 的调用栈后，我们可以知道是 `parse_buffer()` 在调用它。一个很直接的想法是：能不能避免调用这个函数？
+
+在 `parse_object_buffer()` 中，`parse_blob_buffer()`、`parse_tree_buffer()`、`parse_commit_buffer()` 和 `parse_tag_buffer()` 会解析对象数据，然后存入 `struct object *obj`，最后返回给调用者。
+
+`get_object()` 会把 `obj` 传给 `grab_values()`，然后 `grab_values()` 会把 `obj` 传给 `grab_tag_values()`、`grab_commit_values`，这些函数可以把 `obj` 中的信息填充进来以实现某些 atom，例如 `%(tag)`、`%(type)`、`%(object)`、`%(tree)`、`%(numparent)`、`%(parent)`。值得注意的是，`%(objectname)`、`%(objecttype)`、`%(objectsize)`、`%(deltabase)`、`%(rest)`、`%(raw)` 并不在其中，这意味着当我们不使用那些需要 `obj` 信息的 atom 时，可以避免解析对象缓冲区！
+
+经过一番处理和适配，我制作了一个补丁，可以在某些情况下跳过 `parse_object_buffer()`，下面是 `t/perf/p1006-cat-file.sh` 性能测试的结果：
+
+```
+Test                                        HEAD~             HEAD                  
+------------------------------------------------------------------------------------
+1006.2: cat-file --batch-check              0.10(0.09+0.00)   0.11(0.10+0.00) +10.0%
+1006.3: cat-file --batch-check with atoms   0.09(0.08+0.01)   0.09(0.06+0.03) +0.0% 
+1006.4: cat-file --batch                    0.62(0.58+0.04)   0.57(0.54+0.03) -8.1% 
+1006.5: cat-file --batch with atoms         0.63(0.60+0.02)   0.52(0.49+0.02) -17.5%
+```
+
+我们可以看到 `git cat-file --batch` 的性能有了一定的提升！
+
+讲个笑话：移除 1984531500 个 if 判断可以把 GTA5 的启动时间减少 70%。:-D
+
+[链接](https://rockstarintel.com/a-fan-reduces-gta-online-loading-times-by-70)
+
+目前补丁还没有提交到邮件列表，让我们稍等一下……
+
+</div>

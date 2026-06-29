@@ -1,9 +1,36 @@
 ---
 title: 'golang-pprof-learning'
+titleZh: 'golang pprof 学习笔记'
 date: 2021-09-27 21:38:15
 tags: golang
 draft: true
 ---
+
+<div class="lang-section" data-lang="en">
+
+```go
+import (
+	"net/http"
+	_ "net/http/pprof"
+)
+
+```
+
+Detecting heap memory allocation:
+```
+curl -sK -v http://localhost:8080/debug/pprof/heap > heap.out
+go tool pprof -http=:8060 heap.out
+```
+
+Check blocking:
+```
+http://127.0.0.1:8080/debug/pprof/goroutine?debug=1
+http://127.0.0.1:8080/debug/pprof/goroutine?debug=2
+```
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 ```go
 import (
@@ -24,3 +51,5 @@ go tool pprof -http=:8060 heap.out
 http://127.0.0.1:8080/debug/pprof/goroutine?debug=1
 http://127.0.0.1:8080/debug/pprof/goroutine?debug=2
 ```
+
+</div>

@@ -1,8 +1,92 @@
 ---
 title: 'Transaction Isolation'
+titleZh: '事务隔离'
 date: 2021-10-31 11:33:58
 tags: DB
 ---
+
+<div class="lang-section" data-lang="en">
+
+# I(solation)
+
+`Isolation` determines the visibility of a transaction to other users and the system.
+`Isolation` is concerned with ensuring that multiple concurrent transactions do not interfere with each other when reading and writing.
+
+
+### Isolation Conflicts
+1. Dirty read (write-read conflict): reading data that another transaction has written but not yet committed.
+2. Dirty write (write-write conflict): one transaction overwrites data that another transaction has written but not yet committed.
+3. Non-repeatable read (read-write conflict): reading the same row multiple times within a transaction and getting different results. (UPDATE)
+4. Phantom read: two identical queries in a transaction return different sets of rows. (INSERT, DELETE)
+5. Lost update (write conflict): two transactions read-modify-write the same data; because the second write does not include the value modified by the first transaction, and the second read is a snapshot read, the first transaction's modification is ultimately lost.
+6. Write skew (write conflict) (a form of phantom read, broadly a lost update): two transactions read-modify-write multiple data items; because the first write modifies data that the second transaction read, and the second read is a snapshot read, the result is a logical error.
+
+```
+x := int[]{1, 2}
+
+for i := 0; i < 2; i++ {
+   go func() {
+     if len(x) >= 2 {
+        // danger!
+        x = x[1:]
+     }
+   }()
+}
+fmt.Println(len(x)) // maybe 0
+```
+
+How to resolve these conflicts in transactions? By setting an appropriate isolation level.
+Weaker isolation levels favor concurrency among transactions, but may produce the conflicts described above.
+In theory, we can choose a lower isolation level to achieve better performance as long as correctness is not compromised. The choice depends on the application scenario.
+
+### Isolation Levels
+
+1. Read uncommitted
+* When a transaction modifies data, other transactions can still read that data even if the modifying transaction has not yet committed.
+* Read: row-level shared lock.
+* Write: none.
+* Pros: good performance.
+* Cons: `dirty reads`.
+
+2. Read committed
+* When a transaction modifies data, other transactions cannot read that data until the modifying transaction has committed.
+* Read:
+  1. Row-level shared lock, released after reading.
+  2. Maintain both an old value and a new value for every object to be updated; before the transaction commits, all other transactions read the old value, and after the write transaction commits, they read the new value.
+* Write: row-level exclusive lock, released when the transaction ends.
+* Pros: no `dirty reads` or dirty writes.
+* Cons: `non-repeatable reads`.
+
+3. Repeatable read
+* When a transaction reads data, other transactions cannot modify that data until the reading transaction commits.
+* Read: row-level shared lock, released when the transaction ends.
+* Write: row-level exclusive lock, released when the transaction ends.
+* Pros: no dirty reads, dirty writes, or non-repeatable reads.
+* Cons: `phantom reads`.
+
+4. Snapshot isolation
+* MVCC (Multi-Version Concurrency Control)
+* Only allows reading committed versions of data that existed before the transaction began. A solution that can benefit concurrency and reduce isolation conflicts.
+
+* Pros: no dirty writes, dirty reads, non-repeatable reads, or (read-only) phantom reads.
+* Cons: lost updates, `write skew` (phantom reads involving writes).
+  * Solutions:
+    1. Pessimistic locking: write locks.
+    2. Optimistic locking: ignore conflicts initially and resolve them at the end.
+
+5. Serializable
+
+* Read: table-level shared lock, released when the transaction ends.
+* Write: table-level exclusive lock, released when the transaction ends.
+* Pros: no dirty reads, lost updates, non-repeatable reads, or phantom reads.
+* Cons: serialization, low degree of transaction concurrency.
+
+### References:
+- [https://tech.ipalfish.com/blog/2020/03/26/isolation/](https://tech.ipalfish.com/blog/2020/03/26/isolation/)
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 # I(solation)
 
@@ -81,5 +165,4 @@ fmt.Println(len(x)) // maybe 0
 ### 参考：
 - [https://tech.ipalfish.com/blog/2020/03/26/isolation/](https://tech.ipalfish.com/blog/2020/03/26/isolation/)
 
-
-
+</div>

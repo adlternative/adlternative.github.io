@@ -1,8 +1,52 @@
 ---
 title: 'Volcano Learning'
+titleZh: '火山模型学习'
 date: 2021-11-10 20:08:19
 tags: DB
 ---
+
+<div class="lang-section" data-lang="en">
+
+A way to optimize SQL queries.
+
+Volcano model, iterator model.
+
+It really is like a volcano...
+
+Separation of mechanism and policy.
+
+Independence between operators.
+
+Extensibility.
+
+It reminds me of the `miniob` competition I took part in before: we only determined the execution order of operators, `sql parsing -> decide which tables and columns to read -> read data from these tables -> multi-table join -> sort -> group -> aggregate -> output`, but the coupling was high and it was hard to modify, extend, or optimize.
+
+`choose-plan` operator.
+
+`exchange` operator.
+
+Concurrency: intra-operator concurrency, multi-operator concurrency.
+
+How big is the much-criticized overhead of C++ virtual functions?
+
+Virtual functions require an extra indirection, and virtual functions are hard to inline. Compared with the overhead of the database itself, it is small.
+
+Optimizations: materialized views, vectorization, code generation.
+
+1. Vectorization:
+   * Implement batch processing on top of the volcano model.
+   Advantages:
+   1. Reduce the number of function calls and decrease virtual function call overhead.
+   2. [SIMD](https://en.wikipedia.org/wiki/SIMD)
+
+
+References:
+1. [https://paperhub.s3.amazonaws.com/dace52a42c07f7f8348b08dc2b186061.pdf](https://paperhub.s3.amazonaws.com/dace52a42c07f7f8348b08dc2b186061.pdf)
+2. [https://zhuanlan.zhihu.com/p/34220915](https://zhuanlan.zhihu.com/p/34220915)
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 SQL 查询优化的一种方式。
 
@@ -40,3 +84,5 @@ exchange 操作符
 参考:
 1. [https://paperhub.s3.amazonaws.com/dace52a42c07f7f8348b08dc2b186061.pdf](https://paperhub.s3.amazonaws.com/dace52a42c07f7f8348b08dc2b186061.pdf)
 2. [https://zhuanlan.zhihu.com/p/34220915](https://zhuanlan.zhihu.com/p/34220915)
+
+</div>

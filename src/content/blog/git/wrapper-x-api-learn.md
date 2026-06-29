@@ -1,9 +1,103 @@
 ---
 title: git_wrapper_x_api_learn
+titleZh: Git wrapper.c X API 学习笔记
 date: 2021-01-25 23:21:37
 tags: git
 ---
 
+
+<div class="lang-section" data-lang="en">
+
+The Git source file wrapper.c wraps many commonly used functions; I'm just taking notes for myself.
+
+xstrbup: strbup + die
+
+xmalloc: calls do_xmalloc; first uses memory_limit_check to check whether the requested allocation size exceeds the environment variable GIT_ALLOC_LIMIT, and dies if so; then malloc; if malloc fails it tries to malloc 1 byte, and dies if that fails too.
+
+xmallocz/xmallocz_gently provide graceful (return on failure) and non-graceful (die on failure) malloc respectively.
+
+xmemdupz calls memcpy(xmallocz(len)) — a very neat API.
+
+xstrndup calls xmemdupz, copying up to '\0' or the specified length.
+
+xstrncmpz: strncmp that also guarantees the first argument string is '\0'-terminated.
+
+xrealloc: also handles some overflow cases, and when realloc to 0 is needed it frees first then xmalloc(0). I hadn't thought about the behavior of malloc(0) before: `According to the specification, malloc(0) returns "a null pointer or a unique pointer that can be successfully passed to free()."` (quoted from Stack Overflow).
+
+xcalloc: similarly handles overflow like xmalloc.
+
+xopen: if open fails and the failure is an interrupt EINTR, retry open; otherwise die with mode and path.
+
+
+```c
+ssize_t xread(int fd, void *buf, size_t len)
+{
+	ssize_t nr;
+	if (len > MAX_IO_SIZE)
+		len = MAX_IO_SIZE;
+	while (1) {
+		nr = read(fd, buf, len);
+		if (nr < 0) {
+			if (errno == EINTR)
+				continue;
+			if (handle_nonblock(fd, POLLIN, errno))
+				continue;
+		}
+		return nr;
+	}
+}
+```
+xread first limits the read size to MAX_IO_SIZE. Then if read returns -1 and the interrupt is EINTR, it continues to read. We see that handle_nonblock looks like this:
+```c
+static int handle_nonblock(int fd, short poll_events, int err)
+{
+	struct pollfd pfd;
+
+	if (err != EAGAIN && err != EWOULDBLOCK)
+		return 0;
+
+	pfd.fd = fd;
+	pfd.events = poll_events;
+
+	/*
+	 * no need to check for errors, here;
+	 * ra subsequent read/write will detect unrecoverable erors
+	 */
+	poll(&pfd, 1, -1);
+	return 1;
+}
+```
+This means if `err==EAGAIN` || `err==EWOULDBLOCK`, we use poll to wait for a read event on fd, and then re-read when it occurs.
+
+This is for non-blocking I/O.
+
+So xread is read + auto-retry.
+
+xwrite: same idea, but the retry waits for a writable event (write buffer not full).
+
+xpread: pread with EAGAIN and EINTR retry handling.
+
+xdup: dup + die_errno
+
+xfopen: fopen + EINTR retry + die_errno
+
+xfdopen: fdopen + die_errno
+
+xmkstemp: mkstemp + die_errno
+
+xmkstemp_mode: same as xmkstemp.
+
+xgetcwd: strbuf_getcwd + strbuf_detach
+
+xgethostname: gethostname + '\0'-terminate the end.
+
+xsnprintf: snprintf + BUG error handling.
+
+Summary: the wrappers are well done; callers don't need too much extra code to handle errors.
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 git源码wrapper.c对很多常用的函数做了一层包装，
 我这里仅仅是为自己做做笔记。
@@ -92,3 +186,5 @@ xgethostname: gethostname + 末尾置'\0'
 xsnprintf: snprintf + BUG错误处理
 
 总结:包装包的好，外界调用不用过多代码去处理错误。
+
+</div>

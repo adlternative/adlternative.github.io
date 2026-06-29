@@ -1,10 +1,25 @@
 ---
 title: 'ACID'
+titleZh: 'ACID'
 date: 2021-11-09 19:55:03
 tags: DB
 draft: true
 ---
 
+<div class="lang-section" data-lang="en">
+
+# A(tomic) Atomicity
+
+If an error occurs during a series of write operations, the transaction must be aborted.
+A transaction either succeeds completely or fails completely; there is no such thing as partial success.
+
+</div>
+
+<div class="lang-section" data-lang="zh">
+
 # A(tomic) 原子性
+
 如果一系列写操作中发生了错误，则该事务必须中止。
 一个事务要么成功，要么失败，没有部分成功而言。
+
+</div>

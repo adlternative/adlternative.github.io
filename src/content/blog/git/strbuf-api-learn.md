@@ -4,6 +4,347 @@ date: 2021-01-25 19:16:01
 tags: git
 ---
 
+<div class="lang-section" data-lang="en">
+
+Today let's analyze a few functions from the `strbuf` API in the Git source code. This `strbuf` buffer can read a line, read a file, and perform many other handy operations.
+
+```c
+struct strbuf {
+	size_t alloc;
+	size_t len;
+	char *buf;
+};
+```
+
+|alloc|buffer capacity (dynamically allocated size)|
+|-|-|
+|len|buffer length|
+|buf|buffer content|
+
+### strbuf_init,STRBUF_INIT
+```c
+char strbuf_slopbuf[1];
+
+#define STRBUF_INIT  { .alloc = 0, .len = 0, .buf = strbuf_slopbuf }
+
+void strbuf_init(struct strbuf *sb, size_t hint)
+{
+	sb->alloc = sb->len = 0;
+	sb->buf = strbuf_slopbuf;
+	if (hint)
+		strbuf_grow(sb, hint);
+}
+```
+
+Notice that the init function sets `buf` to a global one-byte buffer, `strbuf_slopbuf`. Why this odd approach? The original author didn't want `.buf == NULL`, even for an empty `strbuf`. Then `sb->alloc` and `sb->len` are both 0. Of course, in `strbuf_init`, if `hint != 0`, it calls `strbuf_grow` to pre-allocate buffer space, avoiding repeated `realloc`s later — similar to `reserve` in C++'s `vector`. When `hint == 0`, the effect is the same as `STRBUF_INIT`.
+
+### strbuf_release
+```cpp
+void strbuf_release(struct strbuf *sb)
+{
+	if (sb->alloc) {
+		free(sb->buf);
+		strbuf_init(sb, 0);
+	}
+}
+```
+
+If the buffer has allocated memory, we free it and re-initialize the `strbuf`.
+
+### strbuf_grow
+```cpp
+void strbuf_grow(struct strbuf *sb, size_t extra)
+{
+	int new_buf = !sb->alloc;
+	if (unsigned_add_overflows(extra, 1) ||
+	    unsigned_add_overflows(sb->len, extra + 1))
+		die("you want to use way too much memory");
+	if (new_buf)
+		sb->buf = NULL;
+	ALLOC_GROW(sb->buf, sb->len + extra + 1, sb->alloc);
+	if (new_buf)
+		sb->buf[0] = '\0';
+}
+```
+
+We saw `strbuf_grow` earlier in `strbuf_init`; how does it allocate memory for the buffer? First it checks whether the requested `extra` size would overflow; if so, it calls `die` to terminate the program. `new_buf` indicates whether this is a brand-new `strbuf`; if so, `.buf` is currently `strbuf_slopbuf`, so it must be set to `NULL` before `realloc`, because a static global one-byte array cannot be reallocated. Next, `ALLOC_GROW`: this macro chooses `max(alloc_nr(alloc), nr)` as the new `strbuf` capacity for `realloc`.
+
+Thus, `ALLOC_GROW` compares the currently needed capacity with the existing capacity (scaled by a growth factor) and allocates the larger of the two. The official code comments also note that the common usage is `ALLOC_GROW(item, nr + 1, alloc)`, after which you can append to the grown array. Therefore, `strbuf_grow` performs efficient expansion.
+
+```c
+#define ALLOC_GROW(x, nr, alloc) \
+	do { \
+		if ((nr) > alloc) { \
+			if (alloc_nr(alloc) < (nr)) \
+				alloc = (nr); \
+			else \
+				alloc = alloc_nr(alloc); \
+			REALLOC_ARRAY(x, alloc); \
+		} \
+	} while (0)
+```
+
+### strbuf_attach
+```c
+void strbuf_attach(struct strbuf *sb, void *buf, size_t len, size_t alloc)
+{
+	strbuf_release(sb);
+	sb->buf   = buf;
+	sb->len   = len;
+	sb->alloc = alloc;
+	strbuf_grow(sb, 0);
+	sb->buf[sb->len] = '\0';
+}
+```
+
+`strbuf_attach` replaces the contents of a `strbuf` with the given `buf`, `len`, and `alloc`.
+
+### strbuf_detach
+```c
+char *strbuf_detach(struct strbuf *sb, size_t *sz)
+{
+	char *res;
+	strbuf_grow(sb, 0);
+	res = sb->buf;
+	if (sz)
+		*sz = sb->len;
+	strbuf_init(sb, 0);
+	return res;
+}
+```
+
+The official documentation says `detach` is used to separate out dynamically allocated content. But why call `strbuf_grow` here? Because if the `strbuf` is still initialized, its `buf` is `strbuf_slopbuf` (static memory); by calling `strbuf_grow(sb, 0)` we turn it into dynamically allocated memory. Then we can safely return `sb->buf` and reinitialize the `strbuf`. Of course, if the `strbuf` already uses dynamically allocated memory, the same applies.
+
+### strbuf_split_buf
+```c
+struct strbuf **strbuf_split_buf(const char *str, size_t slen,
+				 int terminator, int max)
+{
+	struct strbuf **ret = NULL;
+	size_t nr = 0, alloc = 0;
+	struct strbuf *t;
+
+	while (slen) {
+		int len = slen;
+		if (max <= 0 || nr + 1 < max) {
+			const char *end = memchr(str, terminator, slen);
+			if (end)
+				len = end - str + 1;
+		}
+		t = xmalloc(sizeof(struct strbuf));
+		strbuf_init(t, len);
+		strbuf_add(t, str, len);
+		ALLOC_GROW(ret, nr + 2, alloc);
+		ret[nr++] = t;
+		str += len;
+		slen -= len;
+	}
+	ALLOC_GROW(ret, nr + 1, alloc); /* In case string was empty */
+	ret[nr] = NULL;
+	return ret;
+}
+```
+
+`strbuf_split_buf` splits the character array `str` by the `terminator` into multiple substrings, stores each in a `strbuf` created via `strbuf_init` and `strbuf_add`, and grows the resulting array using `ALLOC_GROW` as described earlier.
+
+### strbuf_setlen
+```c
+static inline void strbuf_setlen(struct strbuf *sb, size_t len)
+{
+	if (len > (sb->alloc ? sb->alloc - 1 : 0))
+		die("BUG: strbuf_setlen() beyond buffer");
+	sb->len = len;
+	if (sb->buf != strbuf_slopbuf)
+		sb->buf[len] = '\0';
+	else
+		assert(!strbuf_slopbuf[0]);
+}
+```
+
+`strbuf_setlen` sets the `.len` of a `strbuf`. It can shorten the buffer (by writing a `\0` at the new end) or, after we've grown the buffer and added data, indicate that the `strbuf`'s `len` has increased.
+
+### strbuf_reset
+```c
+#define strbuf_reset(sb)  strbuf_setlen(sb, 0)
+```
+
+By setting `.len` to 0 via `strbuf_setlen`, the buffer is effectively cleared.
+
+### strbuf_add
+```c
+void strbuf_add(struct strbuf *sb, const void *data, size_t len)
+{
+	strbuf_grow(sb, len);
+	memcpy(sb->buf + sb->len, data, len);
+	strbuf_setlen(sb, sb->len + len);
+}
+```
+
+It first grows the buffer via `strbuf_grow`, then copies the `data` into the buffer, and finally uses `strbuf_setlen` to update the length.
+
+### strbuf_splice
+```c
+void strbuf_splice(struct strbuf *sb, size_t pos, size_t len,
+				   const void *data, size_t dlen)
+{
+	if (unsigned_add_overflows(pos, len))
+		die("you want to use way too much memory");
+	if (pos > sb->len)
+		die("`pos' is too far after the end of the buffer");
+	if (pos + len > sb->len)
+		die("`pos + len' is too far after the end of the buffer");
+
+	if (dlen >= len)
+		strbuf_grow(sb, dlen - len);
+	memmove(sb->buf + pos + dlen,
+			sb->buf + pos + len,
+			sb->len - pos - len);
+	memcpy(sb->buf + pos, data, dlen);
+	strbuf_setlen(sb, sb->len + dlen - len);
+}
+```
+
+`strbuf_splice` replaces the `len` bytes starting at `pos` in the existing buffer with `data` of length `dlen`. If the new content is larger, it uses `strbuf_grow` to expand; `memmove` and `memcpy` adjust the content, and `strbuf_setlen` updates `sb->len`.
+
+### strbuf_insert
+```c
+void strbuf_insert(struct strbuf *sb, size_t pos, const void *data, size_t len)
+{
+	strbuf_splice(sb, pos, 0, data, len);
+}
+```
+
+`strbuf_insert` is just a special case of `strbuf_splice`; instead of replacing content (you can't replace zero bytes), it inserts at `pos`.
+
+### strbuf_read
+```c
+ssize_t strbuf_read(struct strbuf *sb, int fd, size_t hint)
+{
+	size_t oldlen = sb->len;
+	size_t oldalloc = sb->alloc;
+
+	strbuf_grow(sb, hint ? hint : 8192);
+	for (;;) {
+		ssize_t want = sb->alloc - sb->len - 1;
+		ssize_t got = read_in_full(fd, sb->buf + sb->len, want);
+
+		if (got < 0) {
+			if (oldalloc == 0)
+				strbuf_release(sb);
+			else
+				strbuf_setlen(sb, oldlen);
+			return -1;
+		}
+		sb->len += got;
+		if (got < want)
+			break;
+		strbuf_grow(sb, 8192);
+	}
+
+	sb->buf[sb->len] = '\0';
+	return sb->len - oldlen;
+}
+```
+
+This API reads from a file descriptor. Again, `strbuf_grow` pre-allocates space to avoid repeated `realloc`s. Inside the `for` loop, each `read` asks for `want` bytes of available space in the `strbuf`; `got` is the number actually read (the buffer starts at `buf + len`). After each round, `strbuf_grow` expands the buffer; when `got < want`, we've reached the end. Error handling restores the `strbuf` to its previous state via `strbuf_release` or `strbuf_setlen`.
+
+### strbuf_write
+```c
+ssize_t strbuf_write(struct strbuf *sb, FILE *f)
+{
+	return sb->len ? fwrite(sb->buf, 1, sb->len, f) : 0;
+}
+```
+
+Writes the buffer contents to a file.
+
+### strbuf_getwholeline
+```c
+int strbuf_getwholeline(struct strbuf *sb, FILE *fp, int term)
+{
+	int ch;
+
+	if (feof(fp))
+		return EOF;
+
+	strbuf_reset(sb);
+	flockfile(fp);
+	while ((ch = getc_unlocked(fp)) != EOF) {
+		if (!strbuf_avail(sb))
+			strbuf_grow(sb, 1);
+		sb->buf[sb->len++] = ch;
+		if (ch == term)
+			break;
+	}
+	funlockfile(fp);
+	if (ch == EOF && sb->len == 0)
+		return EOF;
+
+	sb->buf[sb->len] = '\0';
+	return 0;
+}
+```
+
+Reads from a file pointer `fp`. First `strbuf_reset` clears the `strbuf`; then, while holding the file lock, it reads one byte at a time and appends it to the buffer until it encounters `term`.
+
+Can't write any more, there are so many APIs...
+
+Summary: Git wraps a buffer class that lets users conveniently read content without rolling their own functions, which could be misused or inefficient.
+
+The following is the explanatory content from `strbuf.h`, translated by Google.
+
+```
+strbuf用于所有常用的C字符串和内存api。鉴于缓冲区的长度是已知的，通常最好
+使用mem *函数比使用str *一（例如，memchr vs. strchr）。
+但是，必须注意str *经常起作的事实
+停止使用NUL，而strbuf可能已入NUL。
+
+为了方便起见，strbuf已被NUL终止，但在
+strbuf API实际上依赖于不含NUL的字符串。
+
+strbuf的一些不变量非常重要，请牢记：
+
+ -`buf`成员永远不会为NULL，因此可以在任何普通C语言中使用
+   安全地进行字符串操作。 strbuf的_have_可以通过以下方式初始化
+   但是，在不变式之前使用“ strbuf_init（）”或“ = STRBUF_INIT”。
+
+   *不要*假设`buf`实际上是什么（例如如果是）
+   是否分配内存），请使用“ strbuf_detach（）”解开内存
+   安全地从其strbuf外壳中缓冲。那是唯一受支持的
+   道路。这将为您提供一个已分配的缓冲区，您以后可以`free（）`。
+
+   但是，修改由指向的字符串中的任何内容是完全安全的
+   “ buf”成员，位于索引“ 0”和“ len-1”（包含）之间。
+
+ -“ buf”成员是一个字节数组，至少具有“ len + 1”个字节
+   已分配。多余的字节用于存储“ \ 0”，从而允许
+   “ buf”成员必须是有效的C字符串。每个strbuf函数都可以确保这一点
+   不变的被保留。
+
+   注意：可以直接在缓冲区上这样玩：
+
+       strbuf_grow（sb，SOME_SIZE）; <1>
+       strbuf_setlen（sb，sb-> len + SOME_OTHER_SIZE）;
+
+   <1>在这里，存储阵列从`sb-> buf'开始，长度为
+   `strbuf_avail（sb）`都是您的，您可以确定
+   strbuf_avail（sb）至少为SOME_SIZE。
+
+   注意：“ SOME_OTHER_SIZE”必须小于或等于“ strbuf_avail（sb）”。
+
+   这样做是安全的，尽管如果必须在许多地方进行，请添加
+   缺少strbuf模块的API是可行的方法。
+
+   警告：请勿假设您的区域大小为`alloc'
+   -1`，即使在当前实现中为true。 alloc是
+   不应使用的“私有”成员。使用`strbuf_avail（）`
+   代替。
+```
+
+</div>
+
+<div class="lang-section" data-lang="zh">
+
 今天来跟大家分析一下
 git源码中字符串缓存区 strbuf api
 其中几个函数。
@@ -334,3 +675,5 @@ strbuf的一些不变量非常重要，请牢记：
    不应使用的“私有”成员。使用`strbuf_avail（）`
    代替。
 ```
+
+</div>

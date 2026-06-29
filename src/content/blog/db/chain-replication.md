@@ -1,8 +1,334 @@
 ---
-title: 'Chain Replication for Supporting High Throughput and Availability (zh-cn)'
+title: 'Chain Replication for Supporting High Throughput and Availability'
+titleZh: '为高吞吐量和可用性提供支持的链式复制'
 date: 2021-09-28 11:12:57
 tags: distributed-systems
 ---
+
+<div class="lang-section" data-lang="en">
+
+# Chain Replication for Supporting High Throughput and Availability
+
+## Abstract
+
+Chain replication is a new approach to coordinating clusters of fail-stop storage servers. The method is designed to support large-scale storage services that exhibit high throughput and availability without sacrificing strong consistency guarantees. In addition to outlining the chain replication protocol itself, simulation experiments explore the performance characteristics of a prototype implementation. Throughput, availability, and several object placement strategies—including schemes based on distributed hash table routing—are discussed.
+
+## 1 Introduction
+
+Storage systems typically implement operations so that clients can store, retrieve, and/or modify data. File systems and database systems are perhaps the best-known examples. For file systems, operations (reads and writes) access individual files and are idempotent; for database systems, operations (transactions) can access multiple objects separately and are serializable.
+
+This article focuses on storage systems that lie between file systems and database systems. We are particularly interested in storage systems, hereafter referred to as storage services, that:
+
+* Store objects (with unspecified attributes).
+* Support query operations that return values derived from a single object.
+* Support update operations that atomically change the state of a single object according to some preprogrammed, possibly nondeterministic computation involving the object's previous state.
+
+Thus, file system writes are a special case of our storage service updates, which in turn are a special case of database transactions.
+
+We increasingly see online vendors (e.g., Amazon.com), search engines (e.g., Google and FAST), and many other information-intensive services creating value by connecting large storage systems to networks. When database systems are too expensive and file systems lack sufficiently rich semantics, storage services are an appropriate compromise for such applications.
+
+One challenge in building large-scale storage services is maintaining high availability and high throughput despite failures and the consequent changes in storage service configuration, even as failed components are detected and replaced.
+
+Consistency guarantees are also important. But even if they were not, the construction of applications oriented toward storage services is usually simplified when strong consistency guarantees are provided, asserting that: (i) operations that query and update individual objects are executed in some order, and (ii) the results of update operations are necessarily reflected in the results returned by subsequent query operations.
+
+Strong consistency guarantees are often thought to be in tension with achieving high throughput and high availability. Therefore, system designers reluctant to sacrifice system throughput or availability frequently refuse to support strong consistency guarantees. The Google File System (GFS) illustrates this thinking [11]. In fact, strong consistency guarantees in large-scale storage services are not incompatible with high throughput and availability. A new chain replication method for coordinating fail-stop servers—the subject of this paper—simultaneously supports high throughput, availability, and strong consistency.
+
+Our flow is as follows. The interface for a general storage service is specified in §2. In §3, we explain how chain replication implements query and update operations. Chain replication can be viewed as an instance of the primary/backup approach, so §4 compares them. Then, §5 summarizes experiments using our chain replication prototype implementation and simulated networks to analyze throughput and availability. Some simulations compare chain replication with storage systems based on distributed hash table (DHT) routing, such as CFS [7] and PAST [19]; other simulations reveal surprising behavior when a system employing chain replication recovers from server failures. Chain replication is compared in §6 with other work on scalable storage systems, trading consistency protocols for availability, and replica placement. Concluding remarks appear in §7, followed by endnotes.
+
+## 2 Storage Service Interface
+
+Clients of a storage service issue requests for query and update operations. Although it is possible to ensure that every request arriving at the storage service is executed, end-to-end protocols [20] show that this is not very meaningful. Clients are better served if the storage service simply generates a reply for every request it receives and completes, because this allows lost requests and lost replies to be handled: if too much time passes without receiving a reply to a request, the client reissues the request.
+
+* A reply to `query(objId, opts)` comes from the value of object objId; the parameter opts characterizes which parts of objId are returned. Under this operation, the value of objId remains unchanged.
+* A reply to `update(objId, newVal, opts)` depends on the parameter opts and, in general, may be a value V produced in some nondeterministic preprogrammed manner involving the current value of objId and/or the value newVal; V then becomes the new value of objId.
+
+Query operations are idempotent, but update operations need not be. Therefore, a client reissuing a non-idempotent update request must take precautions to ensure the update has not already been executed. For example, the client might first issue a query to determine whether the object's current value already reflects the update.
+
+```
+状态是：
+Hist objID: 更新请求序列
+Pending objID: 请求集合
+
+转移是：
+T1: 客户请求 r 到了：
+	Pending objID := Pending objID ∪ {r}
+T2: 客户请求 r 属于 Pending objID 但是被忽略了：
+	Pending objID := Pending objID − {r}
+T3: 客户请求 r 属于 Pending objID 被处理了：
+	Pending objID := Pending objID − {r}
+  if r = query(objId, opts) then
+    根据基于 Hist objID 的选项选择回复
+  else if r = update(objId, newVal, opts) then
+    Hist objID := Hist objID · r
+    根据基于 Hist objID 的选项选择回复
+
+```
+Figure 1: Client view of an object
+
+A client whose request is lost before reaching the storage service is indistinguishable from one whose request is ignored by the storage service. This means that when a storage server experiences a transient outage and a client request is ignored, the client is not exposed to a new failure mode. Of course, acceptable client performance may depend on limiting the frequency and duration of transient outages.
+
+With chain replication, the duration of each transient outage is much shorter than the time required to remove a failed host or add a new host. Therefore, client request processing proceeds with minimal interruption in the face of failures, recoveries, and other reconfigurations. Most other replica management protocols either block certain operations or sacrifice consistency guarantees after failures and during reconfiguration.
+
+We specify the functionality of the storage service by giving clients a view of an object's state and the state transitions by which the object responds to query and update requests. Figure 1 provides such a specification for object objID using pseudocode.
+
+The figure defines the state of objID in terms of two variables: the sequence Hist objID of updates that have been performed on objID, and the set Pending objID of unprocessed requests.
+
+The figure then lists the possible state transitions. Transition T1 asserts that an arriving client request is added to Pending objID. That some pending requests are ignored is specified by transition T2—this transition may not occur very often. Transition T3 gives a high-level view of request processing: request r is first removed from Pending objID; then query yields an appropriate reply, while update also appends r (denoted by ·) to Hist objID.
+
+## 3 Chain Replication Protocol
+
+Servers are assumed to be fail-stop [21]:
+* Each server stops responding upon failure rather than making erroneous state transitions, and
+* The environment can detect a server's halted state.
+
+When an object is replicated on t servers, up to t−1 servers may fail without affecting the object's availability. Thus, the availability of the object increases to the likelihood that all servers hosting that object fail; simulations in §5.4 explore this likelihood for typical storage systems. Henceforth, we assume that at most t−1 servers replicating an object fail simultaneously.
+
+In chain replication, the servers replicating a given object objID are arranged in a linear order to form a chain. (See Figure 2.) The first server in the chain is called the head, the last server is called the tail, and request processing is implemented by the servers roughly as follows:
+
+Generating replies. The reply for each request is generated and sent by the tail.
+
+Query processing. Each query request is directed to the tail of the chain and processed atomically using the copy of objID stored at the tail.
+
+Update processing. Each update request is directed to the head of the chain. The request is processed atomically at the head using its copy of objID; then the state change is forwarded along reliable FIFO links to the next element of the chain (where it is processed and forwarded), and so on, until the request is processed by the tail.
+
+Thus, strong consistency holds because query requests and update requests are both serialized on a single server (the tail).
+
+Processing a query request involves only a single server, which means that a query is a relatively cheap operation. However, when processing an update request, the computation performed on t−1 of the t servers contributes nothing to generating the reply and can be considered redundant. Still, the redundant servers do improve fault tolerance.
+
+Note that some redundant computation associated with the t−1 servers is avoided in chain replication, because the new value is computed once by the head and then forwarded down the chain, so each replica performs only a single write. This forwarding of state changes also means that an update can be a nondeterministic operation—the nondeterministic choice is made once by the head.
+
+### 3.1 Protocol Details
+
+Clients do not directly read or write the Hist objID and Pending objID variables of Figure 1, so we are free to implement them in any convenient way. When using chain replication to implement the specification of Figure 1:
+
+* Hist objID is defined as Hist^T objID, the value of Hist objID stored by the tail T of the chain, and:
+* Pending objID is defined as the set of client requests received by any server in the chain but not yet processed by the tail.
+
+The chain replication protocol for query and update processing is then shown to satisfy the specification of Figure 1 by demonstrating that each state transition performed by any server in the chain is equivalent to a no-op or to one of the permitted transitions T1, T2, or T3.
+
+Given the above description of how Hist objID and Pending objID are implemented by the chain (and assuming no failures are currently occurring), we observe that the only server transitions affecting Hist objID and Pending objID are: (i) a server in the chain receives a request from a client (affecting Pending objID), and (ii) the tail processes a client request (affecting Hist objID). Since transitions at other servers are equivalent to no-ops, it suffices to prove that transitions (i) and (ii) are consistent with T1 through T3.
+
+Client request arrives at the chain. The client sends a request to the head (for updates) or the tail (for queries). Receiving request r by either party adds r to the set of requests received by a server but not yet processed by the tail. Thus, whichever party receives r adds r to Pending objID (as defined for the chain), consistent with T1.
+
+Request processed by the tail. Execution removes the request from the set of requests received by any replica not yet processed by the tail, so it removes the request from Pending objID (as defined for the chain)—the first step of T3. Moreover, when tail T processes the request it uses its copy Hist^T objID, which, as defined above, implements Hist objID—exactly what the remaining steps of T3 specify.
+
+## Handling Server Failures
+
+In response to detecting the failure of a server that is part of a chain (and, by the fail-stop assumption, all such failures are detected), the chain is reconfigured to eliminate the failed server. To do this, we use a service called the master, which:
+* Detects server failures,
+* Notifies each server in the chain of its new predecessor or successor in the new chain obtained by deleting the failed server,
+* Notifies clients which server is the head of the chain and which is the tail.
+
+In what follows, we assume the master is a process that never fails. This simplifies the exposition but is not a realistic assumption; our chain replication prototype actually replicates a master process across multiple hosts, using Paxos [16] to coordinate these replicas so that they collectively behave like a single process that does not fail.
+
+The master distinguishes three cases: (i) head failure, (ii) tail failure, and (iii) failure of some other server in the chain. However, the handling of each depends on the following insight into how updates propagate through the chain.
+
+Let the server at the head of the chain be labeled H, the next server H+1, and so on, with the tail labeled T. Define
+
+```
+Hist^i objID <= Hist^j objID
+```
+
+to hold if the sequence of requests Hist^i objID on the server with label i is a prefix of the sequence Hist^j objID on the server with label j. Because updates are sent between elements of the chain over reliable FIFO links, the sequence of updates received by each server is a prefix of the sequence of updates received by its successor. Thus we have:
+
+Update Propagation Invariant. For servers labeled i and j with i ≤ j (i.e., i is a predecessor of j in the chain):
+
+```
+Hist^j objID <= Hist^i objID·
+```
+
+*Head failure.* This case is handled by the master removing H from the chain and making H's successor the new head of the chain. Given our assumption that at most t−1 servers fail, such a successor must exist.
+
+Changing the chain by removing H is a transition and therefore must be shown to be a no-op or consistent with T1, T2, and/or T3 of Figure 1. This is easy to do. Changing the set of servers in the chain may change the contents of Pending objID—recall that Pending objID is defined as the set of requests received by any server in the chain but not yet processed by the tail, so removing server H from the chain has the effect of removing from Pending objID those requests received by H but not yet forwarded to its successor. Removing requests from Pending objID is consistent with transition T2, so removing H from the chain is consistent with the specification in Figure 1.
+
+*Tail failure.* This case is handled by removing tail T from the chain and making T's predecessor T− the new tail of the chain. As before, given our assumption that at most t−1 server replicas fail, such a predecessor must exist.
+
+This change to the chain alters the values of both Pending objID and Hist objID, but in a manner consistent with repeated T3 transitions: Because Hist^T objID <= Hist^T− objID (which holds by the Update Propagation Invariant since T− < T), changing the tail from T to T− may increase the set of requests completed by the tail, which by definition reduces the set of requests in Pending objID. Moreover, as required by T3, those update requests completed by T− but not by T now appear in Hist objID, because T− is now the tail and Hist objID is defined as Hist^T− objID.
+
+*Failure of other servers.* The failure of an internal server S is handled by removing S from the chain. The master first notifies S's next node S+ of the new chain configuration, then notifies S's previous node S−. However, this could invalidate the Update Propagation Invariant unless some method is used to ensure that update requests received by S before its failure are still forwarded along the chain (since those update requests already appear in Hist^i objID for any predecessor i of S). The obvious candidate to perform this forwarding is S−, but now some bookkeeping and coordination are required.
+
+Let U be a set of requests, and let `<U` be a total order relation on a set of requests. Define a request sequence r to conform to `(U, <U)` if (i) all requests appearing in r are in U, and (ii) the requests in r are arranged in ascending order according to `<U`.
+
+Finally, for request sequences r and r′ conforming to `(U, <U)`, define `r ⊕ r′` as the sequence of all requests appearing in r or r′ such that `r ⊕ r′` conforms to `(U, <U)` (and thus the requests in sequence `r ⊕ r′` are ordered according to `<U`).
+
+The Update Propagation Invariant is maintained by requiring that the first thing a replica S− does when connected to a new successor S+ is: send S+ those requests that might not have reached S+ (using the FIFO link connecting them); only after those requests have been sent may S− process and forward subsequent requests it receives, thereby assuming its new position in the chain.
+
+To this end, each server i maintains a list Senti of update requests it has forwarded to some successor but that may not have been processed by the tail. The rules for adding and removing elements from this list are simple: whenever server i forwards an update request r to its successor, server i also appends r to Senti. When the tail completes processing of an update request r, it sends an acknowledgment ack(r) to its predecessor. Upon receiving ack(r), server i removes r from Senti and forwards ack(r) to its predecessor.
+
+A request received by the tail must have been received by all predecessors in the chain, so we may conclude:
+
+In-processing request invariant:
+
+```
+Hist^i objID = Hist^j objID ⊕Senti.
+```
+
+Figure 3: Space-time diagram for deleting an internal replica.
+
+Thus, if S− receives notification from the master that S+ is its new successor, the Update Propagation Invariant will be maintained if S− first sends S+ the sequence of requests SentS−. Moreover, S− need not forward the prefix of SentS− whose requests already appear in HistS+ objID.
+
+The protocol embodying this approach (including the optimization of not sending unnecessary prefixes) is described in Figure 3. Message 1 notifies S+ of its new role; message 2 acknowledges and informs the master what the sequence number sn of the last update request received by S+ is; message 3 notifies S− of its new role and of sn, so S− can compute the suffix of SentS− to send to S+; message 4 carries the suffix of SentS−.
+
+*Extending the chain.* A failed server is removed from the chain. But a shorter chain can tolerate fewer failures, and if too many server failures occur, object availability may eventually suffer. The solution is to add new servers when the chain becomes short. If the server failure rate is not too high and adding a new server does not take too long, the chain length can be kept close to the desired t servers (so t−1 further failures are required to impair object availability).
+
+In theory, a new server can be added at any position in the chain. In practice, adding a server T+ at the end of the chain seems overly simple. For tail T+, the value of SentT+ is always the empty list, so initializing SentT+ is trivial. It remains to initialize the local object copy Hist^T+ objID in a way that satisfies the Update Propagation Invariant.
+
+Initialization of Hist^T+ objID can be done by having the current tail T forward its stored copy of the object Hist^T objID to T+. The forwarding (which may take some time if the object is large) can proceed concurrently with T processing query requests from clients and processing updates from its predecessor, as long as each update is also appended to SentT. Since `Hist^T+ objID <= Hist^T objID` holds throughout the forwarding, the Update Propagation Invariant remains unchanged. Thus, once
+
+```
+Hist^T objID = Hist^T+ objID ⊕ SentT
+```
+
+holds, the In-processing Request Invariant can be established, and T+ can begin acting as the new tail.
+
+* T is informed that it is no longer the tail. Thereafter it is free to discard query requests received from clients, but a wiser strategy is to forward such requests to the new tail T+.
+* The requests in sentT are sent (in order) to T+.
+* The master is informed that T+ is the new tail.
+* Clients are notified that query requests should be directed to T+.
+
+## 4 Primary/Backup Protocol
+
+Chain replication is a form of the primary/backup approach [3], which is itself an instance of the state machine approach [22] used for replication management. In the primary/backup approach, one server is designated as the primary.
+
+* It orders client requests (thereby ensuring strong consistency),
+* It distributes requests (in order) to other servers, called backups, to complete the client request or result updates,
+* It waits for acknowledgments from all non-failed backups, and
+* It sends a reply to the client after receiving these acknowledgments.
+
+If the primary fails, one of the backups is promoted to that role.
+
+In chain replication, the primary's role in ordering requests is shared by two replicas. The head sequences update requests; the tail extends that sequence by interleaving query requests. This sharing of responsibility not only partitions the ordering task but also makes query request processing lower in latency and overhead, because only one server (the tail) participates in processing a query, and this processing is not delayed by activity elsewhere in the chain. Compared with the primary/backup approach, the primary/backup approach must wait for acknowledgments from backups for prior updates before responding to a query.
+
+In both chain replication and the primary/backup approach, update requests must propagate to all servers replicating the object; otherwise replicas will diverge. Chain replication performs this propagation serially, resulting in higher latency than the primary/backup approach (in which requests are distributed to backups in parallel). In parallel propagation, the time to generate a reply is proportional to the maximum latency of any non-failed backup; for serial propagation, it is proportional to the sum of these latencies.
+
+The simulations reported in §5 quantify all of these performance differences, including variants of chain replication and a primary/backup approach in which query requests are sent to any server (expecting improved performance through strong consistency).
+
+However, we do not need simulations to understand the differences between how the two approaches handle server failures. The primary concern is the duration of any transient interruption experienced by clients when a server fails and the service reconfigures; a second concern is the latency introduced by server failures.
+
+By far the main cost is the latency of detecting server failure, which is the same for chain replication and the primary/backup approach. Next, assuming a server failure has been detected, we analyze the recovery cost of each method; message-sending latency is considered the dominant source of protocol delay.
+
+For chain replication, there are three cases to consider: head failure, internal server failure, and tail failure.
+
+* Head failure. Query processing continues uninterrupted. Update processing is unavailable for 2 message-passing delays while the master broadcasts a message to the new head and its successor, and then it uses a broadcast to notify all clients of the new head.
+* Internal server failure. Query processing continues uninterrupted. Update processing may be delayed, but update requests are not lost, so no transient interruption occurs, provided the servers that have received the request in the prefix of the chain are still running. The failure of an internal server introduces latency in processing update requests—the protocol in Figure 3 involves 4 message-passing delays.
+* Tail failure. Both query and update processing are unavailable for 2 message-passing delays while the master sends a message to the new tail and then uses a broadcast to notify all clients of the new tail.
+
+For the primary/backup approach, two cases must be considered: primary failure and backup failure. Query and update requests are affected identically.
+
+* Primary failure. A transient interruption of 5 message delays is experienced, as follows. The master detects the failure and sends a message to all backups, asking each how many updates it has processed and telling them to pause processing requests. Each backup replies to the master with the number of updates it has processed. The master then broadcasts the identity of the new primary to all backups. The new primary is the server that processed the most updates; it must forward missing updates to the backups. Finally, the master broadcasts a message notifying all clients of the new primary.
+* Backup failure. If no update request is in progress, query processing continues uninterrupted. If an update request is in progress, a transient interruption of at most 1 message delay is experienced when the master sends a message to the primary indicating that no acknowledgment edge will be coming from the failed backup and that the request should not subsequently be sent there.
+
+Thus, the worst-case downtime of chain replication (tail failure) is never as long as the worst-case downtime of primary/backup (primary failure); and the best case of chain replication (internal server failure) is shorter than the best-case interruption of primary/backup (backup failure). Nevertheless, if the duration of transient downtime is the primary consideration when designing a storage service, choosing between chain replication and primary/backup requires understanding the mix of request types and the likelihood of failures of various servers.
+
+### 5 Simulation Experiments
+
+To better understand the throughput and availability of chain replication, we conducted a series of experiments in a simulated network. These included a prototype implementation of chain replication and several alternatives. Because we were most interested in the intrinsic latency of processing and communication required by chain replication, we simulated an infinite-bandwidth network with a per-message latency of 1 ms.
+
+#### 5.1 Single Chain, No Failures
+
+First, we consider only the simple case: a single chain, no failures, replication factors of 2, 3, and 10. We compare the throughput of four different replication management schemes:
+
+* chain: chain replication.
+* p/b: primary/backup.
+* weak-chain: a modified version of chain replication in which query requests are sent to a random server.
+* weak-p/b: a modified version of primary/backup in which query requests are sent to a random server.
+
+Note that weak-chain and weak-p/b do not implement the strong consistency guaranteed by chain and p/b.
+
+We set query latency on a server to 5 ms and update latency to 50 ms (these numbers are based on actual values for querying or updating a web search index). We assume that each update requires some initial processing, including a disk read, and that forwarding an object diff for storage is cheaper than repeating the update processing at each replica; we expect the latency for one replica to process an object diff message to be 20 ms (corresponding to a pair of disk accesses and modest computation).
+
+For example, if a chain consists of three servers, the total latency to perform an update is 94 ms: 1 ms from the client's message to the head, 50 ms update latency at the head, 20 ms for each of the other two servers to process the object diff message, and three additional 1 ms forwarding delays. However, query latency is only 7 ms.
+
+In Figure 4, we plot total throughput as a function of the percentage of update requests for t=2, t=3, and t=10. There are 25 clients, each performing a mixed sequence of requests between queries and updates according to the given percentage. Each client submits one request at a time, with the delay between requests just long enough to receive the response to the previous request. Thus, the clients can have up to 25 concurrent requests in total. We found that the throughput of weak-chain and weak-p/b is virtually identical, so Figure 4 has a single curve labeled weak rather than separate curves for weak-chain and weak-p/b. Note that for all update percentages investigated and for each replication factor, chain replication (chain) performs the same as or better than primary/backup (p/b). This is consistent with our expectations, because the chain head and tail share a load, whereas the primary/backup approach processes requests only on the primary.
+
+The curve for the weak variants of chain replication may be surprising, because when more than 15% of requests are updates, these weak variants perform worse than chain replication (with strong consistency). Two factors are involved:
+
+* weak-chain replication and p/b distribute the query load across all servers under heavy query loads, so weak-chain replication and p/b outperform pure chain replication; this advantage increases with replication factor.
+
+* Once the percentage of update requests increases, ordinary chain replication outperforms the weak variants—because all updates are performed at the head. In particular, under pure chain replication (i) queries do not wait at the head for update requests to complete (which are relatively time-consuming), and (ii) more capacity is available for update request processing at the head if query requests are not processed there.
+
+Because weak-chain and weak-p/b do not implement strong consistency guarantees, there seem to be few settings in which these replication management schemes would be preferred.
+Finally, note that the throughput of chain replication and primary/backup is not affected by replication factor, provided there is enough concurrency for multiple requests to be pipelined.
+
+#### 5.2 Multiple Chains, No Failures
+
+If each object is managed by a separate chain and objects are large, adding a new replica may involve considerable latency because transferring the object's state to the new replica takes time. On the other hand, if objects are small, then a large storage service involves many objects. Now every processor in the system may host servers from multiple chains—the cost of multiplexing processors and communication channels may be prohibitive. Moreover, the failure of a single processor now affects multiple chains.
+
+A set of objects can always be grouped into a single volume; for the purpose of chain replication, the volume itself can be treated as an object, so designers have considerable freedom in deciding object size.
+
+For the next set of experiments, we assume:
+* A fixed number of volumes,
+* A hash function maps each object to a volume, and hence to a unique chain,
+* Each chain comprises servers hosted by processors chosen from those implementing the storage service.
+
+Figure 5: Average request throughput per client as a function of the number of servers for different update percentages.
+
+Assume clients send their requests to a dispatcher that (i) computes a hash to determine the volume, and hence the chain, storing the object of interest, and then (ii) forwards that request to the corresponding chain. (The master sends configuration information for each volume to the dispatcher, avoiding the need for the master to communicate directly with clients. Inserting a dispatcher adds 1 ms to update and query latency but does not affect throughput.) Replies generated by the chain are sent directly to the client, not through the dispatcher.
+
+In our experiments there are 25 clients, each randomly submitting queries and updates uniformly distributed across the chains. Clients send requests as fast as possible, subject to the constraint that each client can have only one outstanding request at a time.
+
+To facilitate comparison with the GFS experiments [11], we assume each volume is replicated three times, 5,000 volumes in total, and we vary the number of servers. We found little difference among the chain, p/b, weak-chain, and weak-p/b alternatives, so Figure 5 shows the average request throughput of single-chain replication—as a function of the number of servers, for different percentages of update requests.
+
+### 5.3 Impact of Failures on Throughput
+
+For chain replication, every server failure initiates a three-stage process:
+1. Some time elapses before the master detects the server failure (we conservatively assume 10 seconds in our experiments).
+2. The offending server is then removed from the chain.
+3. The master eventually adds a new server to the chain and initiates a data recovery process that takes time proportional to (i) how much data was stored on the failed server and (ii) the available network bandwidth.
+
+The latency of detecting failures or removing failed servers from the chain increases request processing latency and increases transient downtime duration. The experiments in this section explore this. We assume a storage service with the parameter characteristics in Table 1; these values are inspired by those reported for GFS [11]. The assumption about network bandwidth is based on reserving at most half the bandwidth in a 100 Mb/s network for data recovery; replicating the 150 gigabytes stored on one server now takes 6 hours and 40 minutes.
+
+To measure the impact of failures on the storage service, we apply a load. The specific details of the load are unimportant. We experimented with 11 clients. Each client repeatedly selects a random object, performs an operation, and waits for a response; a watchdog timer causes the client to begin the next loop iteration if 3 seconds pass without receiving a response. Ten clients submit only query operations; the eleventh client submits only update operations.
+
+Each experiment described runs for 2 hours. Thirty minutes after the experiment begins, one or two server failures are simulated (as in the GFS experiments). The master detects the failures and removes the failed server from all chains involving that server. For every chain shortened by the failure, the master selects a new server to add and then initiates data recovery on those servers.
+
+Figure 6(a) shows aggregate query and update throughput as a function of time in the case of a single server F failure. Note that when the simulated failure occurs 30 minutes after the experiment begins, throughput drops suddenly. The resolution of the x-axis is too coarse to see that throughput is actually zero for about 10 seconds after the failure, because the master needs a little more than 10 seconds to detect the server failure and then remove the failed server from all chains.
+
+After the failed server is removed from all chains, processing can now continue, albeit at a reduced rate because there are fewer operational servers (and the same request processing load must be shared among them) and because data recovery consumes resources on different servers. The lower curve in the figure reflects this. Ten minutes later, the failed server F restarts and may become the target of data recovery. Whenever data recovery for some volume completes successfully on F, query throughput improves (as shown in the figure). This is because F is now the tail of another chain and is processing an increasing share of the query load. One might think that after all data recovery ends, query throughput would return to the level at the start of the experiment. Reality is more subtle, because volumes are no longer uniformly distributed across servers. In particular, server F now participates in fewer chains than other servers but is the tail of every chain in which it participates. Therefore, the load is no longer well balanced across servers, and aggregate query throughput is lower. When a server fails, update throughput drops to 0 and then, once the master has removed the failed server from all chains, throughput is actually better than initially. This improvement occurs because the server failure causes some chains to be of length 2 (rather than 3), reducing the work involved in performing updates. The GFS experiments [11] also considered two server failures, so Figure 6(b) depicts this situation for our chain replication protocol. Recovery is still smooth, although additional time is required.
+
+
+[TODO]
+### 5.4 Large-Scale Replication of Critical Data
+
+As the number of servers increases, the aggregate server failure rate also increases. If too many servers fail, volumes may become unavailable. This likelihood depends on server capacity, and in particular on the degree of parallelism possible during data recovery.
+
+Figure 7: MTBU and 99% confidence intervals as a function of the number of servers and replication factor for three different placement strategies: (a) DHT-based placement with maximum possible parallel recovery; (b) random placement but with parallel recovery limited to the same degree as DHT; (c) random placement with maximum possible parallel recovery.
+
+* ring: Replicas of a volume are placed on consecutive servers on a ring determined by a consistent hash of the volume identifier. This is the strategy used in CFS [7] and PAST [19].
+* rndpar: Replicas of a volume are placed randomly on servers. Note that if there are enough servers, the number of parallel data recoveries is unlimited.
+* rndseq: Replicas of a volume are placed randomly on servers (as in rndpar), but the maximum number of parallel data recoveries is limited to t (as with ring). This strategy is not used in any system known to us, but it is a useful benchmark for quantifying the impact of placement and parallel recovery.
+
+To understand the benefits of parallel data recovery, consider a server f that has failed and is participating in chains C1, C2, …, Cn. For each chain Ci, data recovery requires a source from which to obtain the volume data and a host that will become the new element of chain Ci. If there are enough processors and no restrictions on volume placement, it is easy to ensure that the new elements are all disjoint. Because volumes are distributed randomly, these sources are also likely to be disjoint. With disjoint sources and new elements, data recovery for chains C1, C2, …, Cn can proceed in parallel. Shorter intervals between data recoveries for C1, C2, … indicate a shorter vulnerability window during which a small number of concurrent failures would render some volumes unavailable. We seek to quantify the mean time before unavailability (MTBU) of any object, as a function of the number of servers and placement strategy. We assume each server exhibits exponentially distributed failures with a mean time between failures of 24 hours. As the number of servers in the storage system increases, the number of volumes also increases (otherwise, why add servers?). In our experiments, the number of volumes is defined as 100 times the initial number of servers, and each server stores 100 volumes at time 0. We assume that copying all data from one server to another takes 4 hours, equivalent to copying 100 GB over a 100 Mbit/sec network with only half the bandwidth available for data recovery. In the GFS experiments, the maximum number of parallel data recoveries on the network was limited to 40% of the servers, and the minimum transfer time was set to 10 seconds (the time to replicate a single GFS object, which is 64 KB). Figure 7(a) shows that the MTBU for the ring strategy appears to have an approximate Zipfian distribution as a function of the number of servers. Therefore, to maintain a particular MTBU, it is necessary to increase chain length as the number of servers increases. As can be seen from the figure, chain length needs to increase roughly as the logarithm of the number of servers. Figure 7(b) shows the MTBU for rndseq. For t>1, the MTBU of rndseq is lower than that of ring. Random placement is inferior to ring because random placement has more t-server sets that together store a chain's replicas, so the probability of losing a chain is higher. However, if there are enough servers, random placement offers additional opportunities for parallel recovery. Figure 7(c) shows the MTBU for rndpar. For a small number of servers, rndpar behaves the same as rndseq, but as the number of servers increases, opportunities for parallel recovery increase, improving the MTBU, and eventually rndpar outperforms rndseq, and more importantly, outperforms ring.
+
+### 6 Related Work
+
+Scalability. Chain replication is an example of what Jiménez-Peris and Patiño-Martínez [14] call a ROWAA (Read One Write All Available) approach. They report that ROWAA approaches provide superior availability scaling compared to quorum techniques and claim that the availability of ROWAA approaches improves exponentially with the number of replicas. They also argue that non-ROWAA replication approaches are necessarily inferior. Because ROWAA approaches also perform better than the best-known quorum systems (except for almost write-only applications) [14], ROWAA seems to be the better choice for replication in most practical settings. Many file services trade consistency for performance and scalability. Examples include Bayou [17], Ficus [13], Coda [15], and Sprite [5]. Typically, these systems allow continued operation during network partitions by providing tools to semi-automatically repair inconsistencies. Our chain replication does not provide graceful handling of partitioned operations, but instead provides support for all three: high performance, scalability, and strong consistency. Large-scale peer-to-peer reliable file systems are a relatively new research direction. Examples include OceanStore [6], FARSITE [2], and PAST [19]. Of these, only OceanStore provides strong (in fact, transactional) consistency guarantees. Google's File System (GFS) [11] is a reliable file system based on large clusters for applications similar to those that motivated the invention of chain replication. But in GFS, concurrent rewrites are not serialized, and reads and writes are not synchronized. Therefore, different replicas can hold different states, and the content returned by a read may later disappear from GFS automatically. This weak semantics places a burden on application programmers using GFS.
+
+Availability and consistency. Yu and Vahdat [25] explore the tradeoff between consistency and availability. They argue that even in relaxed consistency models, it is important to maintain strong consistency as much as possible if long-term availability is to be maintained. On the other hand, Gray et al. [12] argue that systems with strong consistency behave erratically as they scale, and they propose tentative update transactions to circumvent these scalability problems. Amza et al. [4] propose a single-copy serializable transaction protocol optimized for replication. In chain replication, updates are sent to all replicas, while queries are processed only by a replica known to store all completed updates. (In chain replication, the tail is a replica known to store all completed updates.) The protocol of [4] performs as well as replication protocols providing weak consistency, and it scales well with the number of replicas. No analysis of behavior in the face of failures is given.
+
+Replica placement. Prior work on replica placement has mainly aimed at achieving high throughput and/or low latency, rather than supporting high availability. Acharya and Zdonik [1] advocate locating replicas based on predictions of future access (based on past access). In the Mariposa project [23], a set of rules allows users to specify where replicas are created, whether to move data to queries or queries to data, where to cache data, and so on. Consistency is transactional, but availability is not considered. Wolfson et al. consider strategies for optimizing database replica placement to optimize performance [24]. The OceanStore project also considers replica placement [10, 6], but from a CDN (content distribution network, such as Akamai) perspective, creating as few replicas as possible while supporting certain quality-of-service guarantees. There is also substantial work on placing web page replicas from the perspective of reducing latency and network load (e.g., [18]). Douceur and Wattenhofer study how to maximize worst-case file availability in FARSITE [2] while evenly distributing storage load across all servers [8, 9]. Servers are assumed to have various availability levels. The algorithms they consider repeatedly swap files among machines if doing so improves file availability. The results are theoretical in nature for simple scenarios; it is unclear how well these algorithms would perform in realistic storage systems.
+
+### 7 Conclusion
+
+Chain replication supports high throughput for query and update requests, high availability of data objects, and strong consistency guarantees. This is possible in part because storage services built with chain replication can and do experience transient interruptions, but clients cannot distinguish such interruptions from lost messages. Thus, the transient downtime introduced by chain replication does not expose clients to new failure modes—chain replication represents an interesting balance between failures it hides from clients and failures it does not expose. When chain replication is employed, high availability of data objects comes from carefully choosing the strategy for placing volume replicas on servers. Our experiments show that with DHT-based placement strategies, availability is unlikely to scale as the number of servers increases; but we also demonstrate that if such placement strategies are combined with parallel data recovery (introduced in GFS), random placement of volumes does allow availability to scale with the number of servers. Our current prototype is intended mainly for relatively homogeneous local-area clusters. If our prototype were deployed in a heterogeneous wide-area setting, uniformly random placement of volume replicas would no longer make sense. Instead, replica placement would depend on access patterns, network proximity, and observed host reliability. Protocols for rearranging chain elements to control load imbalance may become crucial.
+
+### Notes
+
+In this case, V = newVal yields an update semantics that is just a file system write; V = F(newVal,objID) supports atomic read-modify-write operations on objects. Although powerful, this semantics does not support transactions, which allow requests to query and/or update multiple objects in an indivisible way.
+
+An actual implementation would likely store the current value of the object rather than the sequence of updates that produced this current value. We use an update-sequence representation here because it simplifies the task of determining that strong consistency guarantees are maintained.
+
+If Hist objID stores the current value of obj id rather than its entire history, then “Hist objID·r” should be interpreted as applying the update to the object.
+
+If HistiobjID is the current state rather than a sequence of updates, then <= is defined as a “precedes-value” relation rather than a “prefix” relation.
+
+In fact, layout strategy is not discussed in [11]. GFS performs some load balancing, resulting in approximately uniform load across servers; in our simulations, we expect random placement to be a good approximation of this strategy.
+
+An unrealistically short MTBF is chosen here to facilitate running long simulations.
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 # 为高吞吐量和可用性提供支持的链式复制
 
@@ -300,7 +626,7 @@ Hist^T objID = Hist^T+ objID ⊕ SentT
 
 可伸缩性。链式复制是Jimeńez-Peris和Patĩno-Mart́ınez[14]调用aROWAA(读一个，写所有可用)方法的一个例子。他们报告说，ROWAA方法为quorum技术提供了卓越的可用性扩展，并声称ROWAA方法的可用性随着repli-cas的数量呈指数级提高。他们还认为，非rowaa方法的复制必然是低劣的。因为erowaa方法在整个过程中也比最著名的仲裁系统(除了几乎只写的应用程序)[14]表现得更好，ROWAA似乎是在大多数实际设置中复制的更好选择。许多文件服务以一致性换取性能和可伸缩性。例如Bayou [17]，Ficus [13]， Coda[15]和Sprite[5]。通常，当网络分区时，这些系统通过提供工具半自动地修复不一致性，从而允许继续操作。我们的链式复制并没有提供分区操作的优雅处理，而是提供了对这三种操作的支持:高性能、可伸缩性和强一致性。大规模点对点可靠文件系统是相对较新的研究途径。例如OceanStore[6]、FARSITE[2]和PAST[19]。其中，只有OceanStore提供了强(实际上是事务性)一致性保证。谷歌的文件系统(GFS)[11]是一个基于大型集群的可靠文件系统，用于类似于激发链式复制发明的应用程序。但是在GFS中，并发重写不是序列化的，读操作和写操作不是同步的。因此，不同的副本可以保留在不同的状态，读操作返回的内容可能会从GFS中自动消失。这种弱语义给使用GFS的应用程序程序员带来了负担。
 
-可用性和一致性。Yu和Vah-dat[25]探讨了一致性和可用性之间的权衡。他们认为，即使在松弛一致性模型中，如果要长期保持可用性，尽可能保持强一致性也是很重要的。另一方面，Gray等人[12]认为具有强一致性的系统在扩展时行为不稳定，他们提出了暂定更新事务来规避这些可伸缩性问题。Amza等人[4]提出了一种针对复制进行优化的单副本序列化事务协议。在链式复制中，更新被发送到所有副本，而查询只由已知存储所有已完成更新的副本处理。(在链式复制中，尾部是一个已知的存储所有已完成更新的副本。)[4]协议的性能与提供弱一致性的复制协议一样好，而且它在副本数量上伸缩性很好。没有给出在失败面前的行为分析。
+可用性和一致性。Yu和Vahdat[25]探讨了一致性和可用性之间的权衡。他们认为，即使在松弛一致性模型中，如果要长期保持可用性，尽可能保持强一致性也是很重要的。另一方面，Gray等人[12]认为具有强一致性的系统在扩展时行为不稳定，他们提出了暂定更新事务来规避这些可伸缩性问题。Amza等人[4]提出了一种针对复制进行优化的单副本序列化事务协议。在链式复制中，更新被发送到所有副本，而查询只由已知存储所有已完成更新的副本处理。(在链式复制中，尾部是一个已知的存储所有已完成更新的副本。)[4]协议的性能与提供弱一致性的复制协议一样好，而且它在副本数量上伸缩性很好。没有给出在失败面前的行为分析。
 
 副本放置。以前关于复制放置的工作主要是实现高吞吐量和/或低延迟，而不是支持高可用性。Acharya和Zdonik[1]主张根据未来访问的预测(基于过去访问的预测)来定位副本。在Mariposa项目[23]中，一组规则允许用户指定在哪里创建副本、是将数据移动到查询中还是将查询移动到数据中、在哪里缓存数据等等。一致性是事务性的，但不考虑可用性。Wolfson等人考虑优化数据库副本放置的策略，以优化性能[24]。OceanStore项目也考虑副本放置[10,6]，但从CDN(内容分发网络，如Akamai)的角度考虑，在支持一定的服务质量保证的同时，创建尽可能少的副本。从减少延迟和网络负载的角度来看，关于网页副本的放置也有大量的工作(例如[18])。Douceur和Wattenhofer研究了如何在FAR-SITE[2]中最大限度地提高最坏情况下的文件可用性，同时在所有服务器上均匀地分配存储负载[8,9]。服务器被假定具有各种可用性。他们考虑的算法在机器之间反复交换文件，如果这样做可以提高文件的可用性。对于简单的场景，结果具有理论性质;目前还不清楚这些算法在现实的存储系统中会发挥多大作用。
 
@@ -320,3 +646,5 @@ Hist^T objID = Hist^T+ objID ⊕ SentT
 实际上，在[11]中并没有讨论布局策略。GFS做了一些负载平衡，结果在服务器之间的负载大约是均匀的，在我们的模拟中，我们希望随机放置是这个策略的一个很好的近似。
 
 这里选择了一个不切实际的短 MTBF，以便于运行长时间的模拟。
+
+</div>

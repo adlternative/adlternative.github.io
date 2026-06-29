@@ -1,8 +1,126 @@
 ---
 title: what-is-wrong-with-cpp-double-check-lock
+titleZh: C++ 双检查锁有什么问题
 date: 2021-03-09 19:17:48
 tags: cpp
 ---
+
+<div class="lang-section" data-lang="en">
+
+One important pattern in design patterns is called the Singleton pattern.
+```
+In software engineering, the singleton pattern is a software design pattern that restricts the instantiation of a class to one "single" instance. This is useful when exactly one object is needed to coordinate actions across the system. --wiki
+```
+
+
+That is, we can make an object be created only once. For example, if we want only one thread pool globally in a program, or in server programming we want only one `TcpServer` globally, then the Singleton pattern comes in handy.
+
+## v0
+Before double-checked locking, the global object was obtained like this:
+After taking a lock, check whether the global object exists
+and return a pointer to a dynamically allocated object.
+```cpp
+Singleton* Singleton::getInstance () {
+	lock_guard<mutex> lock(m_mutex);
+	if (m_Instance == nullptr) {
+		m_Instance = new Singleton;
+	}
+	return Singleton;
+}
+```
+Correctness: yes
+Drawback: locks, low performance
+
+## v1
+The original double-checked locking checks once whether the global object does not exist, then takes a lock and checks again whether the global object does not exist; if it still does not exist, it creates a new object. As everyone probably knows, the second check at #2 is because between #1 and #2 another thread may have initialized the global object.
+```cpp
+Singleton* Singleton::m_Instance = nullptr;
+
+Singleton* Singleton::getInstance () {
+	if (m_Instance == nullptr) {//#1
+		lock_guard<mutex> lock(m_mutex);
+		if (m_Instance == nullptr) {//#2
+			m_Instance = new Singleton;
+		}
+	}
+	return Singleton;
+}
+```
+But this seemingly clever double-checked locking was proven to be a wrong pattern long ago. In this mode:
+```cpp
+m_Instance = new Singleton
+```
+Assigning a pointer while constructing an object is a dangerous operation.
+Generally doing this is fine, after all it is
+```cpp
+tmp = operator new(sizeof(Singleton)); //#3
+new (pInstance) Singleton; //#4
+m_Instance = tmp; //#5
+```
+execute the constructor first, then assign the global pointer. However, both compiler reordering and CPU optimizations may reorder #4 and #5 (I think people back then must have run into problems and, unable to find the cause, discovered this infuriating optimization through assembly; now we may not necessarily be able to reproduce it: times have changed, machines have changed) (it may not be visible under the x86 strong model), because the pointer may be assigned before the object is fully constructed, causing other threads to potentially access a pointer to a not-yet-constructed object, which may lead to undefined behavior.
+
+
+## v2
+After C++11, we can directly create a singleton of a class; the code is extremely simple, as follows:
+```cpp
+Singleton& GetInstance() {
+  static Singleton s;
+  return s;
+}
+```
+
+The above is one of the examples on Wikipedia, citing the C++ draft ("If control enters the declaration concurrently while the variable is being initialized, the concurrent execution shall wait for completion of the initialization."), which may be relatively authoritative.
+But we should not blindly believe authority; let's try it with gdb and look at its assembly code: we can see the lock and unlock operations of `__cxa_guard_acquire` and `__cxa_guard_abort`, which confirms the correctness of the above statement: lock before the first initialization completes, and concurrency must wait.
+
+```
+  0x00005555555551b0 <+0>:	 movzbl 0x2ea9(%rip),%eax        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
+   0x00005555555551b7 <+7>:	 test   %al,%al
+   0x00005555555551b9 <+9>:	 je     0x5555555551c8 <_ZN9Singleton11getInstanceEv+24>
+   0x00005555555551bb <+11>:	 mov    0x2ea6(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
+   0x00005555555551c2 <+18>:	 ret    
+   0x00005555555551c3 <+19>:	 nopl   0x0(%rax,%rax,1)
+   0x00005555555551c8 <+24>:	 push   %rbp
+   0x00005555555551c9 <+25>:	 lea    0x2e90(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
+   0x00005555555551d0 <+32>:	 call   0x555555555070 <__cxa_guard_acquire@plt>
+   0x00005555555551d5 <+37>:	 test   %eax,%eax
+   0x00005555555551d7 <+39>:	 jne    0x5555555551e8 <_ZN9Singleton11getInstanceEv+56>
+   0x00005555555551d9 <+41>:	 mov    0x2e88(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
+   0x00005555555551e0 <+48>:	 pop    %rbp
+   0x00005555555551e1 <+49>:	 ret    
+   0x00005555555551e2 <+50>:	 nopw   0x0(%rax,%rax,1)
+   0x00005555555551e8 <+56>:	 mov    $0x1,%edi
+   0x00005555555551ed <+61>:	 call   0x555555555050 <_Znwm@plt>
+   0x00005555555551f2 <+66>:	 lea    0x2e67(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
+   0x00005555555551f9 <+73>:	 mov    %rax,0x2e68(%rip)        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
+--Type <RET> for more, q to quit, c to continue without paging--c
+   0x0000555555555200 <+80>:	 call   0x555555555040 <__cxa_guard_release@plt>
+   0x0000555555555205 <+85>:	 mov    0x2e5c(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
+   0x000055555555520c <+92>:	 pop    %rbp
+   0x000055555555520d <+93>:	 ret    
+   0x000055555555520e <+94>:	 mov    %rax,%rbp
+   0x0000555555555211 <+97>:	 jmp    0x555555555080 <_ZN9Singleton11getInstanceEv.cold>
+Address range 0x555555555080 to 0x555555555094:
+   0x0000555555555080 <-304>:	 lea    0x2fd9(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
+   0x0000555555555087 <-297>:	 call   0x555555555030 <__cxa_guard_abort@plt>
+   0x000055555555508c <-292>:	 mov    %rbp,%rdi
+   0x000055555555508f <-289>:	 call   0x555555555060 <_Unwind_Resume@plt>
+```
+
+But what is its advantage over #v0?
+#v0 takes a lock every time it fetches the object, while #v2 only needs to initialize once when the static local variable is initialized...
+
+
+Follow-up:
+
+Last time I looked at `__cxa_guard_acquire`, `__cxa_guard_abort`, it seemed that double-checked locking was used inside, so in the end, after C++11 the singleton is the compiler doing the double-checked locking work for us,
+without C++ programmers having to painfully write double-checked locking themselves.
+
+Reference:
+[wiki: Singleton pattern](https://en.wikipedia.org/wiki/Singleton_pattern)
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 设计模式中有一个挺重要的模式叫单例模式，
 ```
@@ -70,37 +188,37 @@ Singleton& GetInstance() {
 但我们不可以迷信权威，动手试一试gdb并查看它的汇编代码：我们可以看到`__cxa_guard_acquire`，`__cxa_guard_abort`的加锁和解锁操作，也就映证了上面这句话的正确性：在变量第一次初始化完成之前加锁，并发需等待。
 
 ```
-  0x00005555555551b0 <+0>:     movzbl 0x2ea9(%rip),%eax        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
-   0x00005555555551b7 <+7>:     test   %al,%al
-   0x00005555555551b9 <+9>:     je     0x5555555551c8 <_ZN9Singleton11getInstanceEv+24>
-   0x00005555555551bb <+11>:    mov    0x2ea6(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
-   0x00005555555551c2 <+18>:    ret    
-   0x00005555555551c3 <+19>:    nopl   0x0(%rax,%rax,1)
-   0x00005555555551c8 <+24>:    push   %rbp
-   0x00005555555551c9 <+25>:    lea    0x2e90(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
-   0x00005555555551d0 <+32>:    call   0x555555555070 <__cxa_guard_acquire@plt>
-   0x00005555555551d5 <+37>:    test   %eax,%eax
-   0x00005555555551d7 <+39>:    jne    0x5555555551e8 <_ZN9Singleton11getInstanceEv+56>
-   0x00005555555551d9 <+41>:    mov    0x2e88(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
-   0x00005555555551e0 <+48>:    pop    %rbp
-   0x00005555555551e1 <+49>:    ret    
-   0x00005555555551e2 <+50>:    nopw   0x0(%rax,%rax,1)
-   0x00005555555551e8 <+56>:    mov    $0x1,%edi
-   0x00005555555551ed <+61>:    call   0x555555555050 <_Znwm@plt>
-   0x00005555555551f2 <+66>:    lea    0x2e67(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
-   0x00005555555551f9 <+73>:    mov    %rax,0x2e68(%rip)        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
+  0x00005555555551b0 <+0>:	 movzbl 0x2ea9(%rip),%eax        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
+   0x00005555555551b7 <+7>:	 test   %al,%al
+   0x00005555555551b9 <+9>:	 je     0x5555555551c8 <_ZN9Singleton11getInstanceEv+24>
+   0x00005555555551bb <+11>:	 mov    0x2ea6(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
+   0x00005555555551c2 <+18>:	 ret    
+   0x00005555555551c3 <+19>:	 nopl   0x0(%rax,%rax,1)
+   0x00005555555551c8 <+24>:	 push   %rbp
+   0x00005555555551c9 <+25>:	 lea    0x2e90(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
+   0x00005555555551d0 <+32>:	 call   0x555555555070 <__cxa_guard_acquire@plt>
+   0x00005555555551d5 <+37>:	 test   %eax,%eax
+   0x00005555555551d7 <+39>:	 jne    0x5555555551e8 <_ZN9Singleton11getInstanceEv+56>
+   0x00005555555551d9 <+41>:	 mov    0x2e88(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
+   0x00005555555551e0 <+48>:	 pop    %rbp
+   0x00005555555551e1 <+49>:	 ret    
+   0x00005555555551e2 <+50>:	 nopw   0x0(%rax,%rax,1)
+   0x00005555555551e8 <+56>:	 mov    $0x1,%edi
+   0x00005555555551ed <+61>:	 call   0x555555555050 <_Znwm@plt>
+   0x00005555555551f2 <+66>:	 lea    0x2e67(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
+   0x00005555555551f9 <+73>:	 mov    %rax,0x2e68(%rip)        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
 --Type <RET> for more, q to quit, c to continue without paging--c
-   0x0000555555555200 <+80>:    call   0x555555555040 <__cxa_guard_release@plt>
-   0x0000555555555205 <+85>:    mov    0x2e5c(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
-   0x000055555555520c <+92>:    pop    %rbp
-   0x000055555555520d <+93>:    ret    
-   0x000055555555520e <+94>:    mov    %rax,%rbp
-   0x0000555555555211 <+97>:    jmp    0x555555555080 <_ZN9Singleton11getInstanceEv.cold>
+   0x0000555555555200 <+80>:	 call   0x555555555040 <__cxa_guard_release@plt>
+   0x0000555555555205 <+85>:	 mov    0x2e5c(%rip),%rax        # 0x555555558068 <_ZZN9Singleton11getInstanceEvE1s>
+   0x000055555555520c <+92>:	 pop    %rbp
+   0x000055555555520d <+93>:	 ret    
+   0x000055555555520e <+94>:	 mov    %rax,%rbp
+   0x0000555555555211 <+97>:	 jmp    0x555555555080 <_ZN9Singleton11getInstanceEv.cold>
 Address range 0x555555555080 to 0x555555555094:
-   0x0000555555555080 <-304>:   lea    0x2fd9(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
-   0x0000555555555087 <-297>:   call   0x555555555030 <__cxa_guard_abort@plt>
-   0x000055555555508c <-292>:   mov    %rbp,%rdi
-   0x000055555555508f <-289>:   call   0x555555555060 <_Unwind_Resume@plt>
+   0x0000555555555080 <-304>:	 lea    0x2fd9(%rip),%rdi        # 0x555555558060 <_ZGVZN9Singleton11getInstanceEvE1s>
+   0x0000555555555087 <-297>:	 call   0x555555555030 <__cxa_guard_abort@plt>
+   0x000055555555508c <-292>:	 mov    %rbp,%rdi
+   0x000055555555508f <-289>:	 call   0x555555555060 <_Unwind_Resume@plt>
 ```
 
 但是它对于#v0的优点是什么呢？
@@ -114,3 +232,5 @@ Address range 0x555555555080 to 0x555555555094:
 
 参考：
 [wiki: 单例模式](https://en.wikipedia.org/wiki/Singleton_pattern)
+
+</div>

@@ -1,9 +1,12 @@
 ---
 title: 'os科普'
+titleZh: '操作系统科普'
 date: 2021-03-04 17:21:45
 tags: os
 draft: true
 ---
+
+<div class="lang-section" data-lang="en">
 
 主存：
 
@@ -26,4 +29,32 @@ cache： CPU和内存之间，有多级缓存 L1,L2,L3, 读写速度比内存快
 逻辑内存：
 
 虚拟内存：
+
+</div>
+
+<div class="lang-section" data-lang="zh">
+
+主存：
+
+内存：CPU能直接寻址的存储空间 存取速率快
+
+外存，辅存：常见 硬盘、软盘、光盘、U盘
+
+CPU：
+
+RAM：
+
+ROM：
+
+cache： CPU和内存之间，有多级缓存 L1,L2,L3, 读写速度比内存快，因为CPU在第一次获取到内存中的数据以后，下次访问数据可以直接从缓存中拿。
+
+寄存器：
+
+物理内存：
+
+逻辑内存：
+
+虚拟内存：
+
+</div>
 

@@ -1,8 +1,92 @@
 ---
-title: '我的git学习之路2'
+title: 'My Git Learning Journey 2'
+titleZh: '我的git学习之路2'
 date: 2020-12-19 22:18:33
 tags: git
 ---
+
+<div class="lang-section" data-lang="en">
+
+In Linus's original vision, Git was designed as a file system. Many people now call it a "content-addressable file system." Because Git keeps most of its design logic on the client side, it can also be described as a decentralized piece of software...
+
+Every day we run `git add`, `git commit`, `git push`, letting commands manage the storage and upload of our daily code repositories. When errors appear, we often feel at a loss. We can't help but wonder: how does Git actually complete an upload? Why do we need to `add` files every time instead of committing and pushing directly? In VS Code, when I switch to the dev branch, new files appear locally and old files are deleted?
+
+It's time to talk about how Git works under the hood.
+
+Git has three very important concepts: the working tree (W), the staging area/index (I), and the repository (R). There is also a "database." All of these are essential components that keep Git running, and every Git command uses contents from these areas.
+
+```
+$ tree .git
+.git
+├── branches
+├── config
+├── description
+├── HEAD
+├── hooks
+│   ├── applypatch-msg.sample
+│   ├── commit-msg.sample
+│   ├── fsmonitor-watchman.sample
+│   ├── post-update.sample
+│   ├── pre-applypatch.sample
+│   ├── pre-commit.sample
+│   ├── pre-merge-commit.sample
+│   ├── prepare-commit-msg.sample
+│   ├── pre-push.sample
+│   ├── pre-rebase.sample
+│   ├── pre-receive.sample
+│   └── update.sample
+├── info
+│   └── exclude
+├── objects
+│   ├── info
+│   └── pack
+└── refs
+    ├── heads
+    └── tags
+
+9 directories, 16 files
+```
+
+When we create a new Git repository, the `.git` directory usually has this tree structure. For now, we won't care about what `branches`, `info`, `hooks`, and `description` are used for.
+
+1. We can read `.git/config`, which stores some user configuration for the Git program to read, for example:
+```
+[core]
+        repositoryformatversion = 0
+        filemode = true
+        bare = false
+        logallrefupdates = true
+```
+2. `refs` means references. We can look at the contents of files in the `refs/heads/` directory: a hash string, such as `4f0dd3c1d235806c685f6cd36acd11fecd2da1f2`.
+3. `.git/HEAD` is a text file containing `ref: refs/heads/master`. It is a "pointer" (the head pointer, pointing to the last commit) that indicates the current commit position. Whenever the Git program needs to know the current commit, it follows the content in `HEAD` to find the file `.git/refs/heads/master`, and then uses the hash in `.git/refs/heads/master` to look up the object file in the database. Here this file will be a commit-type object. Of course, `.git/refs/heads/master` is still empty now, because we haven't made any commits yet. After our first `git add` + `git commit`, `.git/refs/heads/master` will appear. With the `HEAD` design, Git can quickly find the content corresponding to the current commit by indexing `HEAD`.
+4. `.git/objects` is what we call the Git database, or object store. For now it contains no stored objects. Once we run `git add`, this directory will have new files, which will hold our various "objects" (blob file objects, commit objects, tree directory objects, tag objects).
+
+Later, every time we run Git, it reads from or writes to this `.git` directory.
+So far we have seen the database `.git/objects` and the local working directory, but the concepts of the staging area and repository are still unclear. It seems we need to continue exploring.
+
+### When we add a file
+
+Look, if we run `touch a.c && echo aaa >a.c`, nothing in the `.git` directory changes. But when we run `git add a.c`, an `index` file suddenly appears — this is our staging area. A new directory and file also appear in our database, seemingly a hash string. Indeed that is the case. The formula for calculating this hash is also very simple: `textHash=sha1sum("blob (textSize)(null)(text)")`, where `text` is the content of `a.c` and `textSize` is the size of `a.c`. But what is the content of this hash file? If we directly `cat .git/objects/72/943a16fb2c8f38f9dde202b7a70ccc19c52f34`, we get a bunch of garbled bytes like `xK��OR0aHLL��!`. But when we use `git cat-file blob 72943a16fb2c8f38f9dde202b7a70ccc19c52f34`, we see the content we wrote into `a.c`: `aaa`. The reason we see garbled output is that Git has compressed the content. The formula for the compressed file content can also be summarized as `objText=compression("blob (textSize) 0 text")`. Without compression, our `.git` repository would be too large, which would be a huge burden for network transfer...
+
+So now we have seen the first blob-type object file. It is the result of Git serializing `a.c`, internally calling `hash_object` to obtain the hash and writing it into a file at `.git/hash[0:2]/hash[2:-1]`. It is worth mentioning that after obtaining the file's hash, we can quickly locate the blob object file in the database, and we can also use this blob object file to quickly restore the original file locally based on the original file size and content recorded inside. Ah, this is really interesting! The hash feels as friendly as a C pointer, making it easy to address objects, and at the same time we seem to have the magic power of serializing pointers...
+
+(What are the benefits of content addressing?)
+```
+├── index
+├── info
+│   └── exclude
+├── objects
+│   ├── 72
+│   │   └── 943a16fb2c8f38f9dde202b7a70ccc19c52f34
+│   ├── info
+│   └── pack
+└── refs
+```
+
+</div>
+
+<div class="lang-section" data-lang="zh">
+
 git 在linus原来的想法中是作为一个文件系统去设计的,现在很多人都称之为"内容寻址文件系统",由于git把大部分的业务设计停留在客户端，所以也可以说git是一种去中心化的软件...
 
 我们平时天天都在`git add`,`git commit`,`git push`
@@ -79,4 +163,4 @@ look,我们`touch a.c && echo aaa >a.c`发现git目录没啥变化，但当我�
 └── refs
 ```
 
-
+</div>

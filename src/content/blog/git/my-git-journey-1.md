@@ -1,8 +1,321 @@
 ---
-title: '我的git学习之路'
+title: 'My Git Learning Journey'
+titleZh: '我的git学习之路'
 date: 2020-12-13 22:35:18
 tags: git
 ---
+
+<div class="lang-section" data-lang="en">
+
+### Lessons and answers from the git game
+
+...I skipped many earlier levels...
+I'll fill them in later (crawling away)
+
+##### Remote
+
+Level 11: git remote tracking
+
+We need to make our newly created branch `side` track `origin/master`. The consequence is that the local `master`, which should have tracked `origin/master`, no longer tracks it — of course, that's not a bad thing...
+
+After setting the tracking, pull down `origin/master` and rebase (we can edit conflicting content in the middle), then push it up and we're done!
+
+```bash
+git branch -u o/master side
+git pull --rebase
+git push
+```
+
+Level 12:
+
+What I learned:
+
+* `git push origin master` adds the commits that the local master has but the remote master lacks, syncing master and origin/master.
+
+* When HEAD is not pointing to a branch, a plain `git push` will fail. In that case we need `git push origin master`. In this scenario we should consider whether to `git checkout` some branch or run `git pull` first.
+
+
+```
+git push origin foo 
+```
+
+Level 13:
+
+`git push origin foo^:master` can upload the commit before foo to the remote master; `origin/master` will then point to `foo^`.
+
+`git push origin origin master:newBranch` can push master to the remote newBranch (a local `o/newBranch` will appear) even if newBranch doesn't exist.
+
+```bash
+git push origin master^:foo
+```
+
+```
+git push origin foo:master 
+```
+
+Level 14:
+
+`git fetch` downloads remote `origin/xxx` into local `orgin/xxx` so we can inspect the remote branch first and then merge.
+
+`git fetch` is more like the opposite of `git push`.
+
+The requirement is: download the commit before remote master into local foo, download remote foo into local master, then merge local foo and master. Just look at the answer.
+
+```bash
+git fetch origin master^:foo
+git fetch origin foo:master
+git checkout foo
+git merge master
+```
+
+
+
+Level 15:
+
+```bash
+git push origin :foo
+```
+
+Pushing empty deletes the remote branch foo... how weird.
+
+```
+git fetch orgin :bar
+```
+
+Fetching empty creates a local branch bar... uhh...
+
+
+
+Level 16:
+
+`git pull origin foo` is equivalent to:
+
+```bash
+git fetch origin foo; git merge o/foo
+```
+
+`git pull origin bar~1:bugFix` is equivalent to:
+
+```bash
+git fetch origin bar~1:bugFix; git merge bugFix
+```
+
+pull = fetch + merge
+
+If the current local branch is bar:
+
+```bash
+git pull origin master:foo	
+```
+
+It first creates a local branch named `foo`, downloads commits from the remote master branch, merges them into `foo`, and then merges `foo` into our currently checked-out branch `bar`.
+
+When we use fetch to download from remote, if the specified local branch doesn't exist, a new local branch will be created pointing to what we downloaded.
+
+If we just fetch, the result is that we download `o/master` and `o/bar` locally (which is of course a benefit).
+
+```bash
+git checkout c1
+git fetch origin master:side
+git fetch origin bar:foo
+git checkout master
+git merge foo
+git merge side
+```
+
+
+
+### Things to keep in mind with git
+
+
+Lessons and answers from the it game
+…skipped many earlier levels
+Three ways to roll back in git:
+
+`git clean` deletes untracked files, i.e. files newly created this time that weren't in the last commit.
+
+### Lessons and answers from the git game
+
+...I skipped many earlier levels...
+I'll fill them in later (crawling away)
+
+##### Remote
+
+Level 11: git remote tracking
+
+We need to make our newly created branch `side` track `origin/master`. The consequence is that the local `master`, which should have tracked `origin/master`, no longer tracks it — of course, that's not a bad thing...
+
+After setting the tracking, pull down `origin/master` and rebase (we can edit conflicting content in the middle), then push it up and we're done!
+
+```bash
+git branch -u o/master side
+git pull --rebase
+git push
+```
+
+Level 12:
+
+What I learned:
+
+* `git push origin master` adds the commits that the local master has but the remote master lacks, syncing master and origin/master.
+
+* When HEAD is not pointing to a branch, a plain `git push` will fail. In that case we need `git push origin master`. In this scenario we should consider whether to `git checkout` some branch or run `git pull` first.
+
+
+```
+git push origin foo 
+```
+
+Level 13:
+
+`git push origin foo^:master` can upload the commit before foo to the remote master; `origin/master` will then point to `foo^`.
+
+`git push origin origin master:newBranch` can push master to the remote newBranch (a local `o/newBranch` will appear) even if newBranch doesn't exist.
+
+```bash
+git push origin master^:foo
+```
+
+```
+git push origin foo:master 
+```
+
+Level 14:
+
+`git fetch` downloads remote `origin/xxx` into local `orgin/xxx` so we can inspect the remote branch first and then merge.
+
+`git fetch` is more like the opposite of `git push`.
+
+The requirement is: download the commit before remote master into local foo, download remote foo into local master, then merge local foo and master. Just look at the answer.
+
+```bash
+git fetch origin master^:foo
+git fetch origin foo:master
+git checkout foo
+git merge master
+```
+
+
+
+Level 15:
+
+```bash
+git push origin :foo
+```
+
+Pushing empty deletes the remote branch foo... how weird.
+
+```
+git fetch orgin :bar
+```
+
+Fetching empty creates a local branch bar... uhh...
+
+
+
+Level 16:
+
+`git pull origin foo` is equivalent to:
+
+```bash
+git fetch origin foo; git merge o/foo
+```
+
+`git pull origin bar~1:bugFix` is equivalent to:
+
+```bash
+git fetch origin bar~1:bugFix; git merge bugFix
+```
+
+pull = fetch + merge
+
+If the current local branch is bar:
+
+```bash
+git pull origin master:foo	
+```
+
+It first creates a local branch named `foo`, downloads commits from the remote master branch, merges them into `foo`, and then merges `foo` into our currently checked-out branch `bar`.
+
+When we use fetch to download from remote, if the specified local branch doesn't exist, a new local branch will be created pointing to what we downloaded.
+
+If we just fetch, the result is that we download `o/master` and `o/bar` locally (which is of course a benefit).
+
+```bash
+git checkout c1
+git fetch origin master:side
+git fetch origin bar:foo
+git checkout master
+git merge foo
+git merge side
+```
+
+
+<!-- ### Things to keep in mind with git -->
+
+#### Various scenarios for rolling back in git:
+
+* answer:
+  1. Requirement: delete file `a.c` after `add`: use `git reset HEAD` or `git restore --staged a.c` to move files from the staging area back to the working directory. In VS Code you'll see "Staged Changes" become "Changes", proving the files have been rolled back to the working directory. But these files still remain in our directory; delete them manually with `rm` then (let me know if there's a better way).
+  2. Requirement: if a previously committed file `a.c` was only modified and `add`ed this time, and you want to restore it to the state of the last commit: `git reset HEAD` or `git restore --staged a.c` restores the file from the staging area to the working directory; `git restore a.c` can restore it to the state of the last commit.
+  3. Requirement: how to roll back and delete a newly created file `a.c` that has been added and committed but not pushed: `git reset HEAD a.c` or `git reset HEAD`, then delete `a.c` and add, commit to indicate the deletion is OK.
+  4. Requirement: if a previously committed file `a.c` was modified, `add`ed, and `commit`ted this time, how to revert to the previous version: `git reset HEAD^ a.c`, `git restore a.c`, then add, commit to indicate the rollback is OK.
+  5. Requirement: rollback after push: `git revert HEAD`, then add, commit to indicate the rollback is OK.
+
+#### Correct order for initializing and connecting to a remote repository
+
+```bash
+git init
+git remote add origin git@github.com:adlternative/gitTest.git
+git pull origin master --rebase=false
+......
+git add .
+git commit -m ".."
+git push --set-upstream origin master //将master设置跟踪origin/master再可以push
+```
+
+#### Brief introduction to git secret usage
+
+```bash
+暂时还没写
+```
+
+#### Brief introduction to git lfs usage
+
+```bash
+暂时还没写
+```
+
+#### The three modes of git reset: hard/soft/mixed (default)
+
+The principle of `git reset`: move the pointer of the latest commit back to some earlier point in time; commits after that point disappear from history.
+`git checkout` changes where HEAD points; its principle is somewhat different from `git reset`.
+
+|Mode |  Index|Commit|Working Directory|
+|--|--|--|--|
+| soft |rolls back|unchanged|unchanged|
+| hard |rolls back|rolls back|rolls back (danger! files marked in .gitignore that are in the working directory will also be deleted)|
+| mixed (default)| rolls back |rolls back|unchanged|
+
+`git reset --soft HEAD`
+`git reset --hard HEAD`
+`git reset HEAD`
+
+Personally, after the last lesson, I only dare use the default reset now (all those untracked files marked in .gitignore were deleted by using the hard way).
+`git commit` regretted? Use `git reset --soft HEAD^` to drop the latest commit.
+
+
+#### What exactly does git rebase do
+
+![image](/home/adl/图片/Screenshot_20201216_214640.png)
+
+As shown in the figure, the master branch.
+
+On the `adl` branch, we use `git rebase master` to **move** the private part of our content branch onto the master branch. Then that hidden line dies out. Then we can `git checkout master` to switch to the master branch, and `git rebase adl` to fast-forward master to the `adl` node (at this point there's no moving of branch-private parts, because master and adl are on the same commit linked list, so the effect is just a fast move).
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 ### git游戏收获的经验和解答
 ...前面好多关没去写...
@@ -226,7 +539,7 @@ pull = fetch+merge
 如果当前本地在bar分支
 
 ```bash
-git pull origin master:foo
+git pull origin master:foo	
 ```
 
 它先在本地创建了一个叫 `foo`的分支，从远程仓库中的 master 分支中下载提交记录，并合并到 `foo`，然后再 merge 到我们的当前检出的分支 `bar`上。
@@ -305,3 +618,4 @@ git push --set-upstream origin master //将master设置跟踪origin/master再可
 
 我们在adl分支通过`git rebase master`将自己的内容分支私有的部分**移动**到master分支上，接着这条暗线就消亡了，接着我们可以通过`git checkout  master`切换到master分支，再`git rebase adl`将master快速前进到adl节点（这时候没有啥移动分支私有部分，因为master和adl在同一条提交链表上，于是乎作用就是快速移动）
 
+</div>

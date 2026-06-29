@@ -17,18 +17,47 @@ const { post } = Astro.props;
 const { Content } = await post.render();
 const firstTag = post.data.tags?.[0] ?? "";
 const ctaCmd = firstTag ? `ls posts --tag ${firstTag}` : "ls posts";
+const hasBilingual = Boolean(post.data.titleZh);
 ---
 
 <Base current="Blog" title={post.data.title} description={post.data.title}>
   <a href="/blog" class="back-link button">&larr; back to blog</a>
   <article>
     <div class="article-header">
-      <h1>{post.data.title}</h1>
+      <h1
+        id="post-title"
+        data-title-en={post.data.title}
+        data-title-zh={post.data.titleZh}
+      >
+        {post.data.title}
+      </h1>
       <div class="post-meta">
         <span>{fmtDateTime(post.data.date)}</span>
         {" "}
         {post.data.tags.map((t) => <span class="tag">{t}</span>)}
       </div>
+      {
+        hasBilingual && (
+          <div class="lang-switcher" role="group" aria-label="Language switcher">
+            <button
+              type="button"
+              class="button lang-btn selected"
+              data-lang="en"
+              aria-pressed="true"
+            >
+              English
+            </button>
+            <button
+              type="button"
+              class="button lang-btn"
+              data-lang="zh"
+              aria-pressed="false"
+            >
+              中文
+            </button>
+          </div>
+        )
+      }
     </div>
     <div class="prose">
       <Content />
@@ -43,6 +72,19 @@ const ctaCmd = firstTag ? `ls posts --tag ${firstTag}` : "ls posts";
 </Base>
 
 <style>
+  .lang-switcher {
+    margin-top: 1em;
+    display: inline-flex;
+    gap: 0.5em;
+  }
+  .lang-btn {
+    cursor: pointer;
+  }
+  .lang-btn.selected {
+    color: var(--bg);
+    background-color: var(--fg);
+    border-bottom: 1px dashed var(--fg);
+  }
   @media (max-width: 640px) {
     .desktop-only {
       display: none !important;
@@ -51,6 +93,7 @@ const ctaCmd = firstTag ? `ls posts --tag ${firstTag}` : "ls posts";
 </style>
 
 <script>
+  // Terminal CTA
   const cta = document.querySelector<HTMLElement>("[data-launch-cmd]");
   if (cta) {
     cta.addEventListener("click", () => {
@@ -59,4 +102,55 @@ const ctaCmd = firstTag ? `ls posts --tag ${firstTag}` : "ls posts";
       if (getApi) getApi().then((api: any) => api.openWith(cmd));
     });
   }
+
+  // Bilingual language switcher
+  (function initLangSwitcher() {
+    const titleEl = document.getElementById("post-title") as HTMLElement | null;
+    const buttons = document.querySelectorAll<HTMLButtonElement>(".lang-btn");
+    const sections = document.querySelectorAll<HTMLElement>(".lang-section");
+    if (buttons.length === 0) return;
+
+    const STORAGE_KEY = "adl-blog-lang";
+
+    function applyLang(lang: "en" | "zh") {
+      // Update title
+      if (titleEl) {
+        const newTitle = titleEl.getAttribute(`data-title-${lang}`);
+        if (newTitle) titleEl.textContent = newTitle;
+      }
+      // Update sections
+      sections.forEach((section) => {
+        section.hidden = section.getAttribute("data-lang") !== lang;
+      });
+      // Update buttons
+      buttons.forEach((btn) => {
+        const active = btn.getAttribute("data-lang") === lang;
+        btn.classList.toggle("selected", active);
+        btn.setAttribute("aria-pressed", String(active));
+      });
+      // Update document title
+      const pageTitle = titleEl?.getAttribute(`data-title-${lang}`);
+      if (pageTitle) {
+        document.title = `${pageTitle} - ZheNing Hu`;
+      }
+      try {
+        localStorage.setItem(STORAGE_KEY, lang);
+      } catch {}
+    }
+
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const lang = btn.getAttribute("data-lang") as "en" | "zh";
+        applyLang(lang);
+      });
+    });
+
+    // Restore preference, default to English
+    let preferred: "en" | "zh" = "en";
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === "en" || stored === "zh") preferred = stored;
+    } catch {}
+    applyLang(preferred);
+  })();
 </script>

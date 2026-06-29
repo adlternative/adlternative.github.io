@@ -1,8 +1,87 @@
 ---
-title: 'git命令大全'
+title: 'Git Command Cheatsheet'
+titleZh: 'git命令大全'
 date: 2020-12-19 22:40:28
 tags: git
 ---
+
+<div class="lang-section" data-lang="en">
+
+`git ls-tree -l HEAD`
+* `ls-tree` reads all information about the tree object pointed to by HEAD
+* `-l` shows object size
+
+`git ls-files --stage `
+* View files in the staging area
+
+
+`git checkout <commit> -- path` overwrites files with the same name in the working directory and staging area with the version from the specified commit. Regardless of whether you have run `add`, the files from this commit will overwrite both your working directory and staging area.
+### `git checkout -- path`
+Based on the above, one might expect that without specifying a commit, the default would overwrite the working directory and staging area with the current branch's commit. However, in the default case where no commit is specified, it actually overwrites the working directory with the contents of the staging area.
+
+
+### `git checkout branch`
+  * Case 1: If the other branch has never committed this file
+  It will not modify the files in the current branch's working directory, nor will it modify the staging area; it only changes where HEAD points. (WARNING!!!: The other branch will see the changes in the working directory and staging area. If you modified `a.c` locally, then when switching the repository over, if `a.c` does not exist in that branch's working directory or staging area at the time, `a.c` will appear as "newly created" to it; if it exists, `a.c` will appear as "modified". Actually, this isn't quite the right way to think about it: fundamentally, the file remains in the staging area and working directory and won't be accidentally deleted by the other branch's "empty" state. As stated in this case, that branch has never committed this file.)
+  * Case 2: If the other branch has committed this file
+    Git will block the operation:
+    ```
+    error: Your local changes to the following files would be overwritten by checkout:
+            haha.c
+    Please commit your changes or stash them before you switch branches.
+    Aborting
+    ```
+  * In summary: When checking out from the current branch to another branch, Git checks whether the files in the working directory and staging area are files that the other branch previously did not have. If they do not appear in the other branch's commit history, uncommitted local changes (whether `add`ed or not, as long as not committed) will be preserved. If they do appear in the commit history, an error is raised. Of course, any files that the current branch has not modified will be directly overwritten by the other branch (if the other branch has those files), and any files that the current branch does not have but the other branch does will be created when switching.
+
+
+`git rev-parse refs/heads/master` can be used to display the hash of the referenced object.
+
+`git cat-file commit HEAD` can be used to view the commit object information corresponding to the HEAD commit.
+
+`git cat-file blob HEAD:xxx` can be used to view the contents of the blob object corresponding to the HEAD commit.
+
+`git rev-parse HEAD^^{tree}` can be used to resolve and print the tree object hash of HEAD's parent commit. Note that the second `^` here means to find the tree object corresponding to HEAD, while the first `^` is what finds the parent commit.
+
+`git reset --hard master@{2}` resets `master` to its value from two changes ago (this change refers to changes caused by commands; see `git reflog`).
+
+`git reset --hard HEAD^` moves the HEAD reference to a new commit, replaces the staging area with the tree from the commit now pointed to by the reference, and replaces the working directory with the changed staging area. Note that files not tracked by Git do not disappear, while files that were `add`ed do. A strange behavior...
+
+`git reset --hard HEAD` reverts the staging area to match the HEAD commit, but new untracked files in the working directory are not affected... only tracked files are reverted.
+
+`git reset --soft <commit>` moves the HEAD reference to a new commit, but the staging area and local contents remain unchanged. This generally preserves the modifications made in the current commit and anything already added to the staging area.
+
+`git reset --mixed <commit>` (the default): the working directory is unchanged, and the staging area is rolled back to the previous commit. This means the contents that were `add`ed are gone, but the local working directory changes remain.
+
+Commit object hash formula: `hash=sha1sum("commit (messageSize)(null)(message)")` where `message=tree treeHash\nparent parentHash\nauthor XXX <mail> timestamp (timezone offset)\ncommitter XXX <mail> timestamp (timezone offset)\n\n(commit message)`
+
+Blob object hash formula: `hash=sha1sum("blob (messageSize)(null)(message)")` where `message=original file contents`
+
+Tree object hash formula: `hash=sha1sum("tree (messageSize)(null)(message)")` where `message=...`
+
+
+The reason Git uses SHA-1 as commit IDs: it needs "global uniqueness", though it has now been shown that collisions are possible.
+
+
+Effects of `git stash`:
+  By default, it resets the working directory and index to the version in the repository. `-k` keeps the index unchanged. When the working directory changes are restored later, conflicts may occur and must be resolved manually.
+  * working directory: If this file did not exist in the last repository commit, it remains unchanged; if it did, it reverts to that version and will be restored later.
+  * index: Deleted; if an index file with the same name exists when restoring, a conflict occurs and must be resolved manually; if a working directory file with the same name exists when restoring, it is blocked unless you `add` the file again.
+  * index + (working directory modifications) will be restored to the index together next time.
+  * working directory -> working directory
+
+
+How to combine Git commits: [here](https://segmentfault.com/a/1190000007748862)
+```bash
+git rebase -i 12a23b(the parent commit of the commits you want to combine)
+```
+
+
+`git merge xxx` uses the three-way merge algorithm to compare the contents of commit `xxx` with the current commit, then generates a new version as a common child commit.
+`git rebase xxx` uses the three-way merge algorithm to add the contents of the current commit onto the `xxx` branch.
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 `git ls-tree -l HEAD`
 * `ls-tree`可以读取head指向的目录树的所有信息
@@ -66,6 +145,7 @@ git stash的影响:
   * index+(w修改)下次一起放回index
   * workD ->workD
 
+
 git如何合并提交:[there](https://segmentfault.com/a/1190000007748862)
 ```bash
 git rebase -i 12a23b(你需要合并的commit的父节点)
@@ -74,3 +154,5 @@ git rebase -i 12a23b(你需要合并的commit的父节点)
 
 git merge xxx 是根据三路合并算法将提交xxx的内容和本commit拿过来做出比较后生成新版本作为公有子节点。
 git rebase xxx 是是根据三路合并算法将本提交的内容添加到xxx分支上。
+
+</div>

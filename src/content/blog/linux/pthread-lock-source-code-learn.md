@@ -1,8 +1,118 @@
 ---
 title: 'pthread_lock_source_code_learn'
+titleZh: "pthread 锁源码学习"
 date: 2021-03-28 07:58:23
 tags: os
 ---
+
+<div class="lang-section" data-lang="en">
+
+## pthread_mutex_lock
+
+Let's look directly at the source code:
+
+```c
+int pthread_mutex_lock(pthread_mutex_t *mutex)
+{
+	int r;
+
+	try_init_preload();
+
+	lock_acquire(&__get_lock(mutex)->dep_map, 0, 0, 0, 1, NULL,
+			(unsigned long)_RET_IP_);
+	/*
+	 * Here's the thing with pthread mutexes: unlike the kernel variant,
+	 * they can fail.
+	 *
+	 * This means that the behaviour here is a bit different from what's
+	 * going on in the kernel: there we just tell lockdep that we took the
+	 * lock before actually taking it, but here we must deal with the case
+	 * that locking failed.
+	 *
+	 * To do that we'll "release" the lock if locking failed - this way
+	 * we'll get lockdep doing the correct checks when we try to take the
+	 * lock, and if that fails - we'll be back to the correct
+	 * state by releasing it.
+	 */
+	r = ll_pthread_mutex_lock(mutex);
+	if (r)
+		lock_release(&__get_lock(mutex)->dep_map, 0, (unsigned long)_RET_IP_);
+
+	return r;
+}
+```
+
+It first acquires the lock through `lock_acquire`, then executes `ll_pthread_mutex_lock`. If locking fails (this failure does not mean contention failure, but some other reason), it releases the lock resource.
+
+### lll_lock
+
+`ll_pthread_mutex_lock` uses `lll_lock` in glibc. Let's see how glibc implements it:
+
+```
+/* Acquire the lock at PTR.  */
+#define lll_lock(ptr, flags)   \
+  ({   \
+     int *__iptr = (int *)(ptr);   \
+     int __flags = (flags);   \
+     if (*__iptr != 0 ||   \
+         atomic_compare_and_exchange_bool_acq (__iptr, 1, 0) != 0)   \
+       while (1)   \
+         {   \
+           if (atomic_exchange_acq (__iptr, 2) == 0)   \
+             break;   \
+           lll_wait (__iptr, 2, __flags);   \
+         }   \
+     (void)0;   \
+   })
+```
+
+We can see this `atomic_compare_and_exchange_bool_acq`, atomic compare-and-exchange. What exactly does it mean? If the current variable equals the old value, assign the new value to the variable and return 0; otherwise return 1 directly.
+
+### atomic_compare_and_exchange_bool_acq
+
+```c
+#define atomic_compare_and_exchange_bool_acq(mem, newval, oldval) \
+  ({ __typeof (mem) __gmemp = (mem);				      \
+     __typeof (*mem) __gnewval = (newval);			      \
+								      \
+     *__gmemp == (oldval) ? (*__gmemp = __gnewval, 0) : 1; })
+
+```
+
+Therefore, `atomic_compare_and_exchange_bool_acq(__iptr, 1, 0) != 0` translates to: if `*__iptr == 1`, then we assign `__iptr` to 0 and return 1, so overall it returns when `*__iptr == 0` or when we successfully acquire the lock atomically; otherwise it did not get the lock, and within a loop it uses `atomic_exchange_acq` and `lll_wait`. `atomic_exchange_acq` is responsible for assigning `__iptr` to 2, but if the old `__iptr == 0`, it should have acquired the lock, so it exits the loop directly; otherwise it executes `lll_wait(__iptr, 2, __flags)`, waiting for `__iptr != 2`, that is, when the lock holder releases the lock, the thread wakes up from `__gsync_wait`, then checks whether `__iptr` equals 2; if it equals 2 it proves the lock was acquired and exits the loop, otherwise it continues the loop.
+
+```c
+/* Wait on address PTR, without blocking if its contents
+ * are different from VAL.  */
+#define lll_wait(ptr, val, flags)   \
+  __gsync_wait (__mach_task_self (),   \
+    (vm_offset_t)(ptr), (val), 0, 0, (flags))
+```
+
+However, `__gsync_wait` calls `__gsync_wait_intr`, but the origin of `__gsync_wait_intr` is temporarily unknown.
+
+```c
+/* Interruptible version of __gsync_wait.  */
+extern kern_return_t __gsync_wait_intr
+(
+		mach_port_t task,
+		vm_offset_t addr,
+		unsigned val1,
+		unsigned val2,
+		natural_t msec,
+		int flags
+);
+```
+
+Thus, `pthread_lock` atomically contends for the lock through `atomic_compare_and_exchange_bool_acq` in glibc's `lll_lock`, and yields CPU execution to other threads through `__gync_wait`. After other threads release the lock, it wakes up and checks the value of `__iptr` to determine whether it has acquired the lock, thereby ensuring that when one thread is in the critical section, other threads cannot execute.
+
+There may be mistakes or omissions.
+
+Done.
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 ## pthread_mutex_lock
 
@@ -27,8 +137,8 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 	 * that locking failed.
 	 *
 	 * To do that we'll "release" the lock if locking failed - this way
-	 * we'll get lockdep doing the correct checks when we try to take
-	 * the lock, and if that fails - we'll be back to the correct
+	 * we'll get lockdep doing the correct checks when we try to take the
+	 * lock, and if that fails - we'll be back to the correct
 	 * state by releasing it.
 	 */
 	r = ll_pthread_mutex_lock(mutex);
@@ -91,12 +201,12 @@ int pthread_mutex_lock(pthread_mutex_t *mutex)
 /* Interruptible version of __gsync_wait.  */
 extern kern_return_t __gsync_wait_intr
 (
-	mach_port_t task,
-	vm_offset_t addr,
-	unsigned val1,
-	unsigned val2,
-	natural_t msec,
-	int flags
+		mach_port_t task,
+		vm_offset_t addr,
+		unsigned val1,
+		unsigned val2,
+		natural_t msec,
+		int flags
 );
 ```
 
@@ -105,3 +215,5 @@ extern kern_return_t __gsync_wait_intr
 可能有说错或者遗漏的地方。
 
 完。
+
+</div>

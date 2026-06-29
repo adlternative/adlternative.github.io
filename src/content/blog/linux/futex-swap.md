@@ -1,8 +1,498 @@
 ---
 title: FUTEX_SWAP INTRODUCTION
+titleZh: "FUTEX_SWAP 简介"
 date: 2021-07-19 00:08:34
 tags: os
 ---
+
+<div class="lang-section" data-lang="en">
+
+## FUTEX_SWAP Introduction
+
+### Google SwitchTo
+
+Because coroutines themselves are invisible to the operating system, bugs that occur in coroutines often cannot be diagnosed with existing tools. Inside Google there is a closed-source user-space task scheduling framework called `SwitchTo`, which can provide latency-sensitive services for Google and enable fine-grained user-space control/scheduling of running content. It lets the kernel perform context switches while leaving the decision of when to switch and when to resume tasks to user-space programs. This achieves cooperative switching between tasks without losing the kernel's ability to control and observe tasks. Last year Google resumed attempts to upstream the `SwitchTo` API into Linux. Related patches can be found at: [1], [2], [3], [4].
+
+```c
+pid_t switchto_wait(timespec *timeout)
+/*  Enter an 'unscheduled state', until our control is re-initiated by another thread or external event (signal). */
+void switchto_resume(pid_t tid)
+/* Resume regular execution of tid */
+pid_t switchto_switch(pid_t tid)
+/* Synchronously transfer control to target sibling thread, leaving the current thread unscheduled.Analogous to:Atomically { Resume(t1); Wait(NULL); }
+*/
+```
+
+The following is a performance comparison of context switching between using `SwitchTo` and other inter-thread switching components:
+
+| Benchmark       | Time(ns) | CPU(ns) | Iterations |
+| --------------- | -------- | ------- | ---------- |
+| BM_Futex        | 2905     | 1958    | 1000000    |
+| BM_GoogleMutex  | 3102     | 2326    | 1000000    |
+| BM_SwitchTo     | 179      | 178     | 3917412    |
+| BM_SwitchResume | 2734     | 1554    | 1000000    |
+
+As you can see, after using `SwitchTo`, switching performance improves by an order of magnitude compared to other components.
+
+How does `SwitchTo` achieve such a large lead in switching performance? We may not be able to see it yet, but let's look at the implementation of `futex_swap()` in the patches submitted by `Peter Oskolkov` to LKML (Linux Kernel Mailing List). It is certain that `SwitchTo` is built on top of this kernel function.
+
+### What Is futex?
+
+`futex` stands for `fast user-space locking`. It is a basic synchronization primitive in the kernel that provides very fast uncontended lock acquisition and release, and is used to build complex synchronization structures: mutexes, condition variables, semaphores, etc. Because some of the mechanisms and usage of `futex` are overly complex, `glibc` does not provide a wrapper for `futex`, but we can still call this extremely hacky system call using `syscall`.
+
+```c
+static int futex(uint32_t *uaddr, int futex_op, uint32_t val,
+                 const struct timespec *timeout, uint32_t *uaddr2,
+                 uint32_t val3) {
+  return syscall(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);
+}
+```
+
+* `uaddr`: a four-byte user-space address. Multiple tasks can control blocking or running through changes in the value at `*uaddr`.
+* `futex_op`: used to control the command executed by `futex`, such as `FUTEX_WAIT`, `FUTEX_WAKE`, `FUTEX_LOCK_PI`, `FUTEX_UNLOCK_PI`, etc.
+* `val`: has different meanings in different `futex_op`s. For example, in `futex(uaddr, FUTEX_WAKE)` it is the number of tasks waiting on this `futex` to wake up.
+* `timeout`: used as the timeout for wait operations (such as `FUTEX_WAIT`).
+* `uaddr2`: a four-byte user-space address used in required scenarios (such as `FUTEX_SWAP` described later).
+* `val3`: the interpretation of the integer argument `val3` depends on the operation.
+
+### Why Is futex "Fast"?
+
+Because context switching between user mode and kernel mode is expensive, synchronization structures implemented with `futex` stay in user space as much as possible, meaning they only need to perform fewer system calls. The state of `futex` is stored in a user-space variable, and `futex` can change its state through some atomic operations without contention, without the overhead of a system call.
+
+### futex_wait() and futex_wake()
+
+Before looking at `futex_swap()`, let's first look at the two most important kernel functions related to `futex` in the kernel:
+
+```c
+static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val, ktime_t *abs_time, u32 bitset);
+```
+
+Simply put, the useful parameters for `futex_wait()` are only `uaddr`, `val`, and `abs_time`, like `futex_wait(uaddr, val, abs_time)`. Its meaning is: sleep when the value at user-space address `uaddr` equals the passed parameter `val`, i.e. `if (*uaddr == val) wait()`. `futex_wake()` can wake it up, and a timeout can also be specified for timeout wakeup.
+
+```c
+static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
+		      ktime_t *abs_time, u32 bitset)
+{
+	struct hrtimer_sleeper timeout, *to;
+	struct restart_block *restart;
+	struct futex_hash_bucket *hb;
+	struct futex_q q = futex_q_init;
+	int ret;
+
+	if (!bitset)
+		return -EINVAL;
+	q.bitset = bitset;
+  /* 设置定时器 */
+	to = futex_setup_timer(abs_time, &timeout, flags,
+			       current->timer_slack_ns);
+retry:
+	/*
+	 * Prepare to wait on uaddr. On success, holds hb lock and increments
+	 * q.key refs.
+	 */
+	/* 获取哈希桶自旋锁 如果 *uaddr == val return -EWOULDBLOCK 否则返回 0 */
+	ret = futex_wait_setup(uaddr, val, flags, &q, &hb);
+	if (ret)
+		goto out;
+
+	/* queue_me and wait for wakeup, timeout, or a signal. */
+	/*将当前任务状态改为TASK_INTERRUPTIBLE，并将当前任务插入到futex等待队列，释放哈希桶自旋锁，然后重新调度*/
+	futex_wait_queue_me(hb, &q, to);
+
+	/* If we were woken (and unqueued), we succeeded, whatever. */
+	ret = 0;
+  /* 如果 unqueue_me 返回 0 表示已经被删除则是正常唤醒跳到 out 否则则是超时触发 */
+	if (!unqueue_me(&q))
+		goto out;
+	ret = -ETIMEDOUT;
+	if (to && !to->task)
+		goto out;
+
+	/*
+	 * We expect signal_pending(current), but we might be the
+	 * victim of a spurious wakeup as well.
+	 */
+	if (!signal_pending(current))
+		goto retry;
+
+	ret = -ERESTARTSYS;
+	if (!abs_time)
+		goto out;
+
+	restart = &current->restart_block;
+	restart->futex.uaddr = uaddr;
+	restart->futex.val = val;
+	restart->futex.time = *abs_time;
+	restart->futex.bitset = bitset;
+	restart->futex.flags = flags | FLAGS_HAS_TIMEOUT;
+
+	ret = set_restart_fn(restart, futex_wait_restart);
+
+out:
+	if (to) {
+    /* 即将结束，取消定时任务 */
+		hrtimer_cancel(&to->timer);
+		destroy_hrtimer_on_stack(&to->timer);
+	}
+	return ret;
+}
+```
+
+Internally, `futex` uses a hash table data structure to store tasks that need to sleep. Through the user-space address `uaddr`, `flags`, and the read/write state of `futex`, the same `key` value can be computed, and the `task_struct` of the sleeping task is placed in a node in the priority list of the corresponding hash bucket.
+
+`futex_wait()` flow:
+1. Find the `key` corresponding to the `futex`, and get the hash bucket corresponding to the `key`.
+2. Acquire the hash bucket spinlock; if `*uaddr == val`, return an error to user space.
+3. Otherwise, change the current task state to `TASK_INTERRUPTIBLE`, insert the current task into the `futex` wait queue, release the hash bucket spinlock, and let the scheduler reschedule.
+4. Wake up from sleep, handle timeout and wakeup cases respectively, and return to user space.
+
+```c
+static int futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset);
+```
+
+The parameters of `futex_wake()` are slightly simpler; the most important ones are only the user address `uaddr` and the maximum number of tasks to wake `nr_wake`.
+
+```c
+/*
+ * Wake up waiters matching bitset queued on this futex (uaddr).
+ */
+static int
+futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
+{
+	struct futex_hash_bucket *hb;
+	struct futex_q *this, *next;
+	union futex_key key = FUTEX_KEY_INIT;
+	int ret;
+	DEFINE_WAKE_Q(wake_q);
+
+	if (!bitset)
+		return -EINVAL;
+
+  /* 寻找 futex 对应的 key */
+	ret = get_futex_key(uaddr, flags & FLAGS_SHARED, &key, FUTEX_READ);
+	if (unlikely(ret != 0))
+		return ret;
+
+  /* 获取 key 对应的哈希桶 */
+	hb = hash_futex(&key);
+
+	/* Make sure we really have tasks to wakeup */
+  /* 如果哈希桶桑没有等待者...那么谁也不需要被唤醒 */
+	if (!hb_waiters_pending(hb))
+		return ret;
+
+  /* 获取当前哈希桶的自旋锁 */
+	spin_lock(&hb->lock);
+
+  /* 遍历这个哈系桶上的优先链表 */
+	plist_for_each_entry_safe(this, next, &hb->chain, list) {
+    /* 如果 this 项的 key 与 futex 对应的 key 相同 说明该项在等待 futex */
+		if (match_futex (&this->key, &key)) {
+			if (this->pi_state || this->rt_waiter) {
+				ret = -EINVAL;
+				break;
+			}
+
+			/* Check if one of the bits is set in both bitsets */
+			if (!(this->bitset & bitset))
+				continue;
+
+      /* 将 this 添加到唤醒队列 wake_q 中 */
+			mark_wake_futex(&wake_q, this);
+      /* ret此时为0 递增至 nr_wake 最大唤醒任务数量则退出循环 */
+			if (++ret >= nr_wake)
+				break;
+		}
+	}
+
+	spin_unlock(&hb->lock);
+	wake_up_q(&wake_q);
+	return ret;
+}
+```
+
+`futex_wake()` flow:
+1. Find the `key` corresponding to the `futex`, and get the hash bucket corresponding to the `key`.
+2. Acquire the hash bucket spinlock, traverse the priority list of the hash bucket. If the current task's `key` matches the `futex`'s `key`, it means the task is waiting for the futex; add the current task to the wakeup queue `wake_q`, and exit the loop if `nr_wake` tasks have been reached.
+3. Release the hash bucket spinlock, and wake up every task in the wakeup queue `wake_q`.
+
+Therefore, through `futex_wait()` and `futex_wake()`, we can implement task waiting and waking; see the small demo in the [5] man page.
+
+### FUTEX_SWAP Related Patches
+
+Based on the above understanding, let's now look at the `FUTEX_SWAP` patch series submitted by `Peter Oskolkov` to the kernel. First, look at the relevant test patch in [4], where the key functional function `futex_swap_op()` caught our attention:
+
+```c
+void futex_swap_op(int mode, futex_t *futex_this, futex_t *futex_that)
+{
+	int ret;
+
+	switch (mode) {
+	case SWAP_WAKE_WAIT:
+		futex_set(futex_this, FUTEX_WAITING);
+		futex_set(futex_that, FUTEX_WAKEUP);
+		futex_wake(futex_that, 1, FUTEX_PRIVATE_FLAG);
+		futex_wait(futex_this, FUTEX_WAITING, NULL, FUTEX_PRIVATE_FLAG);
+		if (*futex_this != FUTEX_WAKEUP) {
+			fprintf(stderr, "unexpected futex_this value on wakeup\n");
+			exit(1);
+		}
+		break;
+
+	case SWAP_SWAP:
+		futex_set(futex_this, FUTEX_WAITING);
+		futex_set(futex_that, FUTEX_WAKEUP);
+		ret = futex_swap(futex_this, FUTEX_WAITING, NULL,
+				 futex_that, FUTEX_PRIVATE_FLAG);
+		if (ret < 0 && errno == ENOSYS) {
+			/* futex_swap not implemented */
+			perror("futex_swap");
+			exit(1);
+		}
+		if (*futex_this != FUTEX_WAKEUP) {
+			fprintf(stderr, "unexpected futex_this value on wakeup\n");
+			exit(1);
+		}
+		break;
+
+	default:
+		fprintf(stderr, "unknown mode in %s\n", __func__);
+		exit(1);
+	}
+}
+```
+
+This compares two ways to implement thread switching: using `FUTEX_WAIT` and `FUTEX_WAKE`, and using `FUTEX_SWAP`.
+
+By calling `futex_swap()` with parameters containing `futex_this` and `futex_that`,
+
+```c
+ret = futex_swap(futex_this, FUTEX_WAITING, NULL,
+				 futex_that, FUTEX_PRIVATE_FLAG);
+```
+
+it replaces the two steps below,
+
+```c
+futex_wake(futex_that, 1, FUTEX_PRIVATE_FLAG);
+futex_wait(futex_this, FUTEX_WAITING, NULL, FUTEX_PRIVATE_FLAG);
+```
+
+achieving the effect of putting the current thread to sleep and switching to the specified thread.
+
+```bash
+$ ./futex_swap -i 100000
+
+------- running SWAP_WAKE_WAIT -----------
+
+completed 100000 swap and back iterations in 820683263 ns: 4103 ns per swap
+PASS
+
+------- running SWAP_SWAP -----------
+
+completed 100000 swap and back iterations in 124034476 ns: 620 ns per swap
+PASS
+
+```
+
+As you can see, on a 100k-level batch of task switches, the context-switching performance of the new `futex_swap()` interface is much better than before.
+
+```c
+ /*
+- * Wake up waiters matching bitset queued on this futex (uaddr).
++ * Prepare wake queue matching bitset queued on this futex (uaddr).
+  */
+ static int
+-futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
++prepare_wake_q(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset,
++		       struct wake_q_head *wake_q)
+ {
+ 	struct futex_hash_bucket *hb;
+ 	struct futex_q *this, *next;
+ 	union futex_key key = FUTEX_KEY_INIT;
+ 	int ret;
+-	DEFINE_WAKE_Q(wake_q);
+ 
+ 	if (!bitset)
+ 		return -EINVAL;
+@@ -1629,20 +1629,34 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
+ 			if (!(this->bitset & bitset))
+ 				continue;
+ 
+-			mark_wake_futex(&wake_q, this);
++			mark_wake_futex(wake_q, this);
+ 			if (++ret >= nr_wake)
+ 				break;
+ 		}
+ 	}
+ 
+ 	spin_unlock(&hb->lock);
+-	wake_up_q(&wake_q);
+ out_put_key:
+ 	put_futex_key(&key);
+ out:
+ 	return ret;
+ }
+
++/*
++ * Wake up waiters matching bitset queued on this futex (uaddr).
++ */
++static int
++futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
++{
++	int ret;
++	DEFINE_WAKE_Q(wake_q);
++
++	ret = prepare_wake_q(uaddr, flags, nr_wake, bitset, &wake_q);
++	wake_up_q(&wake_q);
++
++	return ret;
++}
++
+ s
+```
+
+First, a `prepare_wake_q()` is extracted from `futex_wake()` to obtain `nr_wake` tasks waiting on the `futex` and fill them into the passed wakeup queue `wake_q`.
+
+```c
++static int futex_swap(u32 __user *uaddr, unsigned int flags, u32 val,
++		      ktime_t *abs_time, u32 __user *uaddr2)
++{
++	u32 bitset = FUTEX_BITSET_MATCH_ANY;
++	struct task_struct *next = NULL;
++	DEFINE_WAKE_Q(wake_q);
++	int ret;
++
++	ret = prepare_wake_q(uaddr2, flags, 1, bitset, &wake_q);
++	if (!wake_q_empty(&wake_q)) {
++		/* Pull the first wakee out of the queue to swap into. */
++		next = container_of(wake_q.first, struct task_struct, wake_q);
++		wake_q.first = wake_q.first->next;
++		next->wake_q.next = NULL;
++		/*
++		 * Note that wake_up_q does not touch wake_q.last, so we
++		 * do not bother with it here.
++		 */
++		wake_up_q(&wake_q);
++	}
++	if (ret < 0)
++		return ret;
++
++	return futex_wait(uaddr, flags, val, abs_time, bitset, next);
++}
+```
+
+`futex_swap()` flow:
+1. Obtain the prepared wakeup queue of tasks waiting on `uaddr2`, record the first task in the queue as `next`, and wake the other tasks.
+2. Perform `futex_wait()` on `uaddr1`, passing `next`.
+
+Let's look at what changes occurred in `futex_wait()`:
+
+```c
+@@ -2600,9 +2614,12 @@ static int fixup_owner(u32 __user *uaddr, struct futex_q *q, int locked)
+  * @hb:		the futex hash bucket, must be locked by the caller
+  * @q:		the futex_q to queue up on
+  * @timeout:	the prepared hrtimer_sleeper, or null for no timeout
++ * @next:	if present, wake next and hint to the scheduler that we'd
++ * 		prefer to execute it locally.
+  */
+ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
+-				struct hrtimer_sleeper *timeout)
++				struct hrtimer_sleeper *timeout,
++				struct task_struct *next)
+ {
+ 	/*
+ 	 * The task state is guaranteed to be set before another task can
+@@ -2627,10 +2644,27 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
+ 		 *
+ 		 * flagged for rescheduling. Only call schedule if there
+ 		 * is no timeout, or if it has yet to expire.
+ 		 */
+-		if (!timeout || timeout->task)
++		if (!timeout || timeout->task) {
++			if (next) {
++				/*
++				 * wake_up_process() below will be replaced
++				 * in the next patch with
++				 * wake_up_process_prefer_current_cpu().
++				 */
++				wake_up_process(next);
++				put_task_struct(next);
++				next = NULL;
++			}
+ 			freezable_schedule();
++		}
+ 	}
+ 	__set_current_state(TASK_RUNNING);
++
++	if (next) {
++		/* Maybe call wake_up_process_prefer_current_cpu()? */
++		wake_up_process(next);
++		put_task_struct(next);
++	}
+ }
+ 
+@@ -2710,7 +2744,7 @@ static int futex_wait_setup(u32 __user *uaddr, u32 val, unsigned int flags,
+ }
+
+ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
+-		      ktime_t *abs_time, u32 bitset)
++		      ktime_t *abs_time, u32 bitset, struct task_struct *next)
+ {
+ 	struct hrtimer_sleeper timeout, *to;
+ 	struct restart_block *restart;
+@@ -2734,7 +2768,8 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
+ 		goto out;
+
+ 	/* queue_me and wait for wakeup, timeout, or a signal. */
+-	futex_wait_queue_me(hb, &q, to);
++	futex_wait_queue_me(hb, &q, to, next);
++	next = NULL;
+
+ 	/* If we were woken (and unqueued), we succeeded, whatever. */
+ 	ret = 0;
+@@ -2767,6 +2802,10 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
+ 	ret = -ERESTART_RESTARTBLOCK;
+
+ out:
++	if (next) {
++		wake_up_process(next);
++		put_task_struct(next);
++	}
+ 	if (to) {
+ 		hrtimer_cancel(&to->timer);
+ 		destroy_hrtimer_on_stack(&to->timer);
+@@ -2774,7 +2813,6 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
+ 	return ret;
+ }
+```
+
+We can see that the `next` task passed to `futex_wait()` is woken up in two cases:
+1. The current task wakes up from waiting on `uaddr`, and then at the end of `futex_wait()` it executes `wake_up_process()` to switch to the `next` task.
+2. In `futex_wait_queue_me()`, waiting times out (which also means the current task finishes waiting for the lock), and it executes `wake_up_process()` to switch to the `next` task.
+
+Through this modification of `futex`, we seem to have the ability to use `switch_to()` in user space to specify task switching, which is really exciting! This is the purpose of user-mode threads: extremely low switching overhead means the thousands of threads our OS can support can be increased by more than 10 times, even to the million level!
+
+Unfortunately, the patch seems to have been abandoned by the Linux kernel community. Today, the patch author `Peter Oskolkov` is trying to introduce another Google user-space task scheduling framework, `Fiber` [7], into the Linux kernel to support the needs of C programmers in the Linux world for cooperative task switching.
+
+### References
+[1] https://lore.kernel.org/lkml/414e292195d720c780fab2781c749df3be6566aa.camel@posk.io/
+
+[2] https://lore.kernel.org/lkml/48058b850de10f949f96b4f311adb649b1fb3ff2.camel@posk.io/
+
+[3] https://lore.kernel.org/lkml/d5cf58486a6a5e41581bed9183e8a831908ede0b.camel@posk.io/
+
+[4] https://lore.kernel.org/lkml/a06a25f1380e0da48946b1bb958e1745e5fac964.camel@posk.io/
+
+[5] https://man7.org/linux/man-pages/man2/futex.2.html
+
+[6] https://lwn.net/Articles/360699/
+
+[7] https://lore.kernel.org/lkml/20210520183614.1227046-1-posk@google.com/
+
+</div>
+
+<div class="lang-section" data-lang="zh">
 
 ## FUTEX_SWAP 介绍
 
@@ -96,7 +586,6 @@ retry:
 
 	/* If we were woken (and unqueued), we succeeded, whatever. */
 	ret = 0;
-	/* unqueue_me() drops q.key ref */
   /* 如果 unqueue_me 返回 0 表示已经被删除则是正常唤醒跳到 out 否则则是超时触发 */
 	if (!unqueue_me(&q))
 		goto out;
@@ -295,7 +784,7 @@ PASS
  static int
 -futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 +prepare_wake_q(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset,
-+	       struct wake_q_head *wake_q)
++		       struct wake_q_head *wake_q)
  {
  	struct futex_hash_bucket *hb;
  	struct futex_q *this, *next;
@@ -384,7 +873,7 @@ PASS
   * @q:		the futex_q to queue up on
   * @timeout:	the prepared hrtimer_sleeper, or null for no timeout
 + * @next:	if present, wake next and hint to the scheduler that we'd
-+ *		prefer to execute it locally.
++ * 		prefer to execute it locally.
   */
  static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 -				struct hrtimer_sleeper *timeout)
@@ -394,6 +883,7 @@ PASS
  	/*
  	 * The task state is guaranteed to be set before another task can
 @@ -2627,10 +2644,27 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
+ 		 *
  		 * flagged for rescheduling. Only call schedule if there
  		 * is no timeout, or if it has yet to expire.
  		 */
@@ -423,7 +913,7 @@ PASS
  
 @@ -2710,7 +2744,7 @@ static int futex_wait_setup(u32 __user *uaddr, u32 val, unsigned int flags,
  }
- 
+
  static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
 -		      ktime_t *abs_time, u32 bitset)
 +		      ktime_t *abs_time, u32 bitset, struct task_struct *next)
@@ -432,17 +922,17 @@ PASS
  	struct restart_block *restart;
 @@ -2734,7 +2768,8 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
  		goto out;
- 
+
  	/* queue_me and wait for wakeup, timeout, or a signal. */
 -	futex_wait_queue_me(hb, &q, to);
 +	futex_wait_queue_me(hb, &q, to, next);
 +	next = NULL;
- 
+
  	/* If we were woken (and unqueued), we succeeded, whatever. */
  	ret = 0;
 @@ -2767,6 +2802,10 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,
  	ret = -ERESTART_RESTARTBLOCK;
- 
+
  out:
 +	if (next) {
 +		wake_up_process(next);
@@ -478,3 +968,5 @@ PASS
 [6] https://lwn.net/Articles/360699/
 
 [7] https://lore.kernel.org/lkml/20210520183614.1227046-1-posk@google.com/
+
+</div>
