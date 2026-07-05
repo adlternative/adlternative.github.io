@@ -9,7 +9,7 @@ tags: [ai, agent, cloud, infrastructure]
 
 ## Preface
 
-It is 2025. You open a terminal, type a natural-language request, and Claude Code / Cursor / Windsurf starts editing code, running tests, and submitting PRs. You go make coffee. When you come back, the bug is fixed.
+It is 2026. You open a terminal, type a natural-language request, and Claude Code / Cursor / Windsurf starts editing code, running tests, and submitting PRs. You go make coffee. When you come back, the bug is fixed.
 
 Feels like magic? Under the hood, the logic is no different from a CPU executing machine instructions one by one in the 1970s.
 
@@ -17,7 +17,9 @@ This article uses a computer-architecture lens to dissect how AI programming age
 
 ## 1. AgentLoop = The CPU Fetch-Decode-Execute Cycle
 
-![AgentLoop as CPU cycle](/images/cloud-agent-evolution/02-agentloop-cpu.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/02-agentloop-cpu.png" alt="AgentLoop as CPU cycle" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 At the heart of every AI coding agent (Claude Code, Cursor, Windsurf) is an **AgentLoop** — an infinite loop:
 
@@ -46,7 +48,9 @@ This is the classic CPU pipeline wearing a trench coat:
 
 ## 2. The Pain of Running Agents on Your Laptop: Three Bottlenecks
 
-![Three bottlenecks](/images/cloud-agent-evolution/03-three-bottlenecks.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/03-three-bottlenecks.png" alt="Three bottlenecks" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 ### Bottleneck 1: Compute — Your MacBook Is Crying
 
@@ -84,7 +88,7 @@ A hard-won lesson: your dev environment is a shared apartment — the more tenan
 
 ## 3. OpenClaw and the Mac mini Craze: Why "Self-Hosted Agent Servers" Are a Transitional Phase
 
-In mid-2025, a project called OpenClaw suddenly went viral on Twitter/X. What did it do? In plain terms:
+In mid-2026, a project called OpenClaw suddenly went viral on Twitter/X. What did it do? In plain terms:
 
 > **Keep a Mac mini running 24/7 at home, dedicated to hosting Claude Code / opencode.**
 
@@ -106,11 +110,15 @@ This is a dead ringer for the mid-2000s home NAS craze — Synology and QNAP sol
 
 OpenClaw's brief explosion proved one thing: developers have a real need for "always-on agents." But the path should not be "everyone buys a physical machine" — just as consumers' need for "access my files anywhere" was ultimately met by Dropbox/iCloud, not by home NAS boxes.
 
-![Do not power down](/images/cloud-agent-evolution/cern-do-not-power-down.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/cern-do-not-power-down.png" alt="Do not power down" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 So you excitedly buy a Mac mini, put it at home, and expect your agent to work 24/7. Here is what you will hit, in order:
 
-![Mac mini as server](/images/cloud-agent-evolution/04-mac-mini-server.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/04-mac-mini-server.png" alt="Mac mini as server" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 **Networking**: Your home has a dynamic IP, no public address. You need frp / Tailscale / ngrok for tunnel — yet another layer to maintain.
 
@@ -132,7 +140,9 @@ You might think the Mac mini's power cost is cheap — true, under $30/year in e
 
 The CPU world took 50 years to evolve from single-core single-thread to K8s clusters scheduling millions of containers. The agent world is retracing that path in 5 years — from "one terminal, one agent" to "elastic cloud scheduling of thousands of agents." Every step serves the same goal: increasing the throughput of the task pipeline.
 
-![Local vs Cloud](/images/cloud-agent-evolution/05-local-vs-cloud.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/05-local-vs-cloud.png" alt="Local vs Cloud" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 The analogy: the top half is the classic CPU instruction pipeline running in parallel; the bottom half is the agent task pipeline running in parallel. Same essence, except the work unit changed from "machine instruction" to "development task."
 
@@ -144,11 +154,15 @@ Replace the Mac mini with an Alibaba Cloud ECS / AWS EC2. Public IP, 24/7 power,
 
 But here is the problem: one ECS instance running one agent? Far too wasteful. An idle agent's CPU utilization is under 5%, yet you are paying for an entire machine.
 
-![Pipeline comparison](/images/cloud-agent-evolution/09-pipeline-comparison.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/09-pipeline-comparison.png" alt="Pipeline comparison" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 ## 5. Virtualization and Sandboxing
 
-![ECS Docker K8s](/images/cloud-agent-evolution/06-ecs-docker-k8s.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/06-ecs-docker-k8s.png" alt="ECS Docker K8s" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 ### Containerization: Ten Agents on One Machine
 
@@ -213,7 +227,9 @@ In fact, multiple AI coding platforms already support concurrent sub-tasks — l
 
 ## 7. Conclusion: The MacBook Is the Remote Control, the Cloud Is the Executor
 
-![Remote control analogy](/images/cloud-agent-evolution/08-remote-control.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/08-remote-control.png" alt="Remote control analogy" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 Let us trace the evolution:
 
@@ -243,7 +259,7 @@ Embrace cloud-native development environments. This is not a trend. It is an ine
 
 ## 写在前面
 
-2025 年，你打开 Terminal，敲下一句自然语言需求，Claude Code / Cursor / Windsurf 开始自动改代码、跑测试、提交 PR。你泡了杯咖啡回来，bug 已经修好了。
+2026 年，你打开 Terminal，敲下一句自然语言需求，Claude Code / Cursor / Windsurf 开始自动改代码、跑测试、提交 PR。你泡了杯咖啡回来，bug 已经修好了。
 
 感觉像魔法？其实它的底层逻辑，和 1970 年代 CPU 执行一条条机器指令没有本质区别。
 
@@ -251,7 +267,9 @@ Embrace cloud-native development environments. This is not a trend. It is an ine
 
 ## 一、AgentLoop = CPU 的取指-译码-执行循环
 
-![AgentLoop 与 CPU 循环](/images/cloud-agent-evolution/02-agentloop-cpu.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/02-agentloop-cpu.png" alt="AgentLoop 与 CPU 循环" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 每一个 AI 编程 Agent（Claude Code、Cursor、Windsurf）的核心都是一个 **AgentLoop**——一个无限循环：
 
@@ -280,7 +298,9 @@ while task_not_done:
 
 ## 二、单机跑 Agent 的痛：三大瓶颈
 
-![三大瓶颈](/images/cloud-agent-evolution/03-three-bottlenecks.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/03-three-bottlenecks.png" alt="三大瓶颈" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 ### 瓶颈一：算力 —— 你的 MacBook 在哭
 
@@ -318,7 +338,7 @@ Agent 最怕的不是算力不够——是突然消失。
 
 ## 三、OpenClaw 与 Mac mini 热潮：为什么"自建 Agent 服务器"注定是过渡态
 
-2025 年中，Twitter/X 上一个叫 OpenClaw 的项目突然火了。它干了什么？说白了就是：
+2026 年中，Twitter/X 上一个叫 OpenClaw 的项目突然火了。它干了什么？说白了就是：
 
 > **把一台 Mac mini 24 小时挂在家里，专门给 Claude Code / opencode 当宿主。**
 
@@ -336,11 +356,15 @@ Agent 最怕的不是算力不够——是突然消失。
 
 这像极了 2005 年的家用 NAS 热潮——Synology、QNAP 卖疯了，极客买回来兴奋三天，然后发现：RAID 重建要等 48 小时、UPnP 配置让人抓狂、固件更新重启时家人正在看电影……新鲜劲一过就吃灰。OpenClaw 的短暂火爆本质上证明了一件事：开发者对"永不断电 Agent"有真实需求。但实现路径不该是"每人买一台物理机"——就像消费者对"随时访问文件"的需求最终被 Dropbox/iCloud 满足，而不是被家用 NAS 满足。
 
-![请勿关机](/images/cloud-agent-evolution/cern-do-not-power-down.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/cern-do-not-power-down.png" alt="请勿关机" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 你兴冲冲买了台 Mac mini 放家里，想让 Agent 24 小时帮你干活。然后你会依次遇到：
 
-![Mac mini 当服务器](/images/cloud-agent-evolution/04-mac-mini-server.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/04-mac-mini-server.png" alt="Mac mini 当服务器" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 **网络问题**：家里是动态 IP，没有公网地址。你得买 frp / Tailscale / ngrok 做内网穿透——又多了一层维护。
 
@@ -362,7 +386,9 @@ Agent 最怕的不是算力不够——是突然消失。
 
 CPU 世界花了 50 年从单核单线程进化到 K8s 集群调度百万容器。Agent 世界正在用 5 年时间重走这条路——从"一个终端一个 Agent"到"云端弹性调度千个 Agent"。中间每一步都是为了同一个目标：提升任务流水线的处理速率。
 
-![本地 vs 云端](/images/cloud-agent-evolution/05-local-vs-cloud.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/05-local-vs-cloud.png" alt="本地 vs 云端" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 下面这张图展示了这个类比：上半是 CPU 指令流水线的经典并行，下半是 Agent 任务流水线的并行——本质相同，只是工作单元从"机器指令"变成了"开发任务"。
 
@@ -374,11 +400,15 @@ CPU 世界花了 50 年从单核单线程进化到 K8s 集群调度百万容器�
 
 但问题是：一台 ECS 跑一个 Agent？太浪费了。一个 Agent 空闲时 CPU 利用率不到 5%，却要付一整台机器的钱。
 
-![流水线对比](/images/cloud-agent-evolution/09-pipeline-comparison.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/09-pipeline-comparison.png" alt="流水线对比" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 ## 五、虚拟化与沙盒
 
-![ECS Docker K8s](/images/cloud-agent-evolution/06-ecs-docker-k8s.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/06-ecs-docker-k8s.png" alt="ECS Docker K8s" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 ### 容器化：一台机器跑十个 Agent
 
@@ -443,7 +473,9 @@ CPU 世界花了 50 年从单核单线程进化到 K8s 集群调度百万容器�
 
 ## 七、结语：MacBook 是遥控器，云端是执行体
 
-![远程操控](/images/cloud-agent-evolution/08-remote-control.png)
+<div style="text-align: center; margin: 2rem 0;">
+  <img src="/images/cloud-agent-evolution/08-remote-control.png" alt="远程操控" style="max-width: 680px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
+</div>
 
 回顾一下这条进化线：
 
