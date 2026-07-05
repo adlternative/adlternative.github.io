@@ -146,6 +146,12 @@ The CPU world took 50 years to evolve from single-core single-thread to K8s clus
 
 The analogy: the top half is the classic CPU instruction pipeline running in parallel; the bottom half is the agent task pipeline running in parallel. Same essence, except the work unit changed from "machine instruction" to "development task."
 
+Let's do a quick experiment: open Activity Monitor, fire up one Claude Code session, and watch the resource consumption. A single session eats roughly 1–2 GB of RAM plus intermittent CPU spikes to 100%. Your MacBook's 32 GB looks generous? Subtract 8 GB for macOS itself, 4 GB for your IDE, 6 GB for Chrome (that memory black hole)… what's left for agents is enough for maybe 2–3. Want to fix 5 bugs simultaneously? Sorry — OOM killed.
+
+Switch to a Mac mini running 24/7? A bit better — you can probably sustain 3–5 agents. But the moment you leave the house, it's on its own: no one to reconnect when the network drops, no one to reboot when it hangs. Move to a cloud VM (4C8G)? Now you're at 5–8, but everyone's fighting over CPU and the environment is a shared mess. Containerize with Docker on an 8C32G box? You can isolate 10–15 clean agent environments — but it's still one physical machine with a visible ceiling.
+
+**Then K8s / Serverless enters the picture**: need one agent? Spin up a pod. Need a hundred? Spin up a hundred. Idle? Scale to zero, pay nothing. From a laptop's 2–3 to the cloud's 1,000+, that's a **500x** difference. This isn't incremental improvement — it's a phase transition. That's why "going to the cloud" isn't a nice-to-have; it opens an entirely new possibility space.
+
 Having recognized the pain of self-hosting, the path becomes clear. The computing industry already walked it once:
 
 A quick historical timeline: In the 1960s, John McCarthy proposed "computing should be delivered like a public utility." In the 1970s–80s, DEC PDP-11 and VAX machines sat in offices with dedicated staff ensuring uptime. In the 1990s, SMBs built server rooms, hired full-time sysadmins, and prayed for no power cuts. In 2006, AWS launched EC2/S3 — the "watershed moment" of cloud computing — and over the next decade, traditional infrastructure spending dropped from nearly 100% to less than half. The global cloud market is projected to reach $860 billion in 2025 (21.2% annual growth), doubling to $2.26 trillion by 2030. Every generation of "self-hosted" eventually gives way to "managed." Agent infrastructure will be no exception.
@@ -391,6 +397,12 @@ CPU 世界花了 50 年从单核单线程进化到 K8s 集群调度百万容器�
 </div>
 
 下面这张图展示了这个类比：上半是 CPU 指令流水线的经典并行，下半是 Agent 任务流水线的并行——本质相同，只是工作单元从"机器指令"变成了"开发任务"。
+
+来做个简单实验：打开活动监视器，跑一个 Claude Code session，看看它吃掉多少资源。一个 session 大约吃 1-2GB 内存，外加间歇性 CPU 100%。你的 MacBook 32GB 看起来很大？减去 macOS 自己吃的 8GB、IDE 吃的 4GB、Chrome 那个内存黑洞 6GB……留给 Agent 的空间大概够 2-3 个。想同时改 5 个 bug？不好意思，OOM killed。
+
+换成 Mac mini 24 小时挂机？好一点，大概能稳定跑 3-5 个。但你一出门它就只能自己照顾自己——断网了没人重连，卡死了没人重启。再换成一台云服务器（4C8G），能跑 5-8 个，但大家挤在一起互相抢 CPU，环境乱成一锅粥。Docker 容器化后，同一台 8C32G 的机器能隔离出 10-15 个干净的 Agent 环境——但这还是一台物理机，天花板肉眼可见。
+
+**直到 K8s / Serverless 出场**：需要一个 Agent？拉一个 Pod。需要一百个？拉一百个。闲了？全部缩到零，一分钱不花。从笔记本的 2-3 个到云端的 1000+，中间差了整整 **500 倍**——这不是量变，是质变。这就是为什么"上云"不是锦上添花，而是打开了一个全新的可能性空间。
 
 认清了自建服务器的痛，路径就清晰了。这条路计算机行业已经走过一遍：
 
