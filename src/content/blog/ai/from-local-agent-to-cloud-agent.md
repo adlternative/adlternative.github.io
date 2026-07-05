@@ -266,7 +266,7 @@ Embrace cloud-native development environments. This is not a trend. It is an ine
 ### This Isn't Hypothetical — It's Already Happening
 
 - **Anthropic Managed Agents**: Anthropic's official hosted agent service. You dispatch a task, it runs in the cloud without touching your local resources, and notifies you when done. This is currently the closest product to the "cloud execution engine" vision.
-- **For users in China**: If network/compliance constraints prevent access to Anthropic's overseas services, check out **[Qoder Cloud Agent](https://qoder.com/cloud/)** — same philosophy: cloud sandbox + persistent agent execution + trigger from your phone or DingTalk anytime.
+- **For users in China**: If network/compliance constraints prevent access to Anthropic's overseas services, check out **[Qoder Cloud Agents](https://qoder.com/cloud/)** — same philosophy: cloud sandbox + persistent agent execution + trigger from your phone or DingTalk anytime.
 
 In the next 1–2 years, "cloud agents" as a category will explode. Just as AWS EC2's 2006 launch quickly turned "should we move to the cloud?" into "how are you surviving without it?", AI programming is hitting the same inflection point. The shift from local agents to cloud agents isn't a choice — it's a countdown.
 
@@ -533,7 +533,7 @@ CPU 世界花了 50 年从单核单线程进化到 K8s 集群调度百万容器�
 ### 这不是空想——云 Agent 已经在发生
 
 - **Anthropic Managed Agents**：Claude 官方推出的托管 Agent 服务。你下发任务，它在云端帮你跑，不占本机资源，跑完通知你。这是目前最接近"云端执行体"理念的产品。
-- **中国用户**：由于网络/合规原因用不了 Anthropic 海外服务的，可以试试 **[Qoder Cloud Agent](https://qoder.com/cloud/)**——同样的理念：云端沙盒 + Agent 持久运行 + 手机/钉钉随时触发。
+- **中国用户**：由于网络/合规原因用不了 Anthropic 海外服务的，可以试试 **[Qoder Cloud Agents](https://qoder.com/cloud/)**——同样的理念：云端沙盒 + Agent 持久运行 + 手机/钉钉随时触发。
 
 未来 1-2 年，"云 Agent"这个品类会爆发。就像 2006 年 AWS EC2 出来后，"要不要上云"很快变成了"不上云你怎么活"。AI 编程领域正在经历同样的拐点——从"本机跑 Agent"到"云端跑 Agent"，不是选择题，是时间问题。
 
