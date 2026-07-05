@@ -152,9 +152,11 @@ Switch to a Mac mini running 24/7? A bit better — you can probably sustain 3�
 
 **Then K8s / Serverless enters the picture**: need one agent? Spin up a pod. Need a hundred? Spin up a hundred. Idle? Scale to zero, pay nothing. From a laptop's 2–3 to the cloud's 1,000+, that's a **500x** difference. This isn't incremental improvement — it's a phase transition. That's why "going to the cloud" isn't a nice-to-have; it opens an entirely new possibility space.
 
-Of course, we can't only tell the fun part of the story. Fifty agents rewriting your codebase simultaneously — you feel like a CTO commanding an army. Then the Anthropic / OpenAI invoice arrives at month-end, and you realize you're not the CTO, you're the CFO — the kind who reads the number and immediately drafts a resignation letter. One agent running for an hour costs roughly $0.50–$2 in API calls (depending on model and token volume). Fifty agents for a full day? $500–$2,000. You thought the cloud solved all your problems? Nope — it just traded "hardware problems" for "credit card problems."
+Of course, we can't only tell the fun part. The Anthropic invoice arrives at month-end: four figures in USD. You panic for three seconds. Then you open the commit log — this month you merged 47 PRs, fixed 120 bugs, shipped 3 new features, and cleared half your tech debt backlog. The team next door, with the same headcount, shipped 8 PRs.
 
-But here's an iron law the computing industry has validated over and over: compute costs decline exponentially. AWS EC2 was eye-wateringly expensive when it launched in 2006; by 2026, students spin up instances without blinking. LLM inference costs are dropping 50%+ per year — GPT-4-level capability that cost several cents per call two years ago is already an order of magnitude cheaper at equivalent quality today. Give it another two or three years, and running 50 agents for a day may cost about the same as a single ECS instance does now. At that point, cloud agents become like cloud servers today — the question isn't "is it expensive?" but "can you afford *not* to use them?"
+Do the math: you spent ~$2,000 on API calls, but your output matches what it would take 3 extra engineers to produce — that's $30,000+ in monthly payroll. ROI: 15x. You're not spending money; you're applying leverage.
+
+And it only gets better. Compute costs decline exponentially — that's an iron law of this industry. AWS EC2 was painfully expensive in 2006; by 2026 students spin up instances without blinking. LLM inference costs drop 50%+ annually. In two or three years, running 50 agents for a day will cost what a single ECS instance costs today. Cloud agents aren't a cost center — they're a profit lever. The question isn't "can I afford them?" but "can I afford to compete against someone who uses them?"
 
 Having recognized the pain of self-hosting, the path becomes clear. The computing industry already walked it once:
 
@@ -408,9 +410,11 @@ CPU 世界花了 50 年从单核单线程进化到 K8s 集群调度百万容器�
 
 **直到 K8s / Serverless 出场**：需要一个 Agent？拉一个 Pod。需要一百个？拉一百个。闲了？全部缩到零，一分钱不花。从笔记本的 2-3 个到云端的 1000+，中间差了整整 **500 倍**——这不是量变，是质变。这就是为什么"上云"不是锦上添花，而是打开了一个全新的可能性空间。
 
-当然，故事到这里不能只讲爽的部分。50 个 Agent 同时帮你改代码，感觉自己是 CTO 统领千军万马。然后月底 Anthropic / OpenAI 的账单来了——你发现自己不是 CTO，是 CFO，还是那种看完数字就想辞职的 CFO。一个 Agent 跑一小时的 API 调用大约花几块到十几块人民币（取决于模型和 token 消耗），50 个跑一整天？大几千块。你以为上云解决了所有问题？No，它只是把"硬件问题"换成了"信用卡问题"。
+当然，故事到这里不能只讲爽的部分。月底 Anthropic 的账单来了，四位数美元。你慌了三秒钟。然后打开 commit log 一看——这个月合了 47 个 PR、修了 120 个 bug、上了 3 个新功能、还顺手把技术债清了一半。隔壁组同样的人力，一个月只出了 8 个 PR。
 
-但这里有一条计算机行业反复验证的铁律：算力成本以指数级下降。2006 年 AWS EC2 刚出来时贵到让人犹豫，2026 年学生都用得起。大模型推理成本每年降 50% 以上——GPT-4 级别的能力两年前要几美分一次调用，现在同等质量的模型已经便宜了一个数量级。再等两三年，跑 50 个 Agent 一天的成本可能和今天开一台 ECS 差不多。到那时候，云 Agent 就像今天的云服务器一样——贵不贵已经不是问题，因为不用它才是真正的浪费。
+算一笔账：你花了两千美元 API 费，但产出抵得上多雇三个工程师一个月的活——那是三万美元以上的人力成本。ROI 十五倍。你不是在花钱，你是在用杠杆。
+
+而且只会越来越划算。算力成本以指数级下降，这是行业铁律。2006 年 EC2 贵到让人犹豫，2026 年学生都用得起。大模型推理成本每年降 50% 以上，再等两三年，跑 50 个 Agent 一天的成本可能和今天开一台 ECS 差不多。云 Agent 不是成本中心——是利润杠杆。问题不是"我花不花得起"，而是"我的竞争对手在用，我不用，输不输得起"。
 
 认清了自建服务器的痛，路径就清晰了。这条路计算机行业已经走过一遍：
 
