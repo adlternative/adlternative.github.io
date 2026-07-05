@@ -152,6 +152,10 @@ Switch to a Mac mini running 24/7? A bit better — you can probably sustain 3�
 
 **Then K8s / Serverless enters the picture**: need one agent? Spin up a pod. Need a hundred? Spin up a hundred. Idle? Scale to zero, pay nothing. From a laptop's 2–3 to the cloud's 1,000+, that's a **500x** difference. This isn't incremental improvement — it's a phase transition. That's why "going to the cloud" isn't a nice-to-have; it opens an entirely new possibility space.
 
+Of course, we can't only tell the fun part of the story. Fifty agents rewriting your codebase simultaneously — you feel like a CTO commanding an army. Then the Anthropic / OpenAI invoice arrives at month-end, and you realize you're not the CTO, you're the CFO — the kind who reads the number and immediately drafts a resignation letter. One agent running for an hour costs roughly $0.50–$2 in API calls (depending on model and token volume). Fifty agents for a full day? $500–$2,000. You thought the cloud solved all your problems? Nope — it just traded "hardware problems" for "credit card problems."
+
+But here's an iron law the computing industry has validated over and over: compute costs decline exponentially. AWS EC2 was eye-wateringly expensive when it launched in 2006; by 2026, students spin up instances without blinking. LLM inference costs are dropping 50%+ per year — GPT-4-level capability that cost several cents per call two years ago is already an order of magnitude cheaper at equivalent quality today. Give it another two or three years, and running 50 agents for a day may cost about the same as a single ECS instance does now. At that point, cloud agents become like cloud servers today — the question isn't "is it expensive?" but "can you afford *not* to use them?"
+
 Having recognized the pain of self-hosting, the path becomes clear. The computing industry already walked it once:
 
 A quick historical timeline: In the 1960s, John McCarthy proposed "computing should be delivered like a public utility." In the 1970s–80s, DEC PDP-11 and VAX machines sat in offices with dedicated staff ensuring uptime. In the 1990s, SMBs built server rooms, hired full-time sysadmins, and prayed for no power cuts. In 2006, AWS launched EC2/S3 — the "watershed moment" of cloud computing — and over the next decade, traditional infrastructure spending dropped from nearly 100% to less than half. The global cloud market is projected to reach $860 billion in 2025 (21.2% annual growth), doubling to $2.26 trillion by 2030. Every generation of "self-hosted" eventually gives way to "managed." Agent infrastructure will be no exception.
@@ -403,6 +407,10 @@ CPU 世界花了 50 年从单核单线程进化到 K8s 集群调度百万容器�
 换成 Mac mini 24 小时挂机？好一点，大概能稳定跑 3-5 个。但你一出门它就只能自己照顾自己——断网了没人重连，卡死了没人重启。再换成一台云服务器（4C8G），能跑 5-8 个，但大家挤在一起互相抢 CPU，环境乱成一锅粥。Docker 容器化后，同一台 8C32G 的机器能隔离出 10-15 个干净的 Agent 环境——但这还是一台物理机，天花板肉眼可见。
 
 **直到 K8s / Serverless 出场**：需要一个 Agent？拉一个 Pod。需要一百个？拉一百个。闲了？全部缩到零，一分钱不花。从笔记本的 2-3 个到云端的 1000+，中间差了整整 **500 倍**——这不是量变，是质变。这就是为什么"上云"不是锦上添花，而是打开了一个全新的可能性空间。
+
+当然，故事到这里不能只讲爽的部分。50 个 Agent 同时帮你改代码，感觉自己是 CTO 统领千军万马。然后月底 Anthropic / OpenAI 的账单来了——你发现自己不是 CTO，是 CFO，还是那种看完数字就想辞职的 CFO。一个 Agent 跑一小时的 API 调用大约花几块到十几块人民币（取决于模型和 token 消耗），50 个跑一整天？大几千块。你以为上云解决了所有问题？No，它只是把"硬件问题"换成了"信用卡问题"。
+
+但这里有一条计算机行业反复验证的铁律：算力成本以指数级下降。2006 年 AWS EC2 刚出来时贵到让人犹豫，2026 年学生都用得起。大模型推理成本每年降 50% 以上——GPT-4 级别的能力两年前要几美分一次调用，现在同等质量的模型已经便宜了一个数量级。再等两三年，跑 50 个 Agent 一天的成本可能和今天开一台 ECS 差不多。到那时候，云 Agent 就像今天的云服务器一样——贵不贵已经不是问题，因为不用它才是真正的浪费。
 
 认清了自建服务器的痛，路径就清晰了。这条路计算机行业已经走过一遍：
 
