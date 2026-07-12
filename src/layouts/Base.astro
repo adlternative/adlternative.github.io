@@ -22,6 +22,15 @@ const pageTitle = title ? `${title} - ZheNing Hu` : "ZheNing Hu - Software Devel
       title="ZheNing Hu's Blog"
       href="/rss.xml"
     />
+    {
+      import.meta.env.PROD && (
+        <script
+          data-goatcounter="https://adlternative.goatcounter.com/count"
+          async
+          src="//gc.zgo.at/count.js"
+        />
+      )
+    }
   </head>
   <body>
     <div id="outerwrapper">
