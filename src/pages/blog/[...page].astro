@@ -7,6 +7,8 @@ import {
   categoryLabel,
   postUrl,
   fmtDate,
+  fmtSize,
+  permString,
   type Post,
 } from "../../utils/posts";
 
@@ -17,12 +19,67 @@ export const getStaticPaths = (async ({ paginate }) => {
 
 type Props = { page: Page<Post> };
 const { page } = Astro.props;
+
+// Build a full `ls -l` style listing of every post (the whole "directory"),
+// independent of pagination. View counts are filled in client-side.
+const allPosts = await getPosts();
+const owner = "zhening";
+type Row = {
+  perms: string;
+  owner: string;
+  group: string;
+  size: string;
+  date: string;
+  url: string;
+  path: string;
+  name: string;
+};
+const rows: Row[] = allPosts.map((post) => {
+  const cat = categoryOf(post);
+  const bytes = new TextEncoder().encode(post.body ?? "").length;
+  // Last path segment as the "filename".
+  const name = post.slug.includes("/") ? post.slug.split("/").pop()! : post.slug;
+  return {
+    perms: permString(post),
+    owner,
+    group: categoryLabel(cat),
+    size: fmtSize(bytes),
+    date: fmtDate(post.data.date),
+    url: postUrl(post),
+    path: postUrl(post),
+    name,
+  };
+});
+const totalBytes = allPosts.reduce(
+  (acc, p) => acc + new TextEncoder().encode(p.body ?? "").length,
+  0,
+);
 ---
 
 <Base current="Blog" title="Blog">
   <div class="blog-head">
     <h1>Blog</h1>
     <div class="blog-actions">
+      <div class="view-toggle" role="group" aria-label="View mode">
+        <button
+          type="button"
+          class="button view-btn selected"
+          data-view="cards"
+          aria-pressed="true"
+          title="card view"
+        >
+          cards
+        </button>
+        <button
+          type="button"
+          class="button view-btn"
+          data-view="ls"
+          aria-pressed="false"
+          title="ls -l view"
+        >
+          ls -l
+        </button>
+      </div>
       <a href="/archive" class="button">Archive</a>
       <input
         id="search-box"
@@ -37,35 +94,66 @@ const { page } = Astro.props;
     {page.total} posts · page {page.currentPage} / {page.lastPage}
   </p>
 
+  <!-- ls -l view (hidden by default; toggled client-side) -->
+  <div id="ls-view" class="ls-view" hidden>
+    <div class="ls-cmd">
+      <span class="ls-prompt">$</span> ls -l ~/blog
+    </div>
+    <div class="ls-total">total {rows.length} · {fmtSize(totalBytes).trim()}</div>
+    <ul class="ls-list">
+      {
+        rows.map((r) => (
+          <li class="ls-row">
+            <a href={r.url} data-path={r.path}>
+              <span class="ls-perms">{r.perms}</span>
+              <span class="ls-links">1</span>
+              <span class="ls-owner">{r.owner}</span>
+              <span class="ls-group">{r.group}</span>
+              <span class="ls-size">{r.size}</span>
+              <span class="ls-date">{r.date}</span>
+              <span class="ls-views" title="views">
+                <span class="ls-views-n">·</span>
+                <span class="ls-views-arrow">↗</span>
+              </span>
+              <span class="ls-name">{r.name}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
   <!-- search results (hidden until typing) -->
   <ul id="search-results" class="post-list" hidden></ul>
   <p id="search-empty" class="post-meta" hidden>no matches.</p>
 
   <!-- normal paginated list -->
-  <ul id="post-list" class="post-list">
-    {
-      page.data.map((post) => (
-        <li class="post-item">
-          <a href={postUrl(post)}>
-            <div class="post-title">{post.data.title}</div>
-            <div class="post-meta">
-              <span>{fmtDate(post.data.date)}</span>{" "}
-              <span class="tag">{categoryLabel(categoryOf(post))}</span>
-              {post.data.tags.map((t) => (
-                <span class="tag">{t}</span>
-              ))}
-            </div>
-          </a>
-        </li>
-      ))
-    }
-  </ul>
+  <div id="cards-view">
+    <ul id="post-list" class="post-list">
+      {
+        page.data.map((post) => (
+          <li class="post-item">
+            <a href={postUrl(post)}>
+              <div class="post-title">{post.data.title}</div>
+              <div class="post-meta">
+                <span>{fmtDate(post.data.date)}</span>{" "}
+                <span class="tag">{categoryLabel(categoryOf(post))}</span>
+                {post.data.tags.map((t) => (
+                  <span class="tag">{t}</span>
+                ))}
+              </div>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
 
-  <nav id="pager" class="pager">
-    {page.url.prev ? <a href={page.url.prev} class="button">&larr; newer</a> : <span class="button disabled">&larr; newer</span>}
-    <span class="pager-info">{page.currentPage} / {page.lastPage}</span>
-    {page.url.next ? <a href={page.url.next} class="button">older &rarr;</a> : <span class="button disabled">older &rarr;</span>}
-  </nav>
+    <nav id="pager" class="pager">
+      {page.url.prev ? <a href={page.url.prev} class="button">&larr; newer</a> : <span class="button disabled">&larr; newer</span>}
+      <span class="pager-info">{page.currentPage} / {page.lastPage}</span>
+      {page.url.next ? <a href={page.url.next} class="button">older &rarr;</a> : <span class="button disabled">older &rarr;</span>}
+    </nav>
+  </div>
 </Base>
 
 <script>
@@ -82,8 +170,8 @@ const { page } = Astro.props;
   const box = document.getElementById("search-box") as HTMLInputElement | null;
   const results = document.getElementById("search-results");
   const empty = document.getElementById("search-empty");
-  const list = document.getElementById("post-list");
-  const pager = document.getElementById("pager");
+  const cardsView = document.getElementById("cards-view");
+  const lsView = document.getElementById("ls-view");
 
   let index: Item[] | null = null;
 
@@ -113,9 +201,47 @@ const { page } = Astro.props;
       .join("");
   }
 
+  // ---- View toggle: "cards" vs "ls -l" ----
+  const VIEW_KEY = "adl-blog-view";
+  const viewButtons =
+    document.querySelectorAll<HTMLButtonElement>(".view-btn");
+  let currentView: "cards" | "ls" = "cards";
+  let searching = false;
+
+  function applyView(view: "cards" | "ls") {
+    currentView = view;
+    // When not searching, show the active view and hide the other.
+    if (!searching) {
+      if (cardsView) cardsView.hidden = view !== "cards";
+      if (lsView) lsView.hidden = view !== "ls";
+    }
+    viewButtons.forEach((b) => {
+      const active = b.getAttribute("data-view") === view;
+      b.classList.toggle("selected", active);
+      b.setAttribute("aria-pressed", String(active));
+    });
+    try {
+      localStorage.setItem(VIEW_KEY, view);
+    } catch {}
+    if (view === "ls") loadViewCounts();
+  }
+
+  viewButtons.forEach((b) =>
+    b.addEventListener("click", () =>
+      applyView(b.getAttribute("data-view") as "cards" | "ls"),
+    ),
+  );
+
   function showSearch(on: boolean) {
-    if (list) list.hidden = on;
-    if (pager) pager.hidden = on;
+    searching = on;
+    // Hide both real views while searching; restore the active one after.
+    if (on) {
+      if (cardsView) cardsView.hidden = true;
+      if (lsView) lsView.hidden = true;
+    } else {
+      if (cardsView) cardsView.hidden = currentView !== "cards";
+      if (lsView) lsView.hidden = currentView !== "ls";
+    }
     if (results) results.hidden = !on;
   }
 
@@ -148,4 +274,41 @@ const { page } = Astro.props;
   }
 
   box?.addEventListener("input", onInput);
+
+  // ---- GoatCounter view counts for the ls -l rows (fetched once, lazily) ----
+  let countsLoaded = false;
+  async function loadViewCounts() {
+    if (countsLoaded || !lsView) return;
+    countsLoaded = true; // only attempt once per page load
+    const base = "https://adlternative.goatcounter.com/counter";
+    const rows = lsView.querySelectorAll<HTMLElement>(".ls-row a[data-path]");
+    rows.forEach((a) => {
+      const path = a.getAttribute("data-path");
+      const nEl = a.querySelector<HTMLElement>(".ls-views-n");
+      if (!path || !nEl) return;
+      fetch(`${base}/${encodeURIComponent(path)}.json`)
+        .then((r) =>
+          r.status === 200 || r.status === 404 ? r.json() : Promise.reject(),
+        )
+        .then((data: { count?: string }) => {
+          if (data && typeof data.count === "string") {
+            nEl.textContent = data.count.replace(/\s/g, "");
+            a.classList.add("has-views");
+          }
+        })
+        .catch(() => {
+          /* keep the placeholder dot */
+        });
+    });
+  }
+
+  // Restore preferred view (default: cards).
+  (function initView() {
+    let preferred: "cards" | "ls" = "cards";
+    try {
+      const stored = localStorage.getItem(VIEW_KEY);
+      if (stored === "cards" || stored === "ls") preferred = stored;
+    } catch {}
+    applyView(preferred);
+  })();
 </script>

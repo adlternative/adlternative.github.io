@@ -35,3 +35,29 @@ export function fmtDate(d: Date): string {
 export function fmtDateTime(d: Date): string {
   return d.toISOString().slice(0, 19).replace("T", " ");
 }
+
+/** Human-readable size like `ls -h`, e.g. 4200 -> "4.1K". */
+export function fmtSize(bytes: number): string {
+  const units = ["B", "K", "M", "G"];
+  let n = bytes;
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  // Whole bytes show no decimal; larger units show one decimal.
+  const val = i === 0 ? String(Math.round(n)) : n.toFixed(1);
+  return `${val}${units[i]}`.padStart(5, " ");
+}
+
+/**
+ * A stable, tongue-in-cheek `ls -l` permission string for a post.
+ * Everything is world-readable; a post gets the "executable" bit when it
+ * has code-ish tags, purely for terminal flavour.
+ */
+export function permString(post: Post): string {
+  const tags = (post.data.tags ?? []).map((t) => t.toLowerCase());
+  const codey = ["c++", "linux", "git", "os", "perf", "db", "shell", "ai"];
+  const exec = tags.some((t) => codey.includes(t));
+  return exec ? "-rwxr-xr-x" : "-rw-r--r--";
+}
