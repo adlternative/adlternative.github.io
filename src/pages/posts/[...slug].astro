@@ -167,16 +167,22 @@ const hasBilingual = Boolean(post.data.titleZh);
     const path = location.pathname;
     const url = `https://adlternative.goatcounter.com/counter/${encodeURIComponent(path)}.json`;
 
+    // GoatCounter returns HTTP 404 with a valid `{"count":"0"}` body for
+    // paths that have no recorded pageviews yet, so accept 200 and 404 alike.
     fetch(url)
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((r) => {
+        if (r.status !== 200 && r.status !== 404) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((data: { count?: string }) => {
-        if (data && data.count) {
+        if (data && typeof data.count === "string") {
           countEl.textContent = data.count.replace(/\s/g, "");
           wrap.hidden = false;
         }
       })
       .catch(() => {
-        // API disabled or path not yet counted; keep hidden
+        // Network error, or counter API disabled (returns HTML, not JSON);
+        // keep the element hidden.
       });
   })();
 </script>
