@@ -35,6 +35,10 @@ const hasBilingual = Boolean(post.data.titleZh);
         <span>{fmtDateTime(post.data.date)}</span>
         {" "}
         {post.data.tags.map((t) => <span class="tag">{t}</span>)}
+        {" "}
+        <span class="views" id="post-views" hidden>
+          &middot; <span id="post-views-count">&hellip;</span> views
+        </span>
       </div>
       {
         hasBilingual && (
@@ -152,5 +156,27 @@ const hasBilingual = Boolean(post.data.titleZh);
       if (stored === "en" || stored === "zh") preferred = stored;
     } catch {}
     applyLang(preferred);
+  })();
+
+  // Fetch and display view count from GoatCounter
+  (function initViewCount() {
+    const wrap = document.getElementById("post-views");
+    const countEl = document.getElementById("post-views-count");
+    if (!wrap || !countEl) return;
+
+    const path = location.pathname;
+    const url = `https://adlternative.goatcounter.com/counter/${encodeURIComponent(path)}.json`;
+
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data: { count?: string }) => {
+        if (data && data.count) {
+          countEl.textContent = data.count.replace(/\s/g, "");
+          wrap.hidden = false;
+        }
+      })
+      .catch(() => {
+        // API disabled or path not yet counted; keep hidden
+      });
   })();
 </script>
