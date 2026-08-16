@@ -29,9 +29,9 @@ Put differently: tests tell you "it's not broken now," but not "will it break in
 
 Geoffrey's answer is *educational*: he builds `/explain-diff` — rich HTML explainer docs with background context, literate diffs, interactive figures, and quizzes. His goal is to help humans *learn* the code deeply enough to participate in the creative process.
 
-I love this direction. But I'm solving a slightly different problem: **what happens *before* a human decides to read?** When a reviewer opens an MR with 47 files, they need triage — which files matter, what's the shape of this change, where should I focus? They need a *map* before they start *exploring*.
+I love this direction. But I'm solving a slightly different problem: **what happens *before* a human decides to read?** When a reviewer opens an MR with 47 files, they need triage — which files matter, what's the shape of this change, where should I focus?
 
-Geoffrey's explainer is the exploration. I'm building the map.
+You don't start exploring a new city by reading every street sign. You look at a map first. Geoffrey's explainer is great for exploring — I want to give you the map.
 
 ## Why unstructured explanations aren't enough
 
@@ -127,9 +127,9 @@ Agent 帮你写完代码，你跑测试，绿了，提 MR。评审人点开 diff
 
 Geoffrey 的答案是*教育导向*的：他做了 `/explain-diff`——生成包含背景知识、文学化 diff、交互图示和测验的 HTML 解释文档。目标是帮助人类*深入学习*代码，从而能参与创造性过程。
 
-我很喜欢这个方向。但我在解决一个稍微不同的问题：**在人类决定深入阅读之前会发生什么？** 当评审者打开一个 47 文件的 MR，他首先需要分诊——哪些文件重要、变更的整体形状是什么、应该聚焦在哪里？他需要先有一张*地图*，然后才能开始*探索*。
+我很喜欢这个方向。但我在解决一个稍微不同的问题：**在人类决定深入阅读之前会发生什么？** 当评审者打开一个 47 文件的 MR，他首先需要分诊——哪些文件重要、变更的整体形状是什么、应该聚焦在哪里？
 
-Geoffrey 的解释器是探索工具。我在做地图。
+你不会到一个陌生城市就挨个读路牌，你会先看地图。Geoffrey 的解释器适合深入探索——我想先给你一张地图。
 
 ## 为什么非结构化的解释不够
 
