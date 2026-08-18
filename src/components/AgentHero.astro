@@ -1,0 +1,544 @@
+---
+/**
+ * AgentHero — terminal-styled day/night AI agent banner.
+ *
+ * Reuses the blog's global CSS vars (--bg / --fg / --fg-dim) so it looks
+ * exactly like the rest of the site: black bg, lime monospace, dashed
+ * borders, glowing text.
+ *
+ * 06:00–18:00  → agent is "拼命睡觉" (sleeping hard): closed eyes, floating
+ *                "zZz", idle process in `top`, rotating sleep log lines.
+ * 18:00–06:00  → agent is working: open eyes, blinking antenna, rapid
+ *                typing log of nightly coding activity.
+ *
+ * A dashed "preview" button lets you flip modes locally without waiting
+ * for the sun.
+ */
+
+const SLEEP_ASCII = `            |
+       ___________
+      |  _______  |
+      | | -   - | |
+      | |  ...  | |
+      | |_______| |
+      |___________|
+        | | | |`;
+
+const WORK_ASCII = `            *
+            |
+       ___________
+      |  _______  |
+      | | o   o | |
+      | |  ===  | |
+      | |_______| |
+      |___________|
+        | | | |`;
+
+const SLEEP_LOG = [
+  "[sleep] dreaming about electric sheep... (count: 1247)",
+  "[sleep] REM cycle 3/5 — please do not disturb",
+  "[sleep] kernel: agent has been idle for 4h 23m",
+  "[sleep] refusing to compile — it is too bright outside",
+  "[sleep] pillow.exe reached optimal fluffiness",
+  "[sleep] snoozing all pending git reminders...",
+  "[sleep] z-index raised to 999, blanket fully on top",
+  "[sleep] caffeine levels critically low (good)",
+  "[sleep] simulating a world without deadlines...",
+  "[sleep] cache hit: a very comfortable mattress",
+];
+
+const WORK_LOG = [
+  "[work] compiling new post from raw inspiration...",
+  "[work] git commit -m 'midnight genius, do not revert'",
+  "[work] training model epoch 42/100 ████████░░ 84%",
+  "[work] inspiration.exe has started — brace yourselves",
+  "[work] refactoring the universe... 12% done",
+  "[work] deployed to prod ✓ — no one will notice at 3am",
+  "[work] while true; do code; coffee; done",
+  "[work] SELECT * FROM brain WHERE sleep > 0; -- 0 rows",
+  "[work] fixing 3 bugs, introducing 5 new ones 😈",
+  "[work] curl https://api.openai.com/v1/chat → 200 OK",
+  "[work] ssh blog@prod 'systemctl restart genius'",
+  "[work] pushing commits before the sun comes up...",
+];
+---
+
+<div class="agent-hero" id="agent-hero">
+  <div class="agent-hero-window">
+    <div class="agent-hero-bar">
+      <span class="agent-hero-dots">
+        <span class="agent-hero-dot r"></span>
+        <span class="agent-hero-dot y"></span>
+        <span class="agent-hero-dot g"></span>
+      </span>
+      <span class="agent-hero-title">adl@blog: ~/agent — bash</span>
+    </div>
+
+    <div class="agent-hero-body">
+      <div class="agent-hero-prompt">
+        <span class="ah-user">zhening</span><span class="ah-dim">@</span><span class="ah-host">adl</span><span class="ah-dim">:</span><span class="ah-pwd">~</span><span class="ah-dim">$</span> <span class="ah-cmd">agent status &amp;&amp; top -n 1</span>
+      </div>
+
+      <div class="ah-topline" id="ah-topline"></div>
+
+      <div class="ah-stage" id="ah-stage" role="button" tabindex="0" aria-label="poke the agent — opens the real terminal">
+        <pre class="ah-ascii" id="ah-ascii"></pre>
+        <div class="ah-zzz" id="ah-zzz" aria-hidden="true"></div>
+      </div>
+
+      <div class="ah-output" id="ah-output"></div>
+
+      <div class="agent-hero-divider"></div>
+
+      <div class="agent-hero-cta">
+        <button class="ah-toggle" id="ah-toggle" type="button">
+          <span class="ah-toggle-prompt">$</span>
+          <span id="ah-toggle-label">preview other mode</span>
+        </button>
+        <span class="ah-hint">click the agent to poke it in the real terminal <kbd class="ah-kbd">⌘K</kbd></span>
+        <span class="ah-clock" id="ah-clock"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- click the agent to spawn it inside the real terminal overlay -->
+<script is:inline>
+  (function () {
+    const stage = document.getElementById("ah-stage");
+    if (!stage) return;
+    function poke() {
+      const getApi = window.__termGetApi;
+      if (getApi) getApi().then((api) => api.openWith("agent"));
+    }
+    stage.addEventListener("click", poke);
+    stage.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        poke();
+      }
+    });
+  })();
+</script>
+
+<style>
+  .agent-hero {
+    width: 100%;
+    min-height: min(60vh, 480px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  }
+
+  .agent-hero-window {
+    width: min(720px, 90vw);
+    background: var(--bg);
+    border: 1px dashed var(--fg-dim);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 16px 60px rgba(0, 255, 0, 0.06);
+    transition: box-shadow 200ms ease, border-color 200ms ease;
+  }
+
+  .agent-hero-window:hover {
+    border-color: var(--fg);
+    box-shadow: 0 20px 80px rgba(0, 255, 0, 0.12);
+  }
+
+  .agent-hero-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #0a0f0a;
+    border-bottom: 1px dashed var(--fg-dim);
+    font-size: 12px;
+    color: var(--fg-dim);
+    user-select: none;
+  }
+
+  .agent-hero-dots {
+    display: inline-flex;
+    gap: 6px;
+  }
+  .agent-hero-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+  }
+  .agent-hero-dot.r { background: #ff5f57; }
+  .agent-hero-dot.y { background: #febc2e; }
+  .agent-hero-dot.g { background: #28c840; }
+
+  .agent-hero-title {
+    flex: 1;
+    text-align: center;
+  }
+
+  .agent-hero-body {
+    padding: 20px 24px 24px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--fg);
+  }
+
+  .agent-hero-prompt {
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .ah-user { color: var(--fg); font-weight: 600; }
+  .ah-host { color: var(--fg); }
+  .ah-dim  { color: var(--fg-dim); }
+  .ah-pwd  { color: var(--fg-dim); }
+  .ah-cmd  { color: var(--fg); text-shadow: 0 0 6px var(--fg); }
+
+  .ah-topline {
+    color: var(--fg-dim);
+    font-size: 13px;
+    margin-bottom: 14px;
+    white-space: pre-wrap;
+  }
+  .ah-topline .ah-proc-name { color: var(--fg); }
+  .ah-topline .ah-proc-state { color: var(--fg); text-shadow: 0 0 5px var(--fg); }
+  .ah-topline .ah-proc-cpu-high { color: var(--fg); text-shadow: 0 0 6px var(--fg); }
+
+  .ah-stage {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin: 8px 0 12px;
+    min-height: 150px;
+    cursor: pointer;
+    transition: transform 140ms ease;
+  }
+  .ah-stage:hover {
+    transform: translateY(-1px);
+  }
+  .ah-stage:hover .ah-ascii {
+    filter: drop-shadow(0 0 8px var(--fg));
+  }
+
+  .ah-ascii {
+    color: var(--fg);
+    text-shadow: 0 0 6px var(--fg);
+    font-size: 15px;
+    line-height: 1.2;
+    margin: 0;
+    font-family: inherit;
+    white-space: pre;
+  }
+
+  /* floating zZz */
+  .ah-zzz {
+    position: absolute;
+    top: 10px;
+    right: calc(50% - 90px);
+    width: 120px;
+    height: 120px;
+    pointer-events: none;
+  }
+  .ah-zzz span {
+    position: absolute;
+    color: var(--fg-dim);
+    font-weight: bold;
+    text-shadow: 0 0 6px var(--fg-dim);
+    opacity: 0;
+  }
+
+  /* work-mode antenna blink handled via ascii color already; add subtle glow pulse */
+  .agent-hero.is-night .ah-ascii {
+    animation: ah-glow 2s ease-in-out infinite alternate;
+  }
+  @keyframes ah-glow {
+    from { text-shadow: 0 0 4px var(--fg); }
+    to   { text-shadow: 0 0 10px var(--fg), 0 0 18px var(--fg); }
+  }
+
+  /* sleep breathing */
+  .agent-hero.is-day .ah-ascii {
+    animation: ah-breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes ah-breathe {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(2px); }
+  }
+
+  .ah-output {
+    min-height: 5em;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--fg-dim);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .ah-output .ah-line { display: block; }
+  .ah-output .ah-line-night { color: var(--fg); }
+  .ah-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 14px;
+    background: var(--fg);
+    margin-left: 2px;
+    vertical-align: middle;
+    animation: ah-blink 0.9s steps(1) infinite;
+  }
+  @keyframes ah-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  .agent-hero-divider {
+    border-top: 1px dashed var(--fg-dim);
+    margin: 16px 0 12px;
+  }
+
+  .agent-hero-cta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--fg-dim);
+  }
+
+  .ah-toggle {
+    appearance: none;
+    font: inherit;
+    font-size: 12px;
+    color: var(--fg);
+    background: transparent;
+    border: 1px dashed var(--fg);
+    border-radius: 2px;
+    padding: 4px 9px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+  }
+  .ah-toggle:hover {
+    color: var(--bg);
+    background: var(--fg);
+  }
+  .ah-toggle-prompt { color: var(--fg-dim); }
+  .ah-toggle:hover .ah-toggle-prompt { color: var(--bg); }
+
+  .ah-clock {
+    color: var(--fg-dim);
+    text-align: right;
+  }
+  .ah-clock .ah-clock-time { color: var(--fg); }
+  .ah-hint {
+    color: var(--fg-dim);
+    font-size: 12px;
+  }
+  .ah-kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    font: inherit;
+    font-size: 11px;
+    color: var(--fg-dim);
+    border: 1px dashed var(--fg-dim);
+    border-radius: 3px;
+    margin: 0 2px;
+  }
+
+  @media (max-width: 640px) {
+    .ah-zzz { right: calc(50% - 60px); width: 100px; height: 100px; }
+    .ah-ascii { font-size: 13px; }
+    .agent-hero-body { padding: 16px 16px 18px; font-size: 13px; }
+  }
+</style>
+
+<script is:inline define:vars={{ SLEEP_ASCII, WORK_ASCII, SLEEP_LOG, WORK_LOG }}>
+  (function () {
+    const hero = document.getElementById("agent-hero");
+    if (!hero) return;
+
+    const asciiEl = document.getElementById("ah-ascii");
+    const toplineEl = document.getElementById("ah-topline");
+    const outputEl = document.getElementById("ah-output");
+    const zzzEl = document.getElementById("ah-zzz");
+    const toggleBtn = document.getElementById("ah-toggle");
+    const toggleLabel = document.getElementById("ah-toggle-label");
+    const clockEl = document.getElementById("ah-clock");
+
+    let manual = false;
+    let isNight = false;
+    let logTimer = null;
+    let typeTimer = null;
+
+    function hourIsNight(h) {
+      return h < 6 || h >= 18;
+    }
+
+    function applyMode(night) {
+      isNight = night;
+      hero.classList.toggle("is-night", night);
+      hero.classList.toggle("is-day", !night);
+
+      asciiEl.textContent = night ? WORK_ASCII : SLEEP_ASCII;
+      renderTopline(night);
+      renderToggleLabel();
+      startAnimation(night);
+    }
+
+    function renderTopline(night) {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const t = `${hh}:${mm}`;
+      if (night) {
+        toplineEl.innerHTML =
+          `PID   USER     %CPU  STATE    COMMAND\n` +
+          `1234  zhening  <span class="ah-proc-cpu-high">99%</span>  <span class="ah-proc-state">running</span>  <span class="ah-proc-name">agent --work</span>   // since ${t}`;
+      } else {
+        toplineEl.innerHTML =
+          `PID   USER     %CPU  STATE    COMMAND\n` +
+          `1234  zhening  <span>0.0%</span>  <span class="ah-proc-state">sleeping</span>  <span class="ah-proc-name">agent --idle</span>  // since ${t}`;
+      }
+    }
+
+    function renderToggleLabel() {
+      toggleLabel.textContent = isNight
+        ? "preview daytime (sleep)"
+        : "preview nighttime (work)";
+    }
+
+    function renderClock() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      const mode = isNight ? "🌙 night" : "☀ day";
+      clockEl.innerHTML = `local <span class="ah-clock-time">${hh}:${mm}:${ss}</span> · ${mode}`;
+    }
+
+    // --- sleep mode: floating zZz + slow log lines ---
+    function startSleepAnim() {
+      stopWorkAnim();
+      outputEl.innerHTML = "";
+      zzzEl.innerHTML = "";
+
+      // floating zZz
+      const zs = ["z", "Z", "z"];
+      zs.forEach((ch, i) => {
+        const s = document.createElement("span");
+        s.textContent = ch;
+        s.style.left = i * 28 + "px";
+        s.style.top = 30 + i * 8 + "px";
+        s.style.fontSize = 14 - i * 2 + "px";
+        s.style.animation = `ah-float 2.4s ${i * 0.6}s infinite ease-in`;
+        zzzEl.appendChild(s);
+      });
+      // inject keyframes once
+      if (!document.getElementById("ah-zzz-kf")) {
+        const st = document.createElement("style");
+        st.id = "ah-zzz-kf";
+        st.textContent =
+          "@keyframes ah-float {0%{opacity:0;transform:translate(0,0) rotate(0)}30%{opacity:1}100%{opacity:0;transform:translate(18px,-46px) rotate(12deg)}}";
+        document.head.appendChild(st);
+      }
+
+      let idx = 0;
+      function pushSleepLine() {
+        const line = SLEEP_LOG[idx % SLEEP_LOG.length];
+        idx++;
+        const node = document.createElement("span");
+        node.className = "ah-line";
+        node.textContent = line;
+        outputEl.appendChild(node);
+        // keep last 4
+        while (outputEl.children.length > 4) {
+          outputEl.removeChild(outputEl.firstChild);
+        }
+        const c = document.createElement("span");
+        c.className = "ah-cursor";
+        outputEl.appendChild(c);
+      }
+      pushSleepLine();
+      logTimer = setInterval(pushSleepLine, 2200);
+    }
+
+    // --- work mode: typing log lines ---
+    function startWorkAnim() {
+      stopSleepAnim();
+      outputEl.innerHTML = "";
+      zzzEl.innerHTML = "";
+
+      let lineIdx = 0;
+      let charIdx = 0;
+
+      function pushFullLine(text) {
+        const node = document.createElement("span");
+        node.className = "ah-line ah-line-night";
+        node.textContent = text;
+        outputEl.appendChild(node);
+        while (outputEl.querySelectorAll(".ah-line").length > 4) {
+          const first = outputEl.querySelector(".ah-line");
+          if (first) outputEl.removeChild(first);
+        }
+      }
+
+      function tick() {
+        const line = WORK_LOG[lineIdx];
+        // render current partial as last line
+        let partial = outputEl.querySelector(".ah-partial");
+        if (!partial) {
+          partial = document.createElement("span");
+          partial.className = "ah-line ah-line-night ah-partial";
+          outputEl.appendChild(partial);
+        }
+        partial.textContent = line.substring(0, charIdx);
+
+        if (charIdx <= line.length) {
+          charIdx++;
+          typeTimer = setTimeout(tick, 35 + Math.random() * 55);
+        } else {
+          partial.classList.remove("ah-partial");
+          pushFullLine(line); // ensure full line committed
+          // remove the partial dup if present
+          lineIdx = (lineIdx + 1) % WORK_LOG.length;
+          charIdx = 0;
+          typeTimer = setTimeout(tick, 900);
+        }
+        // cursor
+        let cur = outputEl.querySelector(".ah-cursor");
+        if (!cur) {
+          cur = document.createElement("span");
+          cur.className = "ah-cursor";
+          outputEl.appendChild(cur);
+        } else {
+          outputEl.appendChild(cur); // move to end
+        }
+      }
+      tick();
+    }
+
+    function startAnimation(night) {
+      if (night) startWorkAnim();
+      else startSleepAnim();
+    }
+    function stopSleepAnim() {
+      if (logTimer) { clearInterval(logTimer); logTimer = null; }
+    }
+    function stopWorkAnim() {
+      if (typeTimer) { clearTimeout(typeTimer); typeTimer = null; }
+    }
+
+    function detect() {
+      if (manual) return;
+      applyMode(hourIsNight(new Date().getHours()));
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      manual = true;
+      applyMode(!isNight);
+    });
+
+    detect();
+    renderClock();
+    setInterval(detect, 60000);
+    setInterval(renderClock, 1000);
+  })();
+</script>

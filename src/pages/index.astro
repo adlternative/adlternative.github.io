@@ -1,6 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
-import TerminalHero from "../components/TerminalHero.astro";
+import AgentHero from "../components/AgentHero.astro";
+// import TerminalHero from "../components/TerminalHero.astro";  // swapped out for AgentHero (revert anytime)
 
 const asciiart = `44      4444    44
 4444    44 44   44
@@ -17,8 +18,8 @@ const paragraphs = [
 ---
 
 <Base current="Home">
-  <!-- Desktop: terminal hero banner (clickable to open real terminal) -->
-  <TerminalHero />
+  <!-- Day/night AI agent hero — sleeps by day, works by night -->
+  <AgentHero />
 
   <!-- Mobile fallback + scroll-down content -->
   <div class="home-center mobile-only">

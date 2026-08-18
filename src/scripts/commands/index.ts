@@ -14,6 +14,7 @@ import { cowsay } from "./cowsay";
 import { tree } from "./tree";
 import { neofetch } from "./neofetch";
 import { date, echo, coin, roll, coffee, exitCmd } from "./misc";
+import { agent } from "./agent";
 import {
   sudo,
   vim,
@@ -52,6 +53,7 @@ const list: Cmd[] = [
   roll,
   coffee,
   exitCmd,
+  agent,
   // easter eggs — registered but filtered from `help`
   sudo,
   vim,
