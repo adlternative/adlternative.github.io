@@ -1,0 +1,292 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Kernel-Scheduling-Algorithm - ZheNing Hu</title><meta name="description" content="Kernel-Scheduling-Algorithm"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="Kernel-Scheduling-Algorithm" data-title-zh="内核调度算法" data-astro-cid-egg7nqdx> Kernel-Scheduling-Algorithm </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2021-04-19 18:30:52</span>   <span class="tag" data-astro-cid-egg7nqdx>os</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<h2 id="introduction-to-operating-system-scheduling-algorithms">Introduction to Operating System Scheduling Algorithms</h2>
+<h3 id="why-do-we-need-scheduling">Why Do We Need Scheduling?</h3>
+<ol>
+<li>The operating system needs to make full use of system resources; efficient resource utilization is an important foundation for the OS to run efficiently.</li>
+<li>The operating system needs to satisfy the goal of concurrent execution of multiple processes.</li>
+<li>The operating system needs to respond to users as quickly as possible.</li>
+</ol>
+<h3 id="what-are-the-scheduling-metrics">What Are the Scheduling Metrics?</h3>
+<ul>
+<li>Performance:
+<ul>
+<li>Batch tasks: throughput, turnaround time.</li>
+<li>Interactive tasks: response time.</li>
+</ul>
+</li>
+<li>Non-performance:
+<ul>
+<li>Fairness.</li>
+<li>Resource utilization.</li>
+<li>Real-time tasks: timeliness.</li>
+<li>Energy consumption.</li>
+</ul>
+</li>
+</ul>
+<p>Although we hope that a good scheduling policy can improve all metrics at the same time, in reality improving some metrics may affect others. For example, in power-saving mode on our phones, brightness is often limited or the number of apps is restricted, because there is a conflict between performance and energy consumption.</p>
+<h3 id="scheduling-types">Scheduling Types</h3>
+<ul>
+<li>Scheduling content: task scheduling, I/O scheduling, memory scheduling, energy-aware scheduling.</li>
+<li>Scheduling scenarios: priority scheduling, fair-share scheduling, real-time scheduling, co-scheduling.</li>
+<li>Single-core scheduling, multi-core scheduling.</li>
+</ul>
+<h3 id="what-task-scheduling-algorithms-are-there">What Task Scheduling Algorithms Are There?</h3>
+<h4 id="classic-scheduling">Classic Scheduling</h4>
+<ul>
+<li>
+<p>FCFS (First-Come, First-Served): maintains a task queue; arriving tasks are pushed to the tail, and each scheduling decision picks the task at the head. Non-preemptive.</p>
+<ul>
+<li>Advantage: simple and intuitive, friendly to CPU-bound tasks.</li>
+<li>Disadvantage: not very friendly to short tasks; later short tasks may have long turnaround times.</li>
+<li>Disadvantage: not very friendly to I/O-bound tasks; when I/O arrives, a task that voluntarily gives up the CPU cannot preempt the CPU in time after the I/O request returns, and must wait, resulting in poor I/O performance.</li>
+</ul>
+</li>
+<li>
+<p>SJF (Shortest Job First): when a scheduling decision occurs, pick the task with the shortest running time. Non-preemptive.</p>
+<ul>
+<li>Disadvantage: requires knowing the task running time in advance, which is hard to predict in normal cases.</li>
+<li>Disadvantage: depends on task arrival time; short tasks that arrive later still have to wait for earlier long tasks.</li>
+</ul>
+</li>
+<li>
+<p>STJF (Shortest Time-to-Completion First): the preemptive version of SJF.</p>
+<ul>
+<li>Advantage: short tasks are preferred, resulting in fast response time.</li>
+<li>Disadvantage: long tasks may starve. Because short tasks can preempt the CPU from long tasks, a large number of short tasks may prevent long tasks from getting CPU resources in time, and long-running background tasks will not work properly.</li>
+</ul>
+</li>
+<li>
+<p>RR (Round-Robin): each task gets a fixed time slice; every time slice, the scheduler checks whether a task has used up its slice and switches to another task in the queue. After all tasks have run, the time slices are reset.</p>
+<ul>
+<li>Advantage: strong fairness; different types of tasks all run for a short period before yielding the CPU to other tasks.</li>
+<li>Advantage: relatively short response time.</li>
+<li>Disadvantage: if the time slice is too long, response time is long and other tasks wait longer; if the time slice is too short, there are many context switches and high overhead.</li>
+<li>Disadvantage: long turnaround time.</li>
+</ul>
+</li>
+</ul>
+<h4 id="priority-scheduling">Priority Scheduling</h4>
+<ul>
+<li>
+<p>MLQ (Multi-Level Queue): introduces the concept of priority; different-level queues have different priorities and can use different scheduling policies; the scheduler picks the head task from the highest-priority non-empty queue.</p>
+<ul>
+<li>Advantage: because different queues can use different policies, it is easy to distinguish different tasks.</li>
+<li>Disadvantage: tasks in low-priority queues are prone to starvation. If the high-priority queue has a large number of tasks, tasks in low-priority queues cannot execute for a long time.</li>
+</ul>
+</li>
+<li>
+<p>MLFQ (Multi-Level Feedback Queue): multi-level queue plus dynamic priority adjustment. It evaluates task execution time to judge short and long tasks, giving short tasks the highest priority. Each queue has a maximum running time; tasks that exceed it are demoted (long tasks are easily demoted). Lower-priority queues are given longer time slices, and all tasks are periodically boosted to the highest priority to avoid starvation.</p>
+<ul>
+<li>Advantage: dynamically adjusts task priorities, short tasks run first, and long tasks do not starve.</li>
+<li>Disadvantage: requires parameter tuning. If the priority-boost interval is too short, all tasks stay in the highest-priority queue and the policy degenerates into RR. If the interval is too long, low-priority long tasks cannot execute.</li>
+</ul>
+</li>
+</ul>
+<h4 id="real-time-scheduling">Real-Time Scheduling</h4>
+<p>Real-time operating systems have different considerations: tasks have explicit upper bounds on completion time, with deterministic and predictable latency. (Not expanded here.)</p>
+<ul>
+<li>
+<p>RM (Rate-Monotonic): a higher rate means a shorter task period and a more urgent deadline, so higher priority is assigned. Preemptive. It has stable task latency but cannot guarantee deadline requirements.</p>
+</li>
+<li>
+<p>EDF (Earliest Deadline First): uses the deadline as the basis for priority. It can meet task deadline requirements when CPU utilization &#x3C;= 1.</p>
+</li>
+</ul>
+<h4 id="other-scheduling">Other Scheduling</h4>
+<ul>
+<li>BVT (Borrowed Virtual Time): tasks are prioritized by reducing their effective virtual time.</li>
+<li>…</li>
+</ul>
+<h4 id="what-are-the-current-linux-scheduling-algorithms">What Are the Current Linux Scheduling Algorithms?</h4>
+<ul>
+<li>
+<p>O(N) (v &#x3C;= 2.4)</p>
+<ul>
+<li>Based on the RR policy.</li>
+<li>The scheduler dynamically computes priorities at scheduling time and picks the highest-priority task.</li>
+<li>Completed tasks are removed and placed at the tail of the queue when scheduled again.</li>
+<li>During a scheduling period, the scheduler traverses the queue and updates every task’s time slice, adding half of the remaining time slice to the next scheduling period.</li>
+<li>Disadvantage: high scheduling overhead.</li>
+<li>Disadvantage: poor multi-core scalability.</li>
+</ul>
+</li>
+<li>
+<p>O(1) (v == 2.6.0)</p>
+<ul>
+<li>Each CPU has an active queue and an expired queue. Both are multi-level queues, and a bitmap allows O(1) lookup of the first task in the first non-empty queue in the active queue.</li>
+<li>Low scheduling overhead.</li>
+<li>Guarantees small latency for interactive tasks.</li>
+<li>Disadvantage: uses static time slices, so scheduling latency depends on the number of tasks.</li>
+<li>Disadvantage: the heuristic for judging task types is overly complex.</li>
+</ul>
+</li>
+<li>
+<p>CFS (Completely Fair Scheduler)</p>
+<ul>
+<li>Uses a red-black tree as the task queue, indexed by virtual time, so the task with the smallest virtual time can be found in O(1), and the scheduler picks that task.</li>
+<li>Every task is executed once within a scheduling period, ensuring fairness.</li>
+<li>Assigns dynamic time slices. Within a scheduling period, tasks with different priorities run for different amounts of physical time, but their virtual time increases by the same amount.</li>
+<li>Tasks that are woken up from blocking are preferred.</li>
+<li>Used for non-real-time tasks.</li>
+<li>Scheduling policies: SCHED_OTHER, SCHED_BATCH, SCHED_IDLE.</li>
+</ul>
+</li>
+<li>
+<p>RT (Real-Time Scheduler)</p>
+<ul>
+<li>Uses a multi-level priority queue to schedule real-time tasks.</li>
+<li>Scheduling policies: SCHED_FIFO, SCHED_RR.</li>
+</ul>
+</li>
+<li>
+<p>DL (Deadline Scheduler)</p>
+<ul>
+<li>Similar to the EDF scheduling policy.</li>
+<li>Scheduling policy: SCHED_DEADLINE.</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="lang-section" data-lang="zh">
+<h2 id="操作系统调度算法介绍">操作系统调度算法介绍</h2>
+<h3 id="为什么需要调度">为什么需要调度？</h3>
+<ol>
+<li>操作系统需要充分利用系统的资源，资源的有效利用是让操作系统高效运行的重要基础。</li>
+<li>操作系统需要满足多个进程并发执行的目标。</li>
+<li>操作系统需要尽快响应用户。</li>
+</ol>
+<h3 id="调度指标有哪些">调度指标有哪些？</h3>
+<ul>
+<li>性能：
+<ul>
+<li>批处理任务：吞吐量，周转时间。</li>
+<li>交互式任务：响应时间。</li>
+</ul>
+</li>
+<li>非性能：
+<ul>
+<li>公平性。</li>
+<li>资源利用率。</li>
+<li>实时任务：实时性。</li>
+<li>能耗。
+尽管我们希望一个好的调度策略可以让所有的调度指标都好，但是事实上我们在提高一些指标的同时其他指标可能会受到影响，比如我们手机的省电模式下往往只让你使用有限的亮度或限制app使用数量，就是因为性能和能耗两个不同指标间存在冲突。</li>
+</ul>
+</li>
+</ul>
+<h3 id="调度类型">调度类型</h3>
+<ul>
+<li>调度内容： 任务调度，IO调度，内存调度，能耗感知调度。</li>
+<li>调度场景：优先级调度，公平共享调度，实时调度，协同调度。</li>
+<li>单核调度，多核调度。</li>
+</ul>
+<h3 id="有哪些任务调度算法">有哪些任务调度算法？</h3>
+<h4 id="经典调度">经典调度</h4>
+<ul>
+<li>FCFS（先来先服务）：维护一个任务队列，到来的任务push到队尾，每次调度从队首取任务执行，不支持抢占。
+<ul>
+<li>优点：简单直观，对CPU密集型任务友好。</li>
+<li>缺点：对短任务不太友好，后来的短任务需要很长周转时间。</li>
+<li>缺点：对IO密集型任务不太友好，当IO到来时，主动放弃CPU资源的任务在之后IO请求返回的时候无法及时抢占CPU资源，必须等待，导致IO的性能很低。</li>
+</ul>
+</li>
+<li>SJF（最短任务优先）：在调度发生时选择运行时间最短的任务执行，不支持抢占。
+<ul>
+<li>缺点：需要预知任务时间，常规情况难以预测。</li>
+<li>缺点：依赖任务到达时间，后到达的短任务仍然需要等待之前的长任务时间。</li>
+</ul>
+</li>
+<li>STJF（最短完成时间任务优先）：SJF的抢占版本。
+<ul>
+<li>优点：短任务优先，响应时间快。</li>
+<li>缺点：长任务饥饿。由于那些短任务可抢占长任务CPU，这会导致大量的短任务可能让长任务无法及时占用CPU资源，那些后台执行的长任务将无法正常工作。</li>
+</ul>
+</li>
+<li>RR（时间片轮转）：每个任务定长时间片，每隔一个时间片检查一个任务是否时间片用完，用完则调度切换到队列的其他任务执行。之后当所有任务都执行完了，再重置时间片。
+<ul>
+<li>优点：公平性强，不同类型任务之间都会执行一定较短时间，然后将CPU让给其他的任务。</li>
+<li>优点：响应时间较短。</li>
+<li>缺点：若时间片过长，则响应时间长，其他任务的等待时间也长;若时间片过短，上下文切换多，性能开销大。</li>
+<li>缺点：周转时间较长。</li>
+</ul>
+</li>
+</ul>
+<h4 id="优先级调度">优先级调度</h4>
+<ul>
+<li>MLQ（多级队列）：引入优先级的概念，不同级别的队列有不同的优先级，可以采用不同的调度策略，选择非空的最高优先级的队列的队首任务进行调度。
+<ul>
+<li>优点：由于不同的队列可以有不同的策略，利于区分不同任务。</li>
+<li>缺点：低优先级队列上的任务容易饥饿。如果高优先级队列有大量的任务，则低优先级队列上的任务迟迟无法执行。</li>
+</ul>
+</li>
+<li>MLFQ（多级反馈队列）：多级队列+动态设置任务优先。级。评估任务的执行时间，判断长短任务，短任务最高优先级。每个队列的任务都有其最大运行时间，超时则任务降级（长任务容易降级）。给低优先级的任务更长的时间片，并定时将所有任务的优先级提高到最高，避免任务饥饿。
+<ul>
+<li>优点：动态调整任务优先级，短任务优先执行，长任务不会饥饿。</li>
+<li>缺点：需要调参。比如任务提升优先级时间间隔过短，所有任务都留在最高优先级的队列中，退化成RR策略。提升优先级的时间间隔过长，低优先级的长任务无法得以执行。</li>
+</ul>
+</li>
+</ul>
+<h4 id="实时调度">实时调度</h4>
+<p>实时操作系统中考虑的依据不同，任务的完成时间有明确的上限，有确定性，可预测的任务时延。（此处不展开讲）</p>
+<ul>
+<li>RM（速率单调）：速率越高意味着任务周期越短，截止时间越迫切，分配越高的优先级。支持抢占。有稳定的任务时延，不能满足对截止时间的要求。</li>
+<li>EDF（最早截至时间优先）：将截止时间作为优先级衡量的依据。在CPU利用率&#x3C;=1的前提下可以满足任务截止时间的要求。</li>
+</ul>
+<h4 id="其他调度">其他调度</h4>
+<ul>
+<li>BVT（借用虚拟时间）:任务通过降低有效虚拟时间来优先调度。
+…</li>
+</ul>
+<h4 id="linux当前的调度算法有哪些">Linux当前的调度算法有哪些？</h4>
+<ul>
+<li>O（N）（v&#x3C;=2.4）
+<ul>
+<li>基于RR策略。</li>
+<li>调度时会动态计算优先级并选用最高优先级任务调度。</li>
+<li>执行完的任务被移除，再次调度时放入队列尾。</li>
+<li>一个调度时间段，调度器会遍历队列并更新所有任务时间片，将它们剩余时间片的一半加入到下一个调度中。</li>
+<li>缺点：调度开销大。</li>
+<li>缺点：多核扩展性差。</li>
+</ul>
+</li>
+<li>O（1） （v==2.6.0）
+<ul>
+<li>每个CPU一个激活队列和过期队列。每个激活队列和过期队列都是多级队列，通过位图可以以O（1）复杂度找到激活队列上第一个非空队列 上的第一个任务调度。</li>
+<li>调度开销小。</li>
+<li>保证交互式任务时延较小。</li>
+<li>缺点：使用静态时间片，调度时延依赖于任务数量。</li>
+<li>缺点：启发式算法判断任务类型过于复杂。</li>
+</ul>
+</li>
+<li>CFS（完全公平调度器）
+<ul>
+<li>红黑树作为任务队列，虚拟时间作为索引，可以O（1）找到虚拟时间最小的任务，调度会选择虚拟时间最小的任务。</li>
+<li>调度周期内所有任务都会被执行一次，保证公平性。</li>
+<li>为任务分配动态时间片。每个调度周期内不同优先级的任务执行的物理时间有别，但增长的虚拟时间相同。</li>
+<li>阻塞唤醒的任务优先执行。</li>
+<li>用于调度非实时任务。</li>
+<li>调度策略： SCHED_OTHER， SCHED_BATCH，SCHED_IDLE。</li>
+</ul>
+</li>
+<li>RT（实时调度器）
+<ul>
+<li>使用多级优先级队列，调度实时任务。</li>
+<li>调度策略： SCHED_FIFO， SCHED_RR。</li>
+</ul>
+</li>
+<li>DL（截止时间调度器）
+<ul>
+<li>类似EDF调度策略。</li>
+<li>调度策略： SCHED_DEADLINE。</li>
+</ul>
+</li>
+</ul>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag os" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag os</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

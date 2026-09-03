@@ -1,0 +1,219 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ZheNing Hu - Software Developer</title><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<link rel="stylesheet" href="/_astro/index.CNtmb4O6.css"><script type="module" src="/_astro/hoisted.C04xCG4S.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>   <div class="agent-hero" id="agent-hero" data-astro-cid-7tgx5jo6> <div class="agent-hero-window" data-astro-cid-7tgx5jo6> <div class="agent-hero-bar" data-astro-cid-7tgx5jo6> <span class="agent-hero-dots" data-astro-cid-7tgx5jo6> <span class="agent-hero-dot r" data-astro-cid-7tgx5jo6></span> <span class="agent-hero-dot y" data-astro-cid-7tgx5jo6></span> <span class="agent-hero-dot g" data-astro-cid-7tgx5jo6></span> </span> <span class="agent-hero-title" data-astro-cid-7tgx5jo6>adl@blog: ~/agent — bash</span> </div> <div class="agent-hero-body" data-astro-cid-7tgx5jo6> <div class="agent-hero-prompt" data-astro-cid-7tgx5jo6> <span class="ah-user" data-astro-cid-7tgx5jo6>zhening</span><span class="ah-dim" data-astro-cid-7tgx5jo6>@</span><span class="ah-host" data-astro-cid-7tgx5jo6>adl</span><span class="ah-dim" data-astro-cid-7tgx5jo6>:</span><span class="ah-pwd" data-astro-cid-7tgx5jo6>~</span><span class="ah-dim" data-astro-cid-7tgx5jo6>$</span> <span class="ah-cmd" data-astro-cid-7tgx5jo6>agent status &amp;&amp; top -n 1</span> </div> <div class="ah-topline" id="ah-topline" data-astro-cid-7tgx5jo6></div> <div class="ah-stage" id="ah-stage" role="button" tabindex="0" aria-label="poke the agent — opens the real terminal" data-astro-cid-7tgx5jo6> <pre class="ah-ascii" id="ah-ascii" data-astro-cid-7tgx5jo6></pre> <div class="ah-zzz" id="ah-zzz" aria-hidden="true" data-astro-cid-7tgx5jo6></div> </div> <div class="ah-output" id="ah-output" data-astro-cid-7tgx5jo6></div> <div class="agent-hero-divider" data-astro-cid-7tgx5jo6></div> <div class="agent-hero-cta" data-astro-cid-7tgx5jo6> <button class="ah-toggle" id="ah-toggle" type="button" data-astro-cid-7tgx5jo6> <span class="ah-toggle-prompt" data-astro-cid-7tgx5jo6>$</span> <span id="ah-toggle-label" data-astro-cid-7tgx5jo6>preview other mode</span> </button> <span class="ah-hint" data-astro-cid-7tgx5jo6>click the agent to poke it in the real terminal <kbd class="ah-kbd" data-astro-cid-7tgx5jo6>⌘K</kbd></span> <span class="ah-clock" id="ah-clock" data-astro-cid-7tgx5jo6></span> </div> </div> </div> </div> <!-- click the agent to spawn it inside the real terminal overlay --> <script>
+  (function () {
+    const stage = document.getElementById("ah-stage");
+    if (!stage) return;
+    function poke() {
+      const getApi = window.__termGetApi;
+      if (getApi) getApi().then((api) => api.openWith("agent"));
+    }
+    stage.addEventListener("click", poke);
+    stage.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        poke();
+      }
+    });
+  })();
+</script>  <script>(function(){const SLEEP_ASCII = "            |\n       ___________\n      |  _______  |\n      | | -   - | |\n      | |  ...  | |\n      | |_______| |\n      |___________|\n        | | | |";
+const WORK_ASCII = "            *\n            |\n       ___________\n      |  _______  |\n      | | o   o | |\n      | |  ===  | |\n      | |_______| |\n      |___________|\n        | | | |";
+const SLEEP_LOG = ["[sleep] dreaming about electric sheep... (count: 1247)","[sleep] REM cycle 3/5 — please do not disturb","[sleep] kernel: agent has been idle for 4h 23m","[sleep] refusing to compile — it is too bright outside","[sleep] pillow.exe reached optimal fluffiness","[sleep] snoozing all pending git reminders...","[sleep] z-index raised to 999, blanket fully on top","[sleep] caffeine levels critically low (good)","[sleep] simulating a world without deadlines...","[sleep] cache hit: a very comfortable mattress"];
+const WORK_LOG = ["[work] compiling new post from raw inspiration...","[work] git commit -m 'midnight genius, do not revert'","[work] training model epoch 42/100 ████████░░ 84%","[work] inspiration.exe has started — brace yourselves","[work] refactoring the universe... 12% done","[work] deployed to prod ✓ — no one will notice at 3am","[work] while true; do code; coffee; done","[work] SELECT * FROM brain WHERE sleep > 0; -- 0 rows","[work] fixing 3 bugs, introducing 5 new ones 😈","[work] curl https://api.openai.com/v1/chat → 200 OK","[work] ssh blog@prod 'systemctl restart genius'","[work] pushing commits before the sun comes up..."];
+
+  (function () {
+    const hero = document.getElementById("agent-hero");
+    if (!hero) return;
+
+    const asciiEl = document.getElementById("ah-ascii");
+    const toplineEl = document.getElementById("ah-topline");
+    const outputEl = document.getElementById("ah-output");
+    const zzzEl = document.getElementById("ah-zzz");
+    const toggleBtn = document.getElementById("ah-toggle");
+    const toggleLabel = document.getElementById("ah-toggle-label");
+    const clockEl = document.getElementById("ah-clock");
+
+    let manual = false;
+    let isNight = false;
+    let logTimer = null;
+    let typeTimer = null;
+
+    function hourIsNight(h) {
+      return h < 6 || h >= 18;
+    }
+
+    function applyMode(night) {
+      isNight = night;
+      hero.classList.toggle("is-night", night);
+      hero.classList.toggle("is-day", !night);
+
+      asciiEl.textContent = night ? WORK_ASCII : SLEEP_ASCII;
+      renderTopline(night);
+      renderToggleLabel();
+      startAnimation(night);
+    }
+
+    function renderTopline(night) {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const t = `${hh}:${mm}`;
+      if (night) {
+        toplineEl.innerHTML =
+          `PID   USER     %CPU  STATE    COMMAND\n` +
+          `1234  zhening  <span class="ah-proc-cpu-high">99%</span>  <span class="ah-proc-state">running</span>  <span class="ah-proc-name">agent --work</span>   // since ${t}`;
+      } else {
+        toplineEl.innerHTML =
+          `PID   USER     %CPU  STATE    COMMAND\n` +
+          `1234  zhening  <span>0.0%</span>  <span class="ah-proc-state">sleeping</span>  <span class="ah-proc-name">agent --idle</span>  // since ${t}`;
+      }
+    }
+
+    function renderToggleLabel() {
+      toggleLabel.textContent = isNight
+        ? "preview daytime (sleep)"
+        : "preview nighttime (work)";
+    }
+
+    function renderClock() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      const mode = isNight ? "🌙 night" : "☀ day";
+      clockEl.innerHTML = `local <span class="ah-clock-time">${hh}:${mm}:${ss}</span> · ${mode}`;
+    }
+
+    // --- sleep mode: floating zZz + slow log lines ---
+    function startSleepAnim() {
+      stopWorkAnim();
+      outputEl.innerHTML = "";
+      zzzEl.innerHTML = "";
+
+      // floating zZz
+      const zs = ["z", "Z", "z"];
+      zs.forEach((ch, i) => {
+        const s = document.createElement("span");
+        s.textContent = ch;
+        s.style.left = i * 28 + "px";
+        s.style.top = 30 + i * 8 + "px";
+        s.style.fontSize = 14 - i * 2 + "px";
+        s.style.animation = `ah-float 2.4s ${i * 0.6}s infinite ease-in`;
+        zzzEl.appendChild(s);
+      });
+      // inject keyframes once
+      if (!document.getElementById("ah-zzz-kf")) {
+        const st = document.createElement("style");
+        st.id = "ah-zzz-kf";
+        st.textContent =
+          "@keyframes ah-float {0%{opacity:0;transform:translate(0,0) rotate(0)}30%{opacity:1}100%{opacity:0;transform:translate(18px,-46px) rotate(12deg)}}";
+        document.head.appendChild(st);
+      }
+
+      let idx = 0;
+      function pushSleepLine() {
+        const line = SLEEP_LOG[idx % SLEEP_LOG.length];
+        idx++;
+        const node = document.createElement("span");
+        node.className = "ah-line";
+        node.textContent = line;
+        outputEl.appendChild(node);
+        // keep last 4
+        while (outputEl.children.length > 4) {
+          outputEl.removeChild(outputEl.firstChild);
+        }
+        const c = document.createElement("span");
+        c.className = "ah-cursor";
+        outputEl.appendChild(c);
+      }
+      pushSleepLine();
+      logTimer = setInterval(pushSleepLine, 2200);
+    }
+
+    // --- work mode: typing log lines ---
+    function startWorkAnim() {
+      stopSleepAnim();
+      outputEl.innerHTML = "";
+      zzzEl.innerHTML = "";
+
+      let lineIdx = 0;
+      let charIdx = 0;
+
+      function pushFullLine(text) {
+        const node = document.createElement("span");
+        node.className = "ah-line ah-line-night";
+        node.textContent = text;
+        outputEl.appendChild(node);
+        while (outputEl.querySelectorAll(".ah-line").length > 4) {
+          const first = outputEl.querySelector(".ah-line");
+          if (first) outputEl.removeChild(first);
+        }
+      }
+
+      function tick() {
+        const line = WORK_LOG[lineIdx];
+        // render current partial as last line
+        let partial = outputEl.querySelector(".ah-partial");
+        if (!partial) {
+          partial = document.createElement("span");
+          partial.className = "ah-line ah-line-night ah-partial";
+          outputEl.appendChild(partial);
+        }
+        partial.textContent = line.substring(0, charIdx);
+
+        if (charIdx <= line.length) {
+          charIdx++;
+          typeTimer = setTimeout(tick, 35 + Math.random() * 55);
+        } else {
+          partial.classList.remove("ah-partial");
+          pushFullLine(line); // ensure full line committed
+          // remove the partial dup if present
+          lineIdx = (lineIdx + 1) % WORK_LOG.length;
+          charIdx = 0;
+          typeTimer = setTimeout(tick, 900);
+        }
+        // cursor
+        let cur = outputEl.querySelector(".ah-cursor");
+        if (!cur) {
+          cur = document.createElement("span");
+          cur.className = "ah-cursor";
+          outputEl.appendChild(cur);
+        } else {
+          outputEl.appendChild(cur); // move to end
+        }
+      }
+      tick();
+    }
+
+    function startAnimation(night) {
+      if (night) startWorkAnim();
+      else startSleepAnim();
+    }
+    function stopSleepAnim() {
+      if (logTimer) { clearInterval(logTimer); logTimer = null; }
+    }
+    function stopWorkAnim() {
+      if (typeTimer) { clearTimeout(typeTimer); typeTimer = null; }
+    }
+
+    function detect() {
+      if (manual) return;
+      applyMode(hourIsNight(new Date().getHours()));
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      manual = true;
+      applyMode(!isNight);
+    });
+
+    detect();
+    renderClock();
+    setInterval(detect, 60000);
+    setInterval(renderClock, 1000);
+  })();
+})();</script>  <div class="home-center mobile-only" data-astro-cid-j7pv25f6> <pre class="adl-text" data-astro-cid-j7pv25f6>44      4444    44
+4444    44 44   44
+44  44  44  44  44
+444444  44  44  44
+44  44  44 44   44
+44  44  4444    444444</pre> <div class="subtitle" data-astro-cid-j7pv25f6>Software Developer</div> <p class="typetarget" data-astro-cid-j7pv25f6>I am a ghost hovering above the internet without a soul.</p><p class="typetarget" data-astro-cid-j7pv25f6>I am adlternative. I died yesterday.</p><p class="typetarget" data-astro-cid-j7pv25f6>I am adlternative. I died today.</p> <br data-astro-cid-j7pv25f6> <a href="/about" class="button" data-astro-cid-j7pv25f6>Learn more!</a> </div>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

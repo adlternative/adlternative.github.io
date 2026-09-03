@@ -1,0 +1,463 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>My Git Learning Journey - ZheNing Hu</title><meta name="description" content="My Git Learning Journey"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="My Git Learning Journey" data-title-zh="我的git学习之路" data-astro-cid-egg7nqdx> My Git Learning Journey </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2020-12-13 22:35:18</span>   <span class="tag" data-astro-cid-egg7nqdx>git</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<h3 id="lessons-and-answers-from-the-git-game">Lessons and answers from the git game</h3>
+<p>…I skipped many earlier levels…
+I’ll fill them in later (crawling away)</p>
+<h5 id="remote">Remote</h5>
+<p>Level 11: git remote tracking</p>
+<p>We need to make our newly created branch <code>side</code> track <code>origin/master</code>. The consequence is that the local <code>master</code>, which should have tracked <code>origin/master</code>, no longer tracks it — of course, that’s not a bad thing…</p>
+<p>After setting the tracking, pull down <code>origin/master</code> and rebase (we can edit conflicting content in the middle), then push it up and we’re done!</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> branch</span><span style="color:#79B8FF"> -u</span><span style="color:#9ECBFF"> o/master</span><span style="color:#9ECBFF"> side</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#79B8FF"> --rebase</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span></span>
+<span class="line"></span></code></pre>
+<p>Level 12:</p>
+<p>What I learned:</p>
+<ul>
+<li>
+<p><code>git push origin master</code> adds the commits that the local master has but the remote master lacks, syncing master and origin/master.</p>
+</li>
+<li>
+<p>When HEAD is not pointing to a branch, a plain <code>git push</code> will fail. In that case we need <code>git push origin master</code>. In this scenario we should consider whether to <code>git checkout</code> some branch or run <code>git pull</code> first.</p>
+</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git push origin foo </span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Level 13:</p>
+<p><code>git push origin foo^:master</code> can upload the commit before foo to the remote master; <code>origin/master</code> will then point to <code>foo^</code>.</p>
+<p><code>git push origin origin master:newBranch</code> can push master to the remote newBranch (a local <code>o/newBranch</code> will appear) even if newBranch doesn’t exist.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master^:foo</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git push origin foo:master </span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Level 14:</p>
+<p><code>git fetch</code> downloads remote <code>origin/xxx</code> into local <code>orgin/xxx</code> so we can inspect the remote branch first and then merge.</p>
+<p><code>git fetch</code> is more like the opposite of <code>git push</code>.</p>
+<p>The requirement is: download the commit before remote master into local foo, download remote foo into local master, then merge local foo and master. Just look at the answer.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master^:foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> foo:master</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> master</span></span>
+<span class="line"></span></code></pre>
+<p>Level 15:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> :foo</span></span>
+<span class="line"></span></code></pre>
+<p>Pushing empty deletes the remote branch foo… how weird.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git fetch orgin :bar</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Fetching empty creates a local branch bar… uhh…</p>
+<p>Level 16:</p>
+<p><code>git pull origin foo</code> is equivalent to:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> foo</span><span style="color:#E1E4E8">; </span><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> o/foo</span></span>
+<span class="line"></span></code></pre>
+<p><code>git pull origin bar~1:bugFix</code> is equivalent to:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> bar~1:bugFix</span><span style="color:#E1E4E8">; </span><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> bugFix</span></span>
+<span class="line"></span></code></pre>
+<p>pull = fetch + merge</p>
+<p>If the current local branch is bar:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master:foo</span><span style="color:#E1E4E8">	</span></span>
+<span class="line"></span></code></pre>
+<p>It first creates a local branch named <code>foo</code>, downloads commits from the remote master branch, merges them into <code>foo</code>, and then merges <code>foo</code> into our currently checked-out branch <code>bar</code>.</p>
+<p>When we use fetch to download from remote, if the specified local branch doesn’t exist, a new local branch will be created pointing to what we downloaded.</p>
+<p>If we just fetch, the result is that we download <code>o/master</code> and <code>o/bar</code> locally (which is of course a benefit).</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> c1</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master:side</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> bar:foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> master</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> side</span></span>
+<span class="line"></span></code></pre>
+<h3 id="things-to-keep-in-mind-with-git">Things to keep in mind with git</h3>
+<p>Lessons and answers from the it game
+…skipped many earlier levels
+Three ways to roll back in git:</p>
+<p><code>git clean</code> deletes untracked files, i.e. files newly created this time that weren’t in the last commit.</p>
+<h3 id="lessons-and-answers-from-the-git-game-1">Lessons and answers from the git game</h3>
+<p>…I skipped many earlier levels…
+I’ll fill them in later (crawling away)</p>
+<h5 id="remote-1">Remote</h5>
+<p>Level 11: git remote tracking</p>
+<p>We need to make our newly created branch <code>side</code> track <code>origin/master</code>. The consequence is that the local <code>master</code>, which should have tracked <code>origin/master</code>, no longer tracks it — of course, that’s not a bad thing…</p>
+<p>After setting the tracking, pull down <code>origin/master</code> and rebase (we can edit conflicting content in the middle), then push it up and we’re done!</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> branch</span><span style="color:#79B8FF"> -u</span><span style="color:#9ECBFF"> o/master</span><span style="color:#9ECBFF"> side</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#79B8FF"> --rebase</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span></span>
+<span class="line"></span></code></pre>
+<p>Level 12:</p>
+<p>What I learned:</p>
+<ul>
+<li>
+<p><code>git push origin master</code> adds the commits that the local master has but the remote master lacks, syncing master and origin/master.</p>
+</li>
+<li>
+<p>When HEAD is not pointing to a branch, a plain <code>git push</code> will fail. In that case we need <code>git push origin master</code>. In this scenario we should consider whether to <code>git checkout</code> some branch or run <code>git pull</code> first.</p>
+</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git push origin foo </span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Level 13:</p>
+<p><code>git push origin foo^:master</code> can upload the commit before foo to the remote master; <code>origin/master</code> will then point to <code>foo^</code>.</p>
+<p><code>git push origin origin master:newBranch</code> can push master to the remote newBranch (a local <code>o/newBranch</code> will appear) even if newBranch doesn’t exist.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master^:foo</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git push origin foo:master </span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Level 14:</p>
+<p><code>git fetch</code> downloads remote <code>origin/xxx</code> into local <code>orgin/xxx</code> so we can inspect the remote branch first and then merge.</p>
+<p><code>git fetch</code> is more like the opposite of <code>git push</code>.</p>
+<p>The requirement is: download the commit before remote master into local foo, download remote foo into local master, then merge local foo and master. Just look at the answer.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master^:foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> foo:master</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> master</span></span>
+<span class="line"></span></code></pre>
+<p>Level 15:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> :foo</span></span>
+<span class="line"></span></code></pre>
+<p>Pushing empty deletes the remote branch foo… how weird.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git fetch orgin :bar</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Fetching empty creates a local branch bar… uhh…</p>
+<p>Level 16:</p>
+<p><code>git pull origin foo</code> is equivalent to:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> foo</span><span style="color:#E1E4E8">; </span><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> o/foo</span></span>
+<span class="line"></span></code></pre>
+<p><code>git pull origin bar~1:bugFix</code> is equivalent to:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> bar~1:bugFix</span><span style="color:#E1E4E8">; </span><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> bugFix</span></span>
+<span class="line"></span></code></pre>
+<p>pull = fetch + merge</p>
+<p>If the current local branch is bar:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master:foo</span><span style="color:#E1E4E8">	</span></span>
+<span class="line"></span></code></pre>
+<p>It first creates a local branch named <code>foo</code>, downloads commits from the remote master branch, merges them into <code>foo</code>, and then merges <code>foo</code> into our currently checked-out branch <code>bar</code>.</p>
+<p>When we use fetch to download from remote, if the specified local branch doesn’t exist, a new local branch will be created pointing to what we downloaded.</p>
+<p>If we just fetch, the result is that we download <code>o/master</code> and <code>o/bar</code> locally (which is of course a benefit).</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> c1</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master:side</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> bar:foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> master</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> side</span></span>
+<span class="line"></span></code></pre>
+<!-- ### Things to keep in mind with git -->
+<h4 id="various-scenarios-for-rolling-back-in-git">Various scenarios for rolling back in git:</h4>
+<ul>
+<li>answer:
+<ol>
+<li>Requirement: delete file <code>a.c</code> after <code>add</code>: use <code>git reset HEAD</code> or <code>git restore --staged a.c</code> to move files from the staging area back to the working directory. In VS Code you’ll see “Staged Changes” become “Changes”, proving the files have been rolled back to the working directory. But these files still remain in our directory; delete them manually with <code>rm</code> then (let me know if there’s a better way).</li>
+<li>Requirement: if a previously committed file <code>a.c</code> was only modified and <code>add</code>ed this time, and you want to restore it to the state of the last commit: <code>git reset HEAD</code> or <code>git restore --staged a.c</code> restores the file from the staging area to the working directory; <code>git restore a.c</code> can restore it to the state of the last commit.</li>
+<li>Requirement: how to roll back and delete a newly created file <code>a.c</code> that has been added and committed but not pushed: <code>git reset HEAD a.c</code> or <code>git reset HEAD</code>, then delete <code>a.c</code> and add, commit to indicate the deletion is OK.</li>
+<li>Requirement: if a previously committed file <code>a.c</code> was modified, <code>add</code>ed, and <code>commit</code>ted this time, how to revert to the previous version: <code>git reset HEAD^ a.c</code>, <code>git restore a.c</code>, then add, commit to indicate the rollback is OK.</li>
+<li>Requirement: rollback after push: <code>git revert HEAD</code>, then add, commit to indicate the rollback is OK.</li>
+</ol>
+</li>
+</ul>
+<h4 id="correct-order-for-initializing-and-connecting-to-a-remote-repository">Correct order for initializing and connecting to a remote repository</h4>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> init</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> remote</span><span style="color:#9ECBFF"> add</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> git@github.com:adlternative/gitTest.git</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master</span><span style="color:#79B8FF"> --rebase=false</span></span>
+<span class="line"><span style="color:#79B8FF">......</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> add</span><span style="color:#9ECBFF"> .</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> commit</span><span style="color:#79B8FF"> -m</span><span style="color:#9ECBFF"> ".."</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#79B8FF"> --set-upstream</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master</span><span style="color:#9ECBFF"> //将master设置跟踪origin/master再可以push</span></span>
+<span class="line"></span></code></pre>
+<h4 id="brief-introduction-to-git-secret-usage">Brief introduction to git secret usage</h4>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">暂时还没写</span></span>
+<span class="line"></span></code></pre>
+<h4 id="brief-introduction-to-git-lfs-usage">Brief introduction to git lfs usage</h4>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">暂时还没写</span></span>
+<span class="line"></span></code></pre>
+<h4 id="the-three-modes-of-git-reset-hardsoftmixed-default">The three modes of git reset: hard/soft/mixed (default)</h4>
+<p>The principle of <code>git reset</code>: move the pointer of the latest commit back to some earlier point in time; commits after that point disappear from history.
+<code>git checkout</code> changes where HEAD points; its principle is somewhat different from <code>git reset</code>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Mode</th><th>Index</th><th>Commit</th><th>Working Directory</th></tr></thead><tbody><tr><td>soft</td><td>rolls back</td><td>unchanged</td><td>unchanged</td></tr><tr><td>hard</td><td>rolls back</td><td>rolls back</td><td>rolls back (danger! files marked in .gitignore that are in the working directory will also be deleted)</td></tr><tr><td>mixed (default)</td><td>rolls back</td><td>rolls back</td><td>unchanged</td></tr></tbody></table>
+<p><code>git reset --soft HEAD</code>
+<code>git reset --hard HEAD</code>
+<code>git reset HEAD</code></p>
+<p>Personally, after the last lesson, I only dare use the default reset now (all those untracked files marked in .gitignore were deleted by using the hard way).
+<code>git commit</code> regretted? Use <code>git reset --soft HEAD^</code> to drop the latest commit.</p>
+<h4 id="what-exactly-does-git-rebase-do">What exactly does git rebase do</h4>
+<p><img src="/home/adl/图片/Screenshot_20201216_214640.png" alt="image"></p>
+<p>As shown in the figure, the master branch.</p>
+<p>On the <code>adl</code> branch, we use <code>git rebase master</code> to <strong>move</strong> the private part of our content branch onto the master branch. Then that hidden line dies out. Then we can <code>git checkout master</code> to switch to the master branch, and <code>git rebase adl</code> to fast-forward master to the <code>adl</code> node (at this point there’s no moving of branch-private parts, because master and adl are on the same commit linked list, so the effect is just a fast move).</p>
+</div>
+<div class="lang-section" data-lang="zh">
+<h3 id="git游戏收获的经验和解答">git游戏收获的经验和解答</h3>
+<p>…前面好多关没去写…
+再补吧（爬）</p>
+<h5 id="远程">远程</h5>
+<p>第11关：git 远程跟踪
+我们需要将我们的自己创建出来的新分支<code>side</code>设置为跟踪<code>origin/master</code>,这带来的后果是本应该跟踪<code>origin/master</code>
+的本地<code>master</code>不再跟踪它了，当然这不是坏处…</p>
+<p>下面跟踪了以后将远程的<code>origin/master</code>拉下来变基（中间我们可以对冲突的内容进行修改）,再推送上去就完事喽！</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> branch</span><span style="color:#79B8FF"> -u</span><span style="color:#9ECBFF"> o/master</span><span style="color:#9ECBFF"> side</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#79B8FF"> --rebase</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span></span>
+<span class="line"></span></code></pre>
+<p>第12关：</p>
+<p>get到的点：</p>
+<ul>
+<li>
+<p><code>git push origin master</code>是将本地的master分支比远程的master分支没有的提交添加上去，可以同步master和origin/master</p>
+</li>
+<li>
+<p>在我们HEAD没有指向一个分支的情况下，直接git push会失效，这时候我们会需要<code>git push origin master</code>,在这种场景下我们需要考虑到的是我们是否应该让HEAD checkout 到某个分支，或者将git pull一下</p>
+</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git push origin foo </span></span>
+<span class="line"><span></span></span></code></pre>
+<p>第13关：</p>
+<p><code>git push origin foo^:master</code>可以将foo之前的一个提交上传给远程的master,origin/master将会指向<code>foo^</code></p>
+<p><code>git push origin origin master:newBranch</code>可以将master提交给远程的newBranch(本地会出现o/newBranch)即使newBranch不存在</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master^:foo</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git push origin foo:master </span></span>
+<span class="line"><span></span></span></code></pre>
+<p>第14关：</p>
+<p>git fetch就是下载远程<code>origin/xxx</code>放到本地<code>orgin/xxx</code>这样我们就可以先对远程分支进行检查，之后再合并</p>
+<p>git fetch更像是含有git push 相反意义</p>
+<p>需求是从远程的master前一个提交下载到本地的foo,再将远程的foo下载到本地的master,再将本地的foo和master进行合并，见答案即可</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master^:foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> foo:master</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> master</span></span>
+<span class="line"></span></code></pre>
+<p>第15关：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> :foo</span></span>
+<span class="line"></span></code></pre>
+<p>将空push会删除远程分支foo…这真诡异</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git fetch orgin :bar</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>将空fetch会创建本地分支bar…这…</p>
+<p>第16关：</p>
+<p><code>git pull origin foo</code> 相当于：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> foo</span><span style="color:#E1E4E8">; </span><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> o/foo</span></span>
+<span class="line"></span></code></pre>
+<p><code>git pull origin bar~1:bugFix</code> 相当于：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> bar~1:bugFix</span><span style="color:#E1E4E8">; </span><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> bugFix</span></span>
+<span class="line"></span></code></pre>
+<p>pull = fetch+merge</p>
+<p>如果当前本地在bar分支</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master:foo</span><span style="color:#E1E4E8">	</span></span>
+<span class="line"></span></code></pre>
+<p>它先在本地创建了一个叫 <code>foo</code>的分支，从远程仓库中的 master 分支中下载提交记录，并合并到 <code>foo</code>，然后再 merge 到我们的当前检出的分支 <code>bar</code>上。</p>
+<p>我们使用fetch从远程下载的时候如果指定的本地分支不存在，会在本地创建一个新的分支指向我们的下载</p>
+<p>如果我们只是fetch,带来的后果是下载到本地的o/master,o/bar(当然这是一个好处)</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> c1</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master:side</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> bar:foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> master</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> side</span></span>
+<span class="line"></span></code></pre>
+<h3 id="git需要注意的事项">git需要注意的事项</h3>
+<p>it游戏收获的经验和解答
+…前面好多关没去写
+git 回退的三种方式：</p>
+<p>git clean会删除那些未tracked的文件，也就是上一次commit没有，这次新创建的文件</p>
+<h3 id="git游戏收获的经验和解答-1">git游戏收获的经验和解答</h3>
+<p>…前面好多关没去写…
+再补吧（爬）</p>
+<h5 id="远程-1">远程</h5>
+<p>第11关：git 远程跟踪
+我们需要将我们的自己创建出来的新分支<code>side</code>设置为跟踪<code>origin/master</code>,这带来的后果是本应该跟踪<code>origin/master</code>
+的本地<code>master</code>不再跟踪它了，当然这不是坏处…</p>
+<p>下面跟踪了以后将远程的<code>origin/master</code>拉下来变基（中间我们可以对冲突的内容进行修改）,再推送上去就完事喽！</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> branch</span><span style="color:#79B8FF"> -u</span><span style="color:#9ECBFF"> o/master</span><span style="color:#9ECBFF"> side</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#79B8FF"> --rebase</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span></span>
+<span class="line"></span></code></pre>
+<p>第12关：</p>
+<p>get到的点：</p>
+<ul>
+<li>
+<p><code>git push origin master</code>是将本地的master分支比远程的master分支没有的提交添加上去，可以同步master和origin/master</p>
+</li>
+<li>
+<p>在我们HEAD没有指向一个分支的情况下，直接git push会失效，这时候我们会需要<code>git push origin master</code>,在这种场景下我们需要考虑到的是我们是否应该让HEAD checkout 到某个分支，或者将git pull一下</p>
+</li>
+</ul>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git push origin foo </span></span>
+<span class="line"><span></span></span></code></pre>
+<p>第13关：</p>
+<p><code>git push origin foo^:master</code>可以将foo之前的一个提交上传给远程的master,origin/master将会指向<code>foo^</code></p>
+<p><code>git push origin origin master:newBranch</code>可以将master提交给远程的newBranch(本地会出现o/newBranch)即使newBranch不存在</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master^:foo</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git push origin foo:master </span></span>
+<span class="line"><span></span></span></code></pre>
+<p>第14关：</p>
+<p>git fetch就是下载远程<code>origin/xxx</code>放到本地<code>orgin/xxx</code>这样我们就可以先对远程分支进行检查，之后再合并</p>
+<p>git fetch更像是含有git push 相反意义</p>
+<p>需求是从远程的master前一个提交下载到本地的foo,再将远程的foo下载到本地的master,再将本地的foo和master进行合并，见答案即可</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master^:foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> foo:master</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> master</span></span>
+<span class="line"></span></code></pre>
+<p>第15关：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> :foo</span></span>
+<span class="line"></span></code></pre>
+<p>将空push会删除远程分支foo…这真诡异</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git fetch orgin :bar</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>将空fetch会创建本地分支bar…这…</p>
+<p>第16关：</p>
+<p><code>git pull origin foo</code> 相当于：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> foo</span><span style="color:#E1E4E8">; </span><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> o/foo</span></span>
+<span class="line"></span></code></pre>
+<p><code>git pull origin bar~1:bugFix</code> 相当于：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> bar~1:bugFix</span><span style="color:#E1E4E8">; </span><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> bugFix</span></span>
+<span class="line"></span></code></pre>
+<p>pull = fetch+merge</p>
+<p>如果当前本地在bar分支</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master:foo</span><span style="color:#E1E4E8">	</span></span>
+<span class="line"></span></code></pre>
+<p>它先在本地创建了一个叫 <code>foo</code>的分支，从远程仓库中的 master 分支中下载提交记录，并合并到 <code>foo</code>，然后再 merge 到我们的当前检出的分支 <code>bar</code>上。</p>
+<p>我们使用fetch从远程下载的时候如果指定的本地分支不存在，会在本地创建一个新的分支指向我们的下载</p>
+<p>如果我们只是fetch,带来的后果是下载到本地的o/master,o/bar(当然这是一个好处)</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> c1</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master:side</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> fetch</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> bar:foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> checkout</span><span style="color:#9ECBFF"> master</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> foo</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> merge</span><span style="color:#9ECBFF"> side</span></span>
+<span class="line"></span></code></pre>
+<!-- ### git需要注意的事项 -->
+<h4 id="git-回退的n种场景">git 回退的n种场景：</h4>
+<ul>
+<li>answer:
+<ol>
+<li>需求:删除add后的文件<code>a.c</code>:<code>git reset HEAD</code>或者<code>git restore --staged a.c</code>,将这些暂存区中的文件回退到工作区,在vscode中也可看到<code>暂存的更改</code>变成了<code>更改</code>,证明文件已经回滚到工作区了,
+但这些文件仍然在我们的目录,这时候手动<code>rm</code>删除(如有更好方法请告诉我)</li>
+<li>需求:如果之前已经被提交的文件<code>a.c</code>本次只修改后<code>add</code>,想要恢复上一次提交的模样:
+<code>git reset HEAD</code>或者<code>git restore --staged a.c</code>将文件从暂存区中恢复到工作区,
+<code>git restore a.c</code>可以恢复到上一次commit时的状态</li>
+<li>需求:本次新建的文件<code>a.c</code>在add,commit未push的情况下如何回滚并删除:
+<code>git reset HEAD a.c</code>或者<code>git reset HEAD</code>后删除<code>a.c</code>并add,commit说明已经删除ok</li>
+<li>需求:如果之前已经被提交的文件<code>a.c</code>本次修改后<code>add</code>+<code>commit</code>如何回退上个版本:
+<code>git reset HEAD^ a.c</code>,<code>git restore a.c</code>接着再add,commit说明已经回退ok</li>
+<li>需求push 后回退:<code> git revert HEAD</code>接着再add,commit说明已经回退ok</li>
+</ol>
+</li>
+</ul>
+<h4 id="git-初始化连接远程库的正确顺序">git 初始化连接远程库的正确顺序</h4>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> init</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> remote</span><span style="color:#9ECBFF"> add</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> git@github.com:adlternative/gitTest.git</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> pull</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master</span><span style="color:#79B8FF"> --rebase=false</span></span>
+<span class="line"><span style="color:#79B8FF">......</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> add</span><span style="color:#9ECBFF"> .</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> commit</span><span style="color:#79B8FF"> -m</span><span style="color:#9ECBFF"> ".."</span></span>
+<span class="line"><span style="color:#B392F0">git</span><span style="color:#9ECBFF"> push</span><span style="color:#79B8FF"> --set-upstream</span><span style="color:#9ECBFF"> origin</span><span style="color:#9ECBFF"> master</span><span style="color:#9ECBFF"> //将master设置跟踪origin/master再可以push</span></span>
+<span class="line"></span></code></pre>
+<h4 id="git-secret用法简介">git secret　用法简介</h4>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">暂时还没写</span></span>
+<span class="line"></span></code></pre>
+<h4 id="git-lfs用法简介">git lfs　用法简介</h4>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">暂时还没写</span></span>
+<span class="line"></span></code></pre>
+<h4 id="git-reset的三种模式-hardsoftmixed默认">git reset的三种模式 hard/soft/mixed(默认)</h4>
+<p><code>git reset</code>的原理:让最新提交的指针回到以前某个时点，这个时间点之后的提交都从历史中消失。
+<code>git checkout</code> 是在修改HEAD的指向，和<code>git reset</code>原理上有些不同</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>模式</th><th>缓存区</th><th>提交</th><th>工作目录</th></tr></thead><tbody><tr><td>soft</td><td>会回退到过去</td><td>不变</td><td>不变</td></tr><tr><td>hard</td><td>会回退到过去</td><td>会回退到过去</td><td>会回退到过去(危险!那些gitignore中标记的文件因为在工作目录所以也会被删除掉)</td></tr><tr><td>mixed(默认)</td><td>会回退到过去</td><td>会回退到过去</td><td>不变</td></tr><tr><td><code>git reset --soft HEAD</code></td><td></td><td></td><td></td></tr><tr><td><code>git reset --hard HEAD</code></td><td></td><td></td><td></td></tr><tr><td><code>git reset HEAD</code></td><td></td><td></td><td></td></tr><tr><td>个人觉得经过上次的教训之后只敢使用默认的reset了(那些没有被Tracked的.gitignore中标记的文件全被删除了by use hard way)</td><td></td><td></td><td></td></tr><tr><td><code>git commit</code>完后悔用<code>git reset --soft HEAD^</code>放弃最新提交</td><td></td><td></td><td></td></tr></tbody></table>
+<h4 id="git-rebase-究竟在做什么">git rebase 究竟在做什么</h4>
+<p><img src="/home/adl/图片/Screenshot_20201216_214640.png" alt="图片">
+如图所示，master分支</p>
+<p>我们在adl分支通过<code>git rebase master</code>将自己的内容分支私有的部分<strong>移动</strong>到master分支上，接着这条暗线就消亡了，接着我们可以通过<code>git checkout  master</code>切换到master分支，再<code>git rebase adl</code>将master快速前进到adl节点（这时候没有啥移动分支私有部分，因为master和adl在同一条提交链表上，于是乎作用就是快速移动）</p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag git" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag git</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

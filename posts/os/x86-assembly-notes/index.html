@@ -1,0 +1,165 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>x86汇编 学习笔记 - ZheNing Hu</title><meta name="description" content="x86汇编 学习笔记"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="x86汇编 学习笔记" data-title-zh="x86汇编 学习笔记" data-astro-cid-egg7nqdx> x86汇编 学习笔记 </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2021-02-01 21:12:12</span>   <span class="tag" data-astro-cid-egg7nqdx>os</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<h3 id="实模式">实模式</h3>
+<p>将我们的汇编编译后的可执行程序写入到虚拟机的主引导扇区</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0"> dd</span><span style="color:#9ECBFF"> if=../../nasm_dir/c6.bin</span><span style="color:#9ECBFF"> of=learn-asm.vhd</span><span style="color:#9ECBFF"> bs=</span><span style="color:#79B8FF">512</span><span style="color:#9ECBFF"> count=</span><span style="color:#79B8FF">1</span><span style="color:#9ECBFF"> conv=notrunc</span></span>
+<span class="line"></span></code></pre>
+<p>通用寄存器：ax,bx,cx,dx,si,di,bp,sp.
+段寄存器：cs(代码段),ds(数据段),es(附加段),ss(栈段寄存器)
+指令指针寄存器：ip</p>
+<p>cs(2B)+ip(2B) -> 逻辑地址xxxx:xxxx ->物理地址 xxxxx 20位</p>
+<p>初始化： dd 1B dw 2B</p>
+<p>段大小：64KB 2^16B xxxx就是一段</p>
+<p>x86 可访问1MB内存，地址范围是0x00000~0xFFFFF,20根地址线</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="txt"><code><span class="line"><span>00000~9FFFF DRAM{</span></span>
+<span class="line"><span>07c00:07e00主引导扇区(512字节)</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span>A0000~EFFFF 外设{</span></span>
+<span class="line"><span>B8000~BFFFF 显卡</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span>F0000~FFFFF BIOS ROM</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>第一个扇区：主引导扇区。（0B～512B）
+从硬盘启动的电脑，ROM-BIOS将读取硬盘主引导扇区的内容，并把它加载到一个特殊的逻辑地址0x0000:0x7c00，物理地址0x07c00上。</p>
+<p>主引导扇区这512B中，最后两字节固定的0X55,0XAA作为标志。</p>
+<p>为了让段寄存器指向显存地址，</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>  mov ax,0xb800                 ;指向文本模式的显示缓冲区</span></span>
+<span class="line"><span>  mov es,ax</span></span>
+<span class="line"><span></span></span></code></pre>
+<p><code>不允许将立即数传送到段寄存器</code>，通过通用寄存器和内存单元（立即数）进行传送，接着再让通用寄存器和段寄存器进行传送。</p>
+<p>除法 <code>div</code>：</p>
+<ul>
+<li>2B/1B AX/(2B 通用寄存器 或 内存单元) = AL…AH</li>
+<li>4B/2B (DX AX)/(2B 通用寄存器 或 内存单元)=AX…DX</li>
+</ul>
+<p>跳转 <code>jmp</code>:
+jmp为无条件转移，可以只修改IP，也可以同时修改CS和IP
+相对近寻址 <code>jmp near</code></p>
+<p>movsb movsw</p>
+<p>DS:SI -> ES:DI</p>
+<p>传递的字节数或字数由CX指定
+正向传递内存低地址到高地址，反向传递内存高地址到低地址。</p>
+<p>传一次
+正向：SI，DI +1/+2
+反向：SI，DI -1/-2
+CX -1</p>
+<p>标志器存其FLAG ZF位：计算结果0 ZF->1,否则ZF->0,</p>
+<p>DF 方向标志 控制movsb movsw 方向
+cld DF 清0 正方向 l->h
+std DF 置位 h->l</p>
+<p>单独movsb movsw 只能执行一次，
+加上rep则CX不为0则重复。</p>
+<p>loop CX— ->0</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="asm"><code><span class="line"><span style="color:#F97583">mov</span><span style="color:#E1E4E8"> [</span><span style="color:#79B8FF">bx</span><span style="color:#E1E4E8">],</span><span style="color:#79B8FF">dl</span></span>
+<span class="line"></span></code></pre>
+<p>cbw byte ->word AL ->AX
+cwd word ->double word AX->DX:AX</p>
+<p>idiv 有符号除法</p>
+<p>标志符号位 SF 1 有符号运算 0 无符号数运算</p>
+<p>or指令不允许目的操作数和源操作数都是内存单元的情况。</p>
+<p>in 从端口读 目的操作数 必须 寄存器 AL|AX，源操作数 DX|立即数。</p>
+<p>out 写端口 源操作数 必须 寄存器 AL AX，目的操作数 DX|8位立即数</p>
+<p>call
+1）将当前的IP或CS和IP压入栈中
+2）转移jmp</p>
+<p>ret
+弹栈到ip中
+retf
+弹栈到ip,cs中</p>
+<p>shr 逻辑右移 dest:r8/r16/m8/m16 src:1, 8位立即数 CL  最右边放到cf</p>
+<p>leave 在16位汇编下相当于:
+mov sp,bp
+pop bp</p>
+<p>在32位汇编下相当于:
+mov esp,ebp;//将ebp指向（ebp内部应当保存一个地址，所谓指向即这个地址对应的空间）的值赋给esp
+pop ebp</p>
+<p>/* leave指令将EBP寄存器的内容复制到ESP寄存器中，
+以释放分配给该过程的所有堆栈空间。然后，它从堆栈恢复EBP寄存器的旧值。*/</p>
+</div>
+<div class="lang-section" data-lang="zh">
+<h3 id="实模式-1">实模式</h3>
+<p>将我们的汇编编译后的可执行程序写入到虚拟机的主引导扇区</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0"> dd</span><span style="color:#9ECBFF"> if=../../nasm_dir/c6.bin</span><span style="color:#9ECBFF"> of=learn-asm.vhd</span><span style="color:#9ECBFF"> bs=</span><span style="color:#79B8FF">512</span><span style="color:#9ECBFF"> count=</span><span style="color:#79B8FF">1</span><span style="color:#9ECBFF"> conv=notrunc</span></span>
+<span class="line"></span></code></pre>
+<p>通用寄存器：ax,bx,cx,dx,si,di,bp,sp.
+段寄存器：cs(代码段),ds(数据段),es(附加段),ss(栈段寄存器)
+指令指针寄存器：ip</p>
+<p>cs(2B)+ip(2B) -> 逻辑地址xxxx:xxxx ->物理地址 xxxxx 20位</p>
+<p>初始化： dd 1B dw 2B</p>
+<p>段大小：64KB 2^16B xxxx就是一段</p>
+<p>x86 可访问1MB内存，地址范围是0x00000~0xFFFFF,20根地址线</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="txt"><code><span class="line"><span>00000~9FFFF DRAM{</span></span>
+<span class="line"><span>07c00:07e00主引导扇区(512字节)</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span>A0000~EFFFF 外设{</span></span>
+<span class="line"><span>B8000~BFFFF 显卡</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span>F0000~FFFFF BIOS ROM</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>第一个扇区：主引导扇区。（0B～512B）
+从硬盘启动的电脑，ROM-BIOS将读取硬盘主引导扇区的内容，并把它加载到一个特殊的逻辑地址0x0000:0x7c00，物理地址0x07c00上。</p>
+<p>主引导扇区这512B中，最后两字节固定的0X55,0XAA作为标志。</p>
+<p>为了让段寄存器指向显存地址，</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>  mov ax,0xb800                 ;指向文本模式的显示缓冲区</span></span>
+<span class="line"><span>  mov es,ax</span></span>
+<span class="line"><span></span></span></code></pre>
+<p><code>不允许将立即数传送到段寄存器</code>，通过通用寄存器和内存单元（立即数）进行传送，接着再让通用寄存器和段寄存器进行传送。</p>
+<p>除法 <code>div</code>：</p>
+<ul>
+<li>2B/1B AX/(2B 通用寄存器 或 内存单元) = AL…AH</li>
+<li>4B/2B (DX AX)/(2B 通用寄存器 或 内存单元)=AX…DX</li>
+</ul>
+<p>跳转 <code>jmp</code>:
+jmp为无条件转移，可以只修改IP，也可以同时修改CS和IP
+相对近寻址 <code>jmp near</code></p>
+<p>movsb movsw</p>
+<p>DS:SI -> ES:DI</p>
+<p>传递的字节数或字数由CX指定
+正向传递内存低地址到高地址，反向传递内存高地址到低地址。</p>
+<p>传一次
+正向：SI，DI +1/+2
+反向：SI，DI -1/-2
+CX -1</p>
+<p>标志器存其FLAG ZF位：计算结果0 ZF->1,否则ZF->0,</p>
+<p>DF 方向标志 控制movsb movsw 方向
+cld DF 清0 正方向 l->h
+std DF 置位 h->l</p>
+<p>单独movsb movsw 只能执行一次，
+加上rep则CX不为0则重复。</p>
+<p>loop CX— ->0</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="asm"><code><span class="line"><span style="color:#F97583">mov</span><span style="color:#E1E4E8"> [</span><span style="color:#79B8FF">bx</span><span style="color:#E1E4E8">],</span><span style="color:#79B8FF">dl</span></span>
+<span class="line"></span></code></pre>
+<p>cbw byte ->word AL ->AX
+cwd word ->double word AX->DX:AX</p>
+<p>idiv 有符号除法</p>
+<p>标志符号位 SF 1 有符号运算 0 无符号数运算</p>
+<p>or指令不允许目的操作数和源操作数都是内存单元的情况。</p>
+<p>in 从端口读 目的操作数 必须 寄存器 AL|AX，源操作数 DX|立即数。</p>
+<p>out 写端口 源操作数 必须 寄存器 AL AX，目的操作数 DX|8位立即数</p>
+<p>call
+1）将当前的IP或CS和IP压入栈中
+2）转移jmp</p>
+<p>ret
+弹栈到ip中
+retf
+弹栈到ip,cs中</p>
+<p>shr 逻辑右移 dest:r8/r16/m8/m16 src:1, 8位立即数 CL  最右边放到cf</p>
+<p>leave 在16位汇编下相当于:
+mov sp,bp
+pop bp</p>
+<p>在32位汇编下相当于:
+mov esp,ebp;//将ebp指向（ebp内部应当保存一个地址，所谓指向即这个地址对应的空间）的值赋给esp
+pop ebp</p>
+<p>/* leave指令将EBP寄存器的内容复制到ESP寄存器中，
+以释放分配给该过程的所有堆栈空间。然后，它从堆栈恢复EBP寄存器的旧值。*/</p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag os" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag os</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

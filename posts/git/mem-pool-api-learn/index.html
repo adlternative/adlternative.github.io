@@ -1,0 +1,427 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>git mem-pool API notes - ZheNing Hu</title><meta name="description" content="git mem-pool API notes"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="git mem-pool API notes" data-title-zh="git 内存池 API 学习" data-astro-cid-egg7nqdx> git mem-pool API notes </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2021-01-30 15:02:10</span>   <span class="tag" data-astro-cid-egg7nqdx>git</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<p>Memory pools are often a good helper for saving overhead: a pool allocates a large chunk of space at once, users take memory from it and return it when done, instead of calling <code>malloc</code> every time dynamic allocation is needed, which would be very expensive.</p>
+<p>Generally, memory-pool structures are very complex, but Git’s memory pool is not intimidating—its current API is still relatively simple.</p>
+<h3 id="data-structures">Data Structures</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mp_block {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next_block;</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">next_free;</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">end;</span></span>
+<span class="line"><span style="color:#F97583">	uintmax_t</span><span style="color:#FFAB70"> space</span><span style="color:#E1E4E8">[FLEX_ARRAY];</span><span style="color:#6A737D"> /* more */</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">mp_block;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/*</span></span>
+<span class="line"><span style="color:#6A737D">	 * The amount of available memory to grow the pool by.</span></span>
+<span class="line"><span style="color:#6A737D">	 * This size does not include the overhead for the mp_block.</span></span>
+<span class="line"><span style="color:#6A737D">	 */</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> block_alloc;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* The total amount of memory allocated by the pool. */</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> pool_alloc;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p><code>mem_pool</code>: the memory pool</p>
+<ul>
+<li><code>mp_block</code>: the first memory block</li>
+<li><code>block_alloc</code>: the “standard” size used when the pool grows a block</li>
+<li><code>pool_alloc</code>: total amount of memory allocated by the pool</li>
+</ul>
+<p><code>mp_block</code>: memory block</p>
+<ul>
+<li><code>next_block</code>: address of the next memory block</li>
+<li><code>next_free</code>: next free memory address in this block</li>
+<li><code>end</code>: end of the free memory in this block</li>
+<li><code>space</code>: dynamically expandable array, i.e., the allocated memory space</li>
+</ul>
+<h3 id="api">API</h3>
+<p><code>mem_pool_init</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> BLOCK_GROWTH_SIZE</span><span style="color:#79B8FF"> 1024</span><span style="color:#F97583">*</span><span style="color:#79B8FF">1024</span><span style="color:#F97583"> -</span><span style="color:#F97583"> sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mp_block);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> mem_pool_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> initial_size</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(pool, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">pool));</span></span>
+<span class="line"><span style="color:#E1E4E8">	pool->block_alloc </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> BLOCK_GROWTH_SIZE;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (initial_size </span><span style="color:#F97583">></span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#B392F0">		mem_pool_alloc_block</span><span style="color:#E1E4E8">(pool, initial_size, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>The design of <code>BLOCK_GROWTH_SIZE</code> is quite odd: it is <code>1024*1024</code> minus the size of a memory-block structure. Since the size we allocate for a block is the size of the block structure plus the usable memory space, <code>BLOCK_GROWTH_SIZE</code> is the standard value of memory space used when the pool grows (see below).</p>
+<p>Next, look at <code>mem_pool_alloc_block</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#B392F0">mem_pool_alloc_block</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">										 size_t</span><span style="color:#FFAB70"> block_alloc</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">										 struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#FFAB70">insert_after</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	pool->pool_alloc </span><span style="color:#F97583">+=</span><span style="color:#F97583"> sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mp_block) </span><span style="color:#F97583">+</span><span style="color:#E1E4E8"> block_alloc;</span></span>
+<span class="line"><span style="color:#E1E4E8">	p </span><span style="color:#F97583">=</span><span style="color:#B392F0"> xmalloc</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">st_add</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mp_block), block_alloc));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	p->next_free </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)p->space;</span></span>
+<span class="line"><span style="color:#E1E4E8">	p->end </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p->next_free </span><span style="color:#F97583">+</span><span style="color:#E1E4E8"> block_alloc;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (insert_after) {</span></span>
+<span class="line"><span style="color:#E1E4E8">		p->next_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> insert_after->next_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">		insert_after->next_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p;</span></span>
+<span class="line"><span style="color:#E1E4E8">	} </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">		p->next_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> pool->mp_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">		pool->mp_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p;</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> p;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>First, the pool’s <code>pool_alloc</code> is increased by <code>sizeof(struct mp_block) + block_alloc</code>, i.e., the size of one <code>mp_block</code> structure plus the requested allocation size. Then <code>malloc</code> allocates a memory-block structure of that total size. <code>next_free</code> is initially set to the start address of the <code>space</code> member, which is the start address of usable memory.</p>
+<p>Then, because this is a newly created pool, <code>insert_after == NULL</code>, so the new block is inserted at the head of the pool’s “linked list”; its <code>next_block</code> is <code>NULL</code> at this time. Now the pool has only one block.</p>
+<p><code>mem_pool_alloc</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#B392F0">mem_pool_alloc</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> len</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">r;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* round up to a 'uintmax_t' alignment */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (len </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">uintmax_t</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">-</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#E1E4E8">		len </span><span style="color:#F97583">+=</span><span style="color:#F97583"> sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">uintmax_t</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> (len </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">uintmax_t</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">-</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (pool->mp_block </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">	    pool->mp_block->end </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> pool->mp_block->next_free </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> len)</span></span>
+<span class="line"><span style="color:#E1E4E8">		p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> pool->mp_block;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">p) {</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (len </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> (pool->block_alloc </span><span style="color:#F97583">/</span><span style="color:#79B8FF"> 2</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#B392F0"> mem_pool_alloc_block</span><span style="color:#E1E4E8">(pool, len, pool->mp_block);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">		p </span><span style="color:#F97583">=</span><span style="color:#B392F0"> mem_pool_alloc_block</span><span style="color:#E1E4E8">(pool, pool->block_alloc, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	r </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p->next_free;</span></span>
+<span class="line"><span style="color:#E1E4E8">	p->next_free </span><span style="color:#F97583">+=</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> r;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>This is the interface for users to take memory from the pool. First, the requested size <code>len</code> is rounded up to a multiple of <code>uintmax_t</code> alignment. Then it checks whether the remaining space in the first block of the pool is sufficient; if so, it uses the current block. Otherwise, it checks whether the requested size is greater than or equal to half of the pool’s growth standard <code>pool->block_alloc</code>. If it is greater than or equal to half the standard, <code>mem_pool_alloc_block</code> is called to allocate a new block of size <code>len</code>, and the new block is inserted after the first block of the pool, then returned. If it is less than half the standard, a block of standard size is allocated and inserted at the head of the pool’s block linked list; then the block’s <code>next_free</code> is advanced by the requested size <code>len</code>, and the memory-space address is returned. The user can freely use the returned space within <code>len</code> bytes. If the user overflows, they may write into wrong memory.</p>
+<p><code>mem_pool_calloc</code>, <code>mem_pool_strdup</code>, <code>mem_pool_strndup</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#B392F0">mem_pool_calloc</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> count</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> size</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> len </span><span style="color:#F97583">=</span><span style="color:#B392F0"> st_mult</span><span style="color:#E1E4E8">(count, size);</span></span>
+<span class="line"><span style="color:#F97583">	void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">r </span><span style="color:#F97583">=</span><span style="color:#B392F0"> mem_pool_alloc</span><span style="color:#E1E4E8">(pool, len);</span></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(r, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, len);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> r;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#B392F0">mem_pool_strdup</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">str</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> len </span><span style="color:#F97583">=</span><span style="color:#B392F0"> strlen</span><span style="color:#E1E4E8">(str) </span><span style="color:#F97583">+</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> mem_pool_alloc</span><span style="color:#E1E4E8">(pool, len);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> memcpy</span><span style="color:#E1E4E8">(ret, str, len);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#B392F0">mem_pool_strndup</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">str</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> len</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">p </span><span style="color:#F97583">=</span><span style="color:#B392F0"> memchr</span><span style="color:#E1E4E8">(str, </span><span style="color:#9ECBFF">'</span><span style="color:#79B8FF">\0</span><span style="color:#9ECBFF">'</span><span style="color:#E1E4E8">, len);</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> actual_len </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (p </span><span style="color:#F97583">?</span><span style="color:#E1E4E8"> p </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> str </span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> len);</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> mem_pool_alloc</span><span style="color:#E1E4E8">(pool, actual_len</span><span style="color:#F97583">+</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FFAB70">	ret</span><span style="color:#E1E4E8">[actual_len] </span><span style="color:#F97583">=</span><span style="color:#9ECBFF"> '</span><span style="color:#79B8FF">\0</span><span style="color:#9ECBFF">'</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> memcpy</span><span style="color:#E1E4E8">(ret, str, actual_len);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>These three interfaces are very simple: they are thin wrappers around <code>mem_pool_alloc</code>.
+<code>mem_pool_calloc</code> obtains memory from the pool and zeros it.
+<code>mem_pool_strdup</code> obtains memory of string size from the pool and copies the string into it—yes, it’s the memory-pool version of <code>strdup</code>.
+<code>mem_pool_strndup</code> is analogous to <code>mem_pool_strdup</code>, with a specified copy length. Memory-pool version of <code>strndup</code>.</p>
+<p><code>mem_pool_contains</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">int</span><span style="color:#B392F0"> mem_pool_contains</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">mem</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* Check if memory is allocated in a block */</span></span>
+<span class="line"><span style="color:#F97583">	for</span><span style="color:#E1E4E8"> (p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> pool->mp_block; p; p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p->next_block)</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> ((mem </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> ((</span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)p->space)) </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">		    (mem </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> ((</span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)p->end)))</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Iterate over the pool’s block linked list to find a block that contains the specified memory. As the comment says: <code>Check if memory is allocated in a block</code>.</p>
+<p><code>mem_pool_combine</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> mem_pool_combine</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">dst</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">src</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* Append the blocks from src to dst */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (dst->mp_block </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#E1E4E8"> src->mp_block) {</span></span>
+<span class="line"><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">		 * src and dst have blocks, append</span></span>
+<span class="line"><span style="color:#6A737D">		 * blocks from src to dst.</span></span>
+<span class="line"><span style="color:#6A737D">		 */</span></span>
+<span class="line"><span style="color:#E1E4E8">		p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> dst->mp_block;</span></span>
+<span class="line"><span style="color:#F97583">		while</span><span style="color:#E1E4E8"> (p->next_block)</span></span>
+<span class="line"><span style="color:#E1E4E8">			p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p->next_block;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">		p->next_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> src->mp_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">	} </span><span style="color:#F97583">else</span><span style="color:#F97583"> if</span><span style="color:#E1E4E8"> (src->mp_block) {</span></span>
+<span class="line"><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">		 * src has blocks, dst is empty.</span></span>
+<span class="line"><span style="color:#6A737D">		 */</span></span>
+<span class="line"><span style="color:#E1E4E8">		dst->mp_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> src->mp_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">	} </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">		/* src is empty, nothing to do. */</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	dst->pool_alloc </span><span style="color:#F97583">+=</span><span style="color:#E1E4E8"> src->pool_alloc;</span></span>
+<span class="line"><span style="color:#E1E4E8">	src->pool_alloc </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	src->mp_block </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p><code>mem_pool_combine</code> merges two memory pools, appending <code>src</code>’s block linked list to the end of <code>dst</code>’s list.</p>
+<p><code>mem_pool_discard</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> mem_pool_discard</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> invalidate_memory</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">block, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">block_to_free;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> pool->mp_block;</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> (block)</span></span>
+<span class="line"><span style="color:#E1E4E8">	{</span></span>
+<span class="line"><span style="color:#E1E4E8">		block_to_free </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> block;</span></span>
+<span class="line"><span style="color:#E1E4E8">		block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> block->next_block;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (invalidate_memory)</span></span>
+<span class="line"><span style="color:#B392F0">			memset</span><span style="color:#E1E4E8">(block_to_free->space, </span><span style="color:#F97583">0x</span><span style="color:#79B8FF">DD</span><span style="color:#E1E4E8">, ((</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)block_to_free->end) </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> ((</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)block_to_free->space));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">		free</span><span style="color:#E1E4E8">(block_to_free);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	pool->mp_block </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	pool->pool_alloc </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p><code>mem_pool_discard</code> iterates over the entire pool block linked list. Depending on <code>invalidate_memory</code>, it first fills every byte of the memory space with <code>0xDD</code> to invalidate it, then frees the memory, and clears the pool.</p>
+<p>That concludes Git’s memory pool. You might wonder: when does the user return memory to the pool after use? In fact, with this design, the pool releases all memory when it is destroyed at some point; perhaps this is more “centralized.” Therefore, we don’t see any block merging in this memory pool; perhaps it is only designed for convenient use and to reduce the performance cost of multiple allocations.</p>
+<p>I even have a question: there must be a lot of fragmentation in the unused block linked list; how can that space be utilized?</p>
+</div>
+<div class="lang-section" data-lang="zh">
+<p>内存池往往是我们节省开销的好帮手，内存池一次分配大量空间，用户从内存池中取出，用完了放回内存池;而不是每次需要动态分配的时候调用一次<code>malloc</code>,这样会非常消耗性能。</p>
+<p>一般来说内存池的结构都非常复杂,但git的内存池并不吓人，它可能现在的接口都还是比较简单的。</p>
+<h3 id="数据结构">数据结构</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mp_block {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next_block;</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">next_free;</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">end;</span></span>
+<span class="line"><span style="color:#F97583">	uintmax_t</span><span style="color:#FFAB70"> space</span><span style="color:#E1E4E8">[FLEX_ARRAY];</span><span style="color:#6A737D"> /* more */</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">mp_block;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/*</span></span>
+<span class="line"><span style="color:#6A737D">	 * The amount of available memory to grow the pool by.</span></span>
+<span class="line"><span style="color:#6A737D">	 * This size does not include the overhead for the mp_block.</span></span>
+<span class="line"><span style="color:#6A737D">	 */</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> block_alloc;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* The total amount of memory allocated by the pool. */</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> pool_alloc;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p><code>mem_pool</code>:内存池</p>
+<ul>
+<li><code>mp_block</code>:首块内存块</li>
+<li><code>block_alloc</code>:分配内存块时，内存池扩容时一个的“标准”。</li>
+<li><code>pool_alloc</code>:总共分配的内存块数量。</li>
+</ul>
+<p><code>mp_block</code>:内存块</p>
+<ul>
+<li><code>next_block</code>:下一块内存块的地址。</li>
+<li><code>next_free</code>:本块内存块下个需要free的内存地址。</li>
+<li><code>end</code>:本块内存块下个需要free的内存末尾。</li>
+<li><code>space</code>:可动态扩容的数组，这里也就是申请的内存空间。</li>
+</ul>
+<h3 id="api-1">api</h3>
+<p><code>mem_pool_init</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> BLOCK_GROWTH_SIZE</span><span style="color:#79B8FF"> 1024</span><span style="color:#F97583">*</span><span style="color:#79B8FF">1024</span><span style="color:#F97583"> -</span><span style="color:#F97583"> sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mp_block);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> mem_pool_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> initial_size</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(pool, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">pool));</span></span>
+<span class="line"><span style="color:#E1E4E8">	pool->block_alloc </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> BLOCK_GROWTH_SIZE;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (initial_size </span><span style="color:#F97583">></span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#B392F0">		mem_pool_alloc_block</span><span style="color:#E1E4E8">(pool, initial_size, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>BLOCK_GROWTH_SIZE</code>的设计挺奇怪的，是<code>1024*1024</code>减去一个内存块结构体的大小。由于我们分配内存块的时候分配的大小是内存块大小加上可用内存空间的大小，所以<code>BLOCK_GROWTH_SIZE</code>就是我们分配的内存空间时内存池扩容的一个标准值（见后文）</p>
+<p>接着看<code>mem_pool_alloc_block</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#B392F0">mem_pool_alloc_block</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">										 size_t</span><span style="color:#FFAB70"> block_alloc</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">										 struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#FFAB70">insert_after</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	pool->pool_alloc </span><span style="color:#F97583">+=</span><span style="color:#F97583"> sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mp_block) </span><span style="color:#F97583">+</span><span style="color:#E1E4E8"> block_alloc;</span></span>
+<span class="line"><span style="color:#E1E4E8">	p </span><span style="color:#F97583">=</span><span style="color:#B392F0"> xmalloc</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">st_add</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mp_block), block_alloc));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	p->next_free </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)p->space;</span></span>
+<span class="line"><span style="color:#E1E4E8">	p->end </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p->next_free </span><span style="color:#F97583">+</span><span style="color:#E1E4E8"> block_alloc;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (insert_after) {</span></span>
+<span class="line"><span style="color:#E1E4E8">		p->next_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> insert_after->next_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">		insert_after->next_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p;</span></span>
+<span class="line"><span style="color:#E1E4E8">	} </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">		p->next_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> pool->mp_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">		pool->mp_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p;</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> p;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>首先给内存池的<code>pool_alloc</code>增加了<code>sizeof(struct mp_block) + block_alloc</code>大小也就是一个结构体<code>mp_block</code>的大小加上我们指定分配的大小。接着<code>malloc</code>了一块该大小的内存块结构体，<code>next_free首先指向了</code>我们的<code>space</code>成员的首地址，这就是我们可以用的内存的首地址。</p>
+<p>接着由于是新建的内存池，<code>insert_after==NULL</code>，所以将这块新的内存块插入内存池的“链表”头部，它的<code>next_block</code>此时为<code>NULL</code>。
+现在我们的内存池就一个内存块，</p>
+<p><code>mem_pool_alloc</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#B392F0">mem_pool_alloc</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> len</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">r;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* round up to a 'uintmax_t' alignment */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (len </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">uintmax_t</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">-</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#E1E4E8">		len </span><span style="color:#F97583">+=</span><span style="color:#F97583"> sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">uintmax_t</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> (len </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">uintmax_t</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">-</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (pool->mp_block </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">	    pool->mp_block->end </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> pool->mp_block->next_free </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> len)</span></span>
+<span class="line"><span style="color:#E1E4E8">		p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> pool->mp_block;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">p) {</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (len </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> (pool->block_alloc </span><span style="color:#F97583">/</span><span style="color:#79B8FF"> 2</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#B392F0"> mem_pool_alloc_block</span><span style="color:#E1E4E8">(pool, len, pool->mp_block);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">		p </span><span style="color:#F97583">=</span><span style="color:#B392F0"> mem_pool_alloc_block</span><span style="color:#E1E4E8">(pool, pool->block_alloc, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	r </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p->next_free;</span></span>
+<span class="line"><span style="color:#E1E4E8">	p->next_free </span><span style="color:#F97583">+=</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> r;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>这里时用户从内存池取出内存的接口，首先将需要分配的大小<code>len</code>去对齐<code>uintmax_t</code>的整数倍，接着看内存首个内存块中剩余的内存空间是否足够，足够则取当前内存块，否则判断当前我们需要分配的内存空间是否大于内存池扩容标准<code>pool->block_alloc</code>的一半，如果大于等于标准值的一半，则调用<code>mem_pool_alloc_block</code>分配一块<code>len</code>内存空间的新内存块，并将新内存块插入到内存池首个内存块的后面，接着返回新内存块。如果小于标准值的一半，那么分配标准值大小的内存块插入内存池内存块链表首部，接着将内存块的<code>next_free</code>加上为我们需要的内存大小<code>len</code>，并返回内存空间地址，用户可以返回的空间，len大小内自由的使用。如果用户内存越界，可能会写到错误的内存空间上。</p>
+<p><code>mem_pool_calloc</code>,<code>mem_pool_strdup</code>,<code>mem_pool_strndup</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#B392F0">mem_pool_calloc</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> count</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> size</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> len </span><span style="color:#F97583">=</span><span style="color:#B392F0"> st_mult</span><span style="color:#E1E4E8">(count, size);</span></span>
+<span class="line"><span style="color:#F97583">	void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">r </span><span style="color:#F97583">=</span><span style="color:#B392F0"> mem_pool_alloc</span><span style="color:#E1E4E8">(pool, len);</span></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(r, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, len);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> r;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#B392F0">mem_pool_strdup</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">str</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> len </span><span style="color:#F97583">=</span><span style="color:#B392F0"> strlen</span><span style="color:#E1E4E8">(str) </span><span style="color:#F97583">+</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> mem_pool_alloc</span><span style="color:#E1E4E8">(pool, len);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> memcpy</span><span style="color:#E1E4E8">(ret, str, len);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#B392F0">mem_pool_strndup</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">str</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> len</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">p </span><span style="color:#F97583">=</span><span style="color:#B392F0"> memchr</span><span style="color:#E1E4E8">(str, </span><span style="color:#9ECBFF">'</span><span style="color:#79B8FF">\0</span><span style="color:#9ECBFF">'</span><span style="color:#E1E4E8">, len);</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> actual_len </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (p </span><span style="color:#F97583">?</span><span style="color:#E1E4E8"> p </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> str </span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> len);</span></span>
+<span class="line"><span style="color:#F97583">	char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> mem_pool_alloc</span><span style="color:#E1E4E8">(pool, actual_len</span><span style="color:#F97583">+</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#FFAB70">	ret</span><span style="color:#E1E4E8">[actual_len] </span><span style="color:#F97583">=</span><span style="color:#9ECBFF"> '</span><span style="color:#79B8FF">\0</span><span style="color:#9ECBFF">'</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> memcpy</span><span style="color:#E1E4E8">(ret, str, actual_len);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>这三个接口非常简单就是对<code>mem_pool_alloc</code>做了一层封装，
+<code>mem_pool_calloc</code>从内存池中获取内存并清0,
+<code>mem_pool_strdup</code>从内存池中获取字符串大小的内存，将字符串内存复制到其中，是的，就是<code>strdup</code>的内存池版本。
+<code>mem_pool_strndup</code>同理<code>mem_pool_strdup</code>，指定了复制的长度。<code>strndup</code>内存池版本。</p>
+<p><code>mem_pool_contains</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">int</span><span style="color:#B392F0"> mem_pool_contains</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">mem</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* Check if memory is allocated in a block */</span></span>
+<span class="line"><span style="color:#F97583">	for</span><span style="color:#E1E4E8"> (p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> pool->mp_block; p; p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p->next_block)</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> ((mem </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> ((</span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)p->space)) </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">		    (mem </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> ((</span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)p->end)))</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>遍历内存池的内存链表，寻找某个包含我们指定的内存的内存块。正如注释所示：<code>Check if memory is allocated in a block </code></p>
+<p><code>mem_pool_combine</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> mem_pool_combine</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">dst</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">src</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* Append the blocks from src to dst */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (dst->mp_block </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#E1E4E8"> src->mp_block) {</span></span>
+<span class="line"><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">		 * src and dst have blocks, append</span></span>
+<span class="line"><span style="color:#6A737D">		 * blocks from src to dst.</span></span>
+<span class="line"><span style="color:#6A737D">		 */</span></span>
+<span class="line"><span style="color:#E1E4E8">		p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> dst->mp_block;</span></span>
+<span class="line"><span style="color:#F97583">		while</span><span style="color:#E1E4E8"> (p->next_block)</span></span>
+<span class="line"><span style="color:#E1E4E8">			p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> p->next_block;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">		p->next_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> src->mp_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">	} </span><span style="color:#F97583">else</span><span style="color:#F97583"> if</span><span style="color:#E1E4E8"> (src->mp_block) {</span></span>
+<span class="line"><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">		 * src has blocks, dst is empty.</span></span>
+<span class="line"><span style="color:#6A737D">		 */</span></span>
+<span class="line"><span style="color:#E1E4E8">		dst->mp_block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> src->mp_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">	} </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">		/* src is empty, nothing to do. */</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	dst->pool_alloc </span><span style="color:#F97583">+=</span><span style="color:#E1E4E8"> src->pool_alloc;</span></span>
+<span class="line"><span style="color:#E1E4E8">	src->pool_alloc </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	src->mp_block </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p>这里<code>mem_pool_combine</code>将两个内存池合并，将<code>src</code>的内存块链表接到<code>dst</code>链表的最后。</p>
+<p><code>mem_pool_discard</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> mem_pool_discard</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> mem_pool </span><span style="color:#F97583">*</span><span style="color:#FFAB70">pool</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> invalidate_memory</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> mp_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">block, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">block_to_free;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> pool->mp_block;</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> (block)</span></span>
+<span class="line"><span style="color:#E1E4E8">	{</span></span>
+<span class="line"><span style="color:#E1E4E8">		block_to_free </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> block;</span></span>
+<span class="line"><span style="color:#E1E4E8">		block </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> block->next_block;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (invalidate_memory)</span></span>
+<span class="line"><span style="color:#B392F0">			memset</span><span style="color:#E1E4E8">(block_to_free->space, </span><span style="color:#F97583">0x</span><span style="color:#79B8FF">DD</span><span style="color:#E1E4E8">, ((</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)block_to_free->end) </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> ((</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)block_to_free->space));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">		free</span><span style="color:#E1E4E8">(block_to_free);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	pool->mp_block </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	pool->pool_alloc </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p><code>mem_pool_discard</code>将遍历内存池整个内存块链表，会依据<code>invalidate_memory</code>来先将内存空间的每个字节用<code>0xDD</code>使之无效，接着再释放内存。
+并清空内存池。</p>
+<p>到此，git的内存池已经结束了，你可能会很想问，用户将内存用完何时交还给内存池？事实上，它这种设计下内存池会在某个时候销毁的时候，会去将所有的内存释放，可能这样会更加”集中”,因此这个内存池我们也看不到所谓内存块合并，可能它这个内存池仅仅时为了使用便捷并减少多次分配内存性能。</p>
+<p>甚至我还有一个疑问：不用的内存块链表中肯定有大量的碎片，如何去利用这些空间？</p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag git" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag git</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

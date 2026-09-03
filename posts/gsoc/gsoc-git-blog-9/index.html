@@ -1,0 +1,394 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>GSOC, Git Blog 9 - ZheNing Hu</title><meta name="description" content="GSOC, Git Blog 9"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="GSOC, Git Blog 9" data-title-zh="GSoC Git 博客 9" data-astro-cid-egg7nqdx> GSOC, Git Blog 9 </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2021-07-19 10:48:30</span>   <span class="tag" data-astro-cid-egg7nqdx>git</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<h2 id="week9-bug-report">Week9 BUG REPORT</h2>
+<h3 id="bug-report-1">BUG REPORT 1</h3>
+<ul>
+<li>
+<p>What did you do before the bug happened? (Steps to reproduce your issue)</p>
+<p>Because someone told me that <code>git cherry-pick</code> can’t gave useful prompt information like <code>git rebase -i</code> does:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>You can amend the commit now, with</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>  git commit --amend</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>Once you are satisfied with your changes, run</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>  git rebase --continue</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>I found that I can take use of “GIT_CHERRY_PICK_HELP” environment variable,</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>$ GIT_CHERRY_PICK_HELP="git cherry-pick --continue" ggg cherry-pick v1</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>which will output prompt information “git cherry-pick —continue”, good!</p>
+</li>
+<li>
+<p>What did you expect to happen? (Expected behavior)</p>
+<p>I could use <code>git cherry-pick --abort</code> to exit cherry-pick normally.</p>
+</li>
+<li>
+<p>What happened instead? (Actual behavior)</p>
+<p>Then I couldn’t use <code>git cherry-pick --abort</code> to exit cherry-pick normally.</p>
+</li>
+<li>
+<p>Anything else you want to add:</p>
+<p>See the print_advice() in sequencer.c, <code>CHERRY_PICK_HEAD</code> will be removed
+if we use the env “GIT_CHERRY_PICK_HELP”. It is used by <code>git rebase -i</code> and somewhere else.</p>
+<p>Here may have two solutions:</p>
+<ol>
+<li>Prevent users from using the environment variable “GIT_CHERRY_PICK_HELP”.</li>
+<li>check if we are truly cherry-pick.</li>
+</ol>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#E1E4E8">diff </span><span style="color:#F97583">--</span><span style="color:#E1E4E8">git a</span><span style="color:#F97583">/</span><span style="color:#E1E4E8">sequencer.c b</span><span style="color:#F97583">/</span><span style="color:#E1E4E8">sequencer.c</span></span>
+<span class="line"><span style="color:#E1E4E8">index </span><span style="color:#FDAEB7;font-style:italic">0bec01cf38..c01b0b9e9c</span><span style="color:#79B8FF"> 100644</span></span>
+<span class="line"><span style="color:#F97583">---</span><span style="color:#E1E4E8"> a</span><span style="color:#F97583">/</span><span style="color:#E1E4E8">sequencer.c</span></span>
+<span class="line"><span style="color:#F97583">+++</span><span style="color:#E1E4E8"> b</span><span style="color:#F97583">/</span><span style="color:#E1E4E8">sequencer.c</span></span>
+<span class="line"><span style="color:#E1E4E8">@@ </span><span style="color:#F97583">-</span><span style="color:#79B8FF">409</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">8</span><span style="color:#F97583"> +</span><span style="color:#79B8FF">409</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">9</span><span style="color:#E1E4E8"> @@ </span><span style="color:#F97583">static</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> print_advice</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> repository </span><span style="color:#F97583">*</span><span style="color:#FFAB70">r</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> show_hint</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                 *</span><span style="color:#E1E4E8"> (typically rebase </span><span style="color:#F97583">--</span><span style="color:#E1E4E8">interactive) wants to take care</span></span>
+<span class="line"><span style="color:#F97583">                 *</span><span style="color:#E1E4E8"> of the commit itself so remove CHERRY_PICK_HEAD</span></span>
+<span class="line"><span style="color:#F97583">                 */</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">               refs_delete_ref</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">get_main_ref_store</span><span style="color:#E1E4E8">(r), </span><span style="color:#9ECBFF">""</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"CHERRY_PICK_HEAD"</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#79B8FF">                               NULL</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">               if</span><span style="color:#E1E4E8"> (opts</span><span style="color:#F97583">-></span><span style="color:#E1E4E8">action </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> REPLAY_PICK)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">                       refs_delete_ref</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">get_main_ref_store</span><span style="color:#E1E4E8">(r), </span><span style="color:#9ECBFF">""</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"CHERRY_PICK_HEAD"</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#79B8FF">                                       NULL</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">                return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">        }</span></span>
+<span class="line"></span></code></pre>
+</li>
+<li>
+<p>[System Info]</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git version:</span></span>
+<span class="line"><span>git version 2.32.0</span></span>
+<span class="line"><span>cpu: x86_64</span></span>
+<span class="line"><span>no commit associated with this build</span></span>
+<span class="line"><span>sizeof-long: 8</span></span>
+<span class="line"><span>sizeof-size_t: 8</span></span>
+<span class="line"><span>shell-path: /bin/sh</span></span>
+<span class="line"><span>uname: Linux 5.12.15-arch1-1 #1 SMP PREEMPT Wed, 07 Jul 2021 23:35:29 +0000 x86_64</span></span>
+<span class="line"><span>compiler info: gnuc: 11.1</span></span>
+<span class="line"><span>libc info: glibc: 2.33</span></span>
+<span class="line"><span>$SHELL (typically, interactive shell): /bin/zsh</span></span>
+<span class="line"><span></span></span></code></pre>
+</li>
+<li>
+<p>[Enabled Hooks]</p>
+<p>None.</p>
+</li>
+</ul>
+<h3 id="bug-report-2">BUG REPORT 2</h3>
+<ul>
+<li>
+<p>What did you do before the bug happened? (Steps to reproduce your issue)</p>
+<p>Normally execute the test under git/t.</p>
+</li>
+<li>
+<p>What did you expect to happen? (Expected behavior)</p>
+<p>Pass the test t/t0500-progress-display.sh.</p>
+</li>
+<li>
+<p>What happened instead? (Actual behavior)</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="zsh"><code><span class="line"><span style="color:#B392F0">$</span><span style="color:#9ECBFF"> sh</span><span style="color:#9ECBFF"> t0500-progress-display.sh</span><span style="color:#79B8FF"> -d</span><span style="color:#79B8FF"> -i</span><span style="color:#79B8FF"> -v</span></span>
+<span class="line"><span style="color:#79B8FF">  ...</span></span>
+<span class="line"><span style="color:#B392F0">expecting</span><span style="color:#9ECBFF"> success</span><span style="color:#9ECBFF"> of</span><span style="color:#79B8FF"> 0500.3</span><span style="color:#9ECBFF"> 'progress display breaks long lines #1':</span><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#B392F0">        sed</span><span style="color:#79B8FF"> -e</span><span style="color:#9ECBFF"> "s/Z$//"</span><span style="color:#F97583"> ></span><span style="color:#9ECBFF">expect</span><span style="color:#F97583"> &#x3C;&#x3C;</span><span style="color:#9ECBFF">\EOF</span><span style="color:#E1E4E8"> &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">Working hard.......2.........3.........4.........5.........6:   0% (100/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">Working hard.......2.........3.........4.........5.........6:   1% (1000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">Working hard.......2.........3.........4.........5.........6:                   Z</span></span>
+<span class="line"><span style="color:#9ECBFF">   10% (10000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">  100% (100000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">  100% (100000/100000), done.</span></span>
+<span class="line"><span style="color:#9ECBFF">EOF</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF">        cat >in &#x3C;&#x3C;-\EOF &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">        progress 100</span></span>
+<span class="line"><span style="color:#9ECBFF">        progress 1000</span></span>
+<span class="line"><span style="color:#9ECBFF">        progress 10000</span></span>
+<span class="line"><span style="color:#9ECBFF">        progress 100000</span></span>
+<span class="line"><span style="color:#9ECBFF">        EOF</span></span>
+<span class="line"><span style="color:#9ECBFF">        test-tool progress --total=100000 </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#9ECBFF">                "Working hard.......2.........3.........4.........5.........6" </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#9ECBFF">                &#x3C;in 2>stderr &#x26;&#x26;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF">        show_cr &#x3C;stderr >out &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">        test_cmp expect out</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF">--- expect	2021-07-19 06:09:39.800189433 +0000</span></span>
+<span class="line"><span style="color:#9ECBFF">+++ out	2021-07-19 06:09:39.803522767 +0000</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -1,6 +1,5 @@</span></span>
+<span class="line"><span style="color:#9ECBFF"> Working hard.......2.........3.........4.........5.........6:   0% (100/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF"> Working hard.......2.........3.........4.........5.........6:   1% (1000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">-Working hard.......2.........3.........4.........5.........6:                   </span></span>
+<span class="line"><span style="color:#9ECBFF">-   10% (10000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">-  100% (100000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">-  100% (100000/100000), done.</span></span>
+<span class="line"><span style="color:#9ECBFF">+Working hard.......2.........3.........4.........5.........6:  10% (10000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">+Working hard.......2.........3.........4.........5.........6: 100% (100000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">+Working hard.......2.........3.........4.........5.........6: 100% (100000/100000), done.</span></span>
+<span class="line"><span style="color:#9ECBFF">not ok 3 - progress display breaks long lines #1</span></span>
+<span class="line"><span style="color:#9ECBFF">#</span></span>
+<span class="line"><span style="color:#9ECBFF">#               sed -e "s/Z$//" >expect &#x3C;&#x3C;\EOF &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">#       Working hard.......2.........3.........4.........5.........6:   0% (100/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">#       Working hard.......2.........3.........4.........5.........6:   1% (1000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">#       Working hard.......2.........3.........4.........5.........6:                   Z</span></span>
+<span class="line"><span style="color:#9ECBFF">#          10% (10000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">#         100% (100000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">#         100% (100000/100000), done.</span></span>
+<span class="line"><span style="color:#9ECBFF">#       EOF</span></span>
+<span class="line"><span style="color:#9ECBFF">#</span></span>
+<span class="line"><span style="color:#9ECBFF">#               cat >in &#x3C;&#x3C;-\EOF &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">#               progress 100</span></span>
+<span class="line"><span style="color:#9ECBFF">#               progress 1000</span></span>
+<span class="line"><span style="color:#9ECBFF">#               progress 10000</span></span>
+<span class="line"><span style="color:#9ECBFF">#               progress 100000</span></span>
+<span class="line"><span style="color:#9ECBFF">#               EOF</span></span>
+<span class="line"><span style="color:#9ECBFF">#               test-tool progress --total=100000 </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#9ECBFF">#                       "Working hard.......2.........3.........4.........5.........6" </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#9ECBFF">#                       &#x3C;in 2>stderr &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">#</span></span>
+<span class="line"><span style="color:#9ECBFF">#               show_cr &#x3C;stderr >out &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">#               test_cmp expect out</span></span>
+<span class="line"><span style="color:#9ECBFF">#</span></span>
+<span class="line"></span></code></pre>
+</li>
+<li>
+<p>What’s different between what you expected and what actually happened?</p>
+<p>It seems that the progress display is not working normally.</p>
+</li>
+<li>
+<p>Anything else you want to add:</p>
+<p>I am thinking:</p>
+<ol>
+<li>Is this bug caused by my own patches?
+So I switched to other branches, including upstream/master, see the bug too.</li>
+<li>Is this bug caused by zsh?
+So I switched to bash, see the bug too.</li>
+<li>Does this bug only appear on my Arch-Linux?
+So I asked my classmates (who use arch linux too) to download git/git from github and perform the test, see the bug too.</li>
+<li>Does Ubuntu also have this bug?
+No. In the case of using Ubuntu’s docker and Centos’s virtual machine, after cloning git/git from github, they actually passed the test!!!</li>
+</ol>
+<p>So what’s wrong with Arch-Linux?</p>
+</li>
+<li>
+<p>[System Info]</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git version:</span></span>
+<span class="line"><span>git version 2.32.0</span></span>
+<span class="line"><span>cpu: x86_64</span></span>
+<span class="line"><span>no commit associated with this build</span></span>
+<span class="line"><span>sizeof-long: 8</span></span>
+<span class="line"><span>sizeof-size_t: 8</span></span>
+<span class="line"><span>shell-path: /bin/sh</span></span>
+<span class="line"><span>uname: Linux 5.12.15-arch1-1 #1 SMP PREEMPT Wed, 07 Jul 2021 23:35:29 +0000 x86_64</span></span>
+<span class="line"><span>compiler info: gnuc: 11.1</span></span>
+<span class="line"><span>libc info: glibc: 2.33</span></span>
+<span class="line"><span>$SHELL (typically, interactive shell): /bin/zsh</span></span>
+<span class="line"><span></span></span></code></pre>
+</li>
+<li>
+<p>[Enabled Hooks]</p>
+<p>None.</p>
+</li>
+</ul>
+<h3 id="project-progress">project progress</h3>
+<p>I am still thinking about how to improve the performance of <code>git cat-file --batch</code>. This cannot be solved quickly, keep patient.</p>
+<p>My mentors told me to split my main patch series into a few smaller patch series, but how? In other words, there is a certain correlation between these patches, If they are really split into multiple patches, how can I send them to the mailing list without repeating?</p>
+<p>I just received half of the GSoC bonus, felt a burden of responsibility…</p>
+</div>
+<div class="lang-section" data-lang="zh">
+<h2 id="第-9-周-bug-报告">第 9 周 BUG 报告</h2>
+<h3 id="bug-报告-1">BUG 报告 1</h3>
+<ul>
+<li>
+<p>在 bug 发生之前你做了什么？（复现步骤）</p>
+<p>因为有人告诉我 <code>git cherry-pick</code> 不能像 <code>git rebase -i</code> 那样给出有用的提示信息：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>You can amend the commit now, with</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>  git commit --amend</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>Once you are satisfied with your changes, run</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>  git rebase --continue</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>我发现可以利用 “GIT_CHERRY_PICK_HELP” 环境变量，</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>$ GIT_CHERRY_PICK_HELP="git cherry-pick --continue" ggg cherry-pick v1</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>这样会输出提示信息 “git cherry-pick —continue”，很好！</p>
+</li>
+<li>
+<p>你期望发生什么？（预期行为）</p>
+<p>我希望能正常使用 <code>git cherry-pick --abort</code> 退出 cherry-pick。</p>
+</li>
+<li>
+<p>实际发生了什么？（实际行为）</p>
+<p>然后我无法正常使用 <code>git cherry-pick --abort</code> 退出 cherry-pick。</p>
+</li>
+<li>
+<p>其他补充：</p>
+<p>查看 sequencer.c 中的 print_advice()，如果使用了 “GIT_CHERRY_PICK_HELP” 环境变量，<code>CHERRY_PICK_HEAD</code> 会被删除。它被 <code>git rebase -i</code> 等使用。</p>
+<p>这里可能有两个解决方案：</p>
+<ol>
+<li>阻止用户使用 “GIT_CHERRY_PICK_HELP” 环境变量。</li>
+<li>检查我们是否真正处于 cherry-pick 状态。</li>
+</ol>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#E1E4E8">diff </span><span style="color:#F97583">--</span><span style="color:#E1E4E8">git a</span><span style="color:#F97583">/</span><span style="color:#E1E4E8">sequencer.c b</span><span style="color:#F97583">/</span><span style="color:#E1E4E8">sequencer.c</span></span>
+<span class="line"><span style="color:#E1E4E8">index </span><span style="color:#FDAEB7;font-style:italic">0bec01cf38..c01b0b9e9c</span><span style="color:#79B8FF"> 100644</span></span>
+<span class="line"><span style="color:#F97583">---</span><span style="color:#E1E4E8"> a</span><span style="color:#F97583">/</span><span style="color:#E1E4E8">sequencer.c</span></span>
+<span class="line"><span style="color:#F97583">+++</span><span style="color:#E1E4E8"> b</span><span style="color:#F97583">/</span><span style="color:#E1E4E8">sequencer.c</span></span>
+<span class="line"><span style="color:#E1E4E8">@@ </span><span style="color:#F97583">-</span><span style="color:#79B8FF">409</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">8</span><span style="color:#F97583"> +</span><span style="color:#79B8FF">409</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">9</span><span style="color:#E1E4E8"> @@ </span><span style="color:#F97583">static</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> print_advice</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> repository </span><span style="color:#F97583">*</span><span style="color:#FFAB70">r</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> show_hint</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                 *</span><span style="color:#E1E4E8"> (typically rebase </span><span style="color:#F97583">--</span><span style="color:#E1E4E8">interactive) wants to take care</span></span>
+<span class="line"><span style="color:#F97583">                 *</span><span style="color:#E1E4E8"> of the commit itself so remove CHERRY_PICK_HEAD</span></span>
+<span class="line"><span style="color:#F97583">                 */</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">               refs_delete_ref</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">get_main_ref_store</span><span style="color:#E1E4E8">(r), </span><span style="color:#9ECBFF">""</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"CHERRY_PICK_HEAD"</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#79B8FF">                               NULL</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">               if</span><span style="color:#E1E4E8"> (opts</span><span style="color:#F97583">-></span><span style="color:#E1E4E8">action </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> REPLAY_PICK)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">                       refs_delete_ref</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">get_main_ref_store</span><span style="color:#E1E4E8">(r), </span><span style="color:#9ECBFF">""</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"CHERRY_PICK_HEAD"</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#79B8FF">                                       NULL</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">                return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">        }</span></span>
+<span class="line"></span></code></pre>
+</li>
+<li>
+<p>[系统信息]</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git version:</span></span>
+<span class="line"><span>git version 2.32.0</span></span>
+<span class="line"><span>cpu: x86_64</span></span>
+<span class="line"><span>no commit associated with this build</span></span>
+<span class="line"><span>sizeof-long: 8</span></span>
+<span class="line"><span>sizeof-size_t: 8</span></span>
+<span class="line"><span>shell-path: /bin/sh</span></span>
+<span class="line"><span>uname: Linux 5.12.15-arch1-1 #1 SMP PREEMPT Wed, 07 Jul 2021 23:35:29 +0000 x86_64</span></span>
+<span class="line"><span>compiler info: gnuc: 11.1</span></span>
+<span class="line"><span>libc info: glibc: 2.33</span></span>
+<span class="line"><span>$SHELL (typically, interactive shell): /bin/zsh</span></span>
+<span class="line"><span></span></span></code></pre>
+</li>
+<li>
+<p>[已启用 Hooks]</p>
+<p>无。</p>
+</li>
+</ul>
+<h3 id="bug-报告-2">BUG 报告 2</h3>
+<ul>
+<li>
+<p>在 bug 发生之前你做了什么？（复现步骤）</p>
+<p>正常执行 git/t 下的测试。</p>
+</li>
+<li>
+<p>你期望发生什么？（预期行为）</p>
+<p>通过测试 t/t0500-progress-display.sh。</p>
+</li>
+<li>
+<p>实际发生了什么？（实际行为）</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="zsh"><code><span class="line"><span style="color:#B392F0">$</span><span style="color:#9ECBFF"> sh</span><span style="color:#9ECBFF"> t0500-progress-display.sh</span><span style="color:#79B8FF"> -d</span><span style="color:#79B8FF"> -i</span><span style="color:#79B8FF"> -v</span></span>
+<span class="line"><span style="color:#79B8FF">  ...</span></span>
+<span class="line"><span style="color:#B392F0">expecting</span><span style="color:#9ECBFF"> success</span><span style="color:#9ECBFF"> of</span><span style="color:#79B8FF"> 0500.3</span><span style="color:#9ECBFF"> 'progress display breaks long lines #1':</span><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#B392F0">        sed</span><span style="color:#79B8FF"> -e</span><span style="color:#9ECBFF"> "s/Z$//"</span><span style="color:#F97583"> ></span><span style="color:#9ECBFF">expect</span><span style="color:#F97583"> &#x3C;&#x3C;</span><span style="color:#9ECBFF">\EOF</span><span style="color:#E1E4E8"> &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">Working hard.......2.........3.........4.........5.........6:   0% (100/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">Working hard.......2.........3.........4.........5.........6:   1% (1000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">Working hard.......2.........3.........4.........5.........6:                   Z</span></span>
+<span class="line"><span style="color:#9ECBFF">   10% (10000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">  100% (100000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">  100% (100000/100000), done.</span></span>
+<span class="line"><span style="color:#9ECBFF">EOF</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF">        cat >in &#x3C;&#x3C;-\EOF &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">        progress 100</span></span>
+<span class="line"><span style="color:#9ECBFF">        progress 1000</span></span>
+<span class="line"><span style="color:#9ECBFF">        progress 10000</span></span>
+<span class="line"><span style="color:#9ECBFF">        progress 100000</span></span>
+<span class="line"><span style="color:#9ECBFF">        EOF</span></span>
+<span class="line"><span style="color:#9ECBFF">        test-tool progress --total=100000 </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#9ECBFF">                "Working hard.......2.........3.........4.........5.........6" </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#9ECBFF">                &#x3C;in 2>stderr &#x26;&#x26;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF">        show_cr &#x3C;stderr >out &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">        test_cmp expect out</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF">--- expect	2021-07-19 06:09:39.800189433 +0000</span></span>
+<span class="line"><span style="color:#9ECBFF">+++ out	2021-07-19 06:09:39.803522767 +0000</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -1,6 +1,5 @@</span></span>
+<span class="line"><span style="color:#9ECBFF"> Working hard.......2.........3.........4.........5.........6:   0% (100/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF"> Working hard.......2.........3.........4.........5.........6:   1% (1000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">-Working hard.......2.........3.........4.........5.........6:                   </span></span>
+<span class="line"><span style="color:#9ECBFF">-   10% (10000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">-  100% (100000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">-  100% (100000/100000), done.</span></span>
+<span class="line"><span style="color:#9ECBFF">+Working hard.......2.........3.........4.........5.........6:  10% (10000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">+Working hard.......2.........3.........4.........5.........6: 100% (100000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">+Working hard.......2.........3.........4.........5.........6: 100% (100000/100000), done.</span></span>
+<span class="line"><span style="color:#9ECBFF">not ok 3 - progress display breaks long lines #1</span></span>
+<span class="line"><span style="color:#9ECBFF">#</span></span>
+<span class="line"><span style="color:#9ECBFF">#               sed -e "s/Z$//" >expect &#x3C;&#x3C;\EOF &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">#       Working hard.......2.........3.........4.........5.........6:   0% (100/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">#       Working hard.......2.........3.........4.........5.........6:   1% (1000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">#       Working hard.......2.........3.........4.........5.........6:                   Z</span></span>
+<span class="line"><span style="color:#9ECBFF">#          10% (10000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">#         100% (100000/100000)&#x3C;CR></span></span>
+<span class="line"><span style="color:#9ECBFF">#         100% (100000/100000), done.</span></span>
+<span class="line"><span style="color:#9ECBFF">#       EOF</span></span>
+<span class="line"><span style="color:#9ECBFF">#</span></span>
+<span class="line"><span style="color:#9ECBFF">#               cat >in &#x3C;&#x3C;-\EOF &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">#               progress 100</span></span>
+<span class="line"><span style="color:#9ECBFF">#               progress 1000</span></span>
+<span class="line"><span style="color:#9ECBFF">#               progress 10000</span></span>
+<span class="line"><span style="color:#9ECBFF">#               progress 100000</span></span>
+<span class="line"><span style="color:#9ECBFF">#               EOF</span></span>
+<span class="line"><span style="color:#9ECBFF">#               test-tool progress --total=100000 </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#9ECBFF">#                       "Working hard.......2.........3.........4.........5.........6" </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#9ECBFF">#                       &#x3C;in 2>stderr &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">#</span></span>
+<span class="line"><span style="color:#9ECBFF">#               show_cr &#x3C;stderr >out &#x26;&#x26;</span></span>
+<span class="line"><span style="color:#9ECBFF">#               test_cmp expect out</span></span>
+<span class="line"><span style="color:#9ECBFF">#</span></span>
+<span class="line"></span></code></pre>
+</li>
+<li>
+<p>预期与实际结果有什么不同？</p>
+<p>看起来进度显示没有正常工作。</p>
+</li>
+<li>
+<p>其他补充：</p>
+<p>我在想：</p>
+<ol>
+<li>这个 bug 是不是我自己补丁导致的？
+于是我切换到其他分支，包括 upstream/master，也看到了这个 bug。</li>
+<li>这个 bug 是不是 zsh 导致的？
+于是我切换到 bash，也看到了这个 bug。</li>
+<li>这个 bug 是不是只在我的 Arch Linux 上出现？
+于是我让同学（也使用 Arch Linux）从 GitHub 下载 git/git 并运行测试，他们也看到了这个 bug。</li>
+<li>Ubuntu 上也有这个 bug 吗？
+没有。在使用 Ubuntu 的 Docker 和 CentOS 虚拟机的情况下，从 GitHub 克隆 git/git 后，测试居然通过了！！！</li>
+</ol>
+<p>那么 Arch Linux 出了什么问题？</p>
+</li>
+<li>
+<p>[系统信息]</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>git version:</span></span>
+<span class="line"><span>git version 2.32.0</span></span>
+<span class="line"><span>cpu: x86_64</span></span>
+<span class="line"><span>no commit associated with this build</span></span>
+<span class="line"><span>sizeof-long: 8</span></span>
+<span class="line"><span>sizeof-size_t: 8</span></span>
+<span class="line"><span>shell-path: /bin/sh</span></span>
+<span class="line"><span>uname: Linux 5.12.15-arch1-1 #1 SMP PREEMPT Wed, 07 Jul 2021 23:35:29 +0000 x86_64</span></span>
+<span class="line"><span>compiler info: gnuc: 11.1</span></span>
+<span class="line"><span>libc info: glibc: 2.33</span></span>
+<span class="line"><span>$SHELL (typically, interactive shell): /bin/zsh</span></span>
+<span class="line"><span></span></span></code></pre>
+</li>
+<li>
+<p>[已启用 Hooks]</p>
+<p>无。</p>
+</li>
+</ul>
+<h3 id="项目进展">项目进展</h3>
+<p>我仍在思考如何提高 <code>git cat-file --batch</code> 的性能。这不能很快解决，要保持耐心。</p>
+<p>导师告诉我把主补丁系列拆成几个更小的补丁系列，但怎么拆？换句话说，这些补丁之间存在一定的关联性，如果真要拆成多个补丁系列，我怎么在邮件列表上发送它们而又不重复呢？</p>
+<p>我刚收到一半 GSoC 奖金，感到肩上的责任重了……</p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag git" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag git</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

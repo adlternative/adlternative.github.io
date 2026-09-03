@@ -1,0 +1,927 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>FUTEX_SWAP INTRODUCTION - ZheNing Hu</title><meta name="description" content="FUTEX_SWAP INTRODUCTION"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="FUTEX_SWAP INTRODUCTION" data-title-zh="FUTEX_SWAP 简介" data-astro-cid-egg7nqdx> FUTEX_SWAP INTRODUCTION </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2021-07-19 00:08:34</span>   <span class="tag" data-astro-cid-egg7nqdx>os</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<h2 id="futex_swap-introduction">FUTEX_SWAP Introduction</h2>
+<h3 id="google-switchto">Google SwitchTo</h3>
+<p>Because coroutines themselves are invisible to the operating system, bugs that occur in coroutines often cannot be diagnosed with existing tools. Inside Google there is a closed-source user-space task scheduling framework called <code>SwitchTo</code>, which can provide latency-sensitive services for Google and enable fine-grained user-space control/scheduling of running content. It lets the kernel perform context switches while leaving the decision of when to switch and when to resume tasks to user-space programs. This achieves cooperative switching between tasks without losing the kernel’s ability to control and observe tasks. Last year Google resumed attempts to upstream the <code>SwitchTo</code> API into Linux. Related patches can be found at: [1], [2], [3], [4].</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">pid_t</span><span style="color:#B392F0"> switchto_wait</span><span style="color:#E1E4E8">(timespec </span><span style="color:#F97583">*</span><span style="color:#FFAB70">timeout</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#6A737D">/*  Enter an 'unscheduled state', until our control is re-initiated by another thread or external event (signal). */</span></span>
+<span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> switchto_resume</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">pid_t</span><span style="color:#FFAB70"> tid</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#6A737D">/* Resume regular execution of tid */</span></span>
+<span class="line"><span style="color:#F97583">pid_t</span><span style="color:#B392F0"> switchto_switch</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">pid_t</span><span style="color:#FFAB70"> tid</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#6A737D">/* Synchronously transfer control to target sibling thread, leaving the current thread unscheduled.Analogous to:Atomically { Resume(t1); Wait(NULL); }</span></span>
+<span class="line"><span style="color:#6A737D">*/</span></span>
+<span class="line"></span></code></pre>
+<p>The following is a performance comparison of context switching between using <code>SwitchTo</code> and other inter-thread switching components:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Benchmark</th><th>Time(ns)</th><th>CPU(ns)</th><th>Iterations</th></tr></thead><tbody><tr><td>BM_Futex</td><td>2905</td><td>1958</td><td>1000000</td></tr><tr><td>BM_GoogleMutex</td><td>3102</td><td>2326</td><td>1000000</td></tr><tr><td>BM_SwitchTo</td><td>179</td><td>178</td><td>3917412</td></tr><tr><td>BM_SwitchResume</td><td>2734</td><td>1554</td><td>1000000</td></tr></tbody></table>
+<p>As you can see, after using <code>SwitchTo</code>, switching performance improves by an order of magnitude compared to other components.</p>
+<p>How does <code>SwitchTo</code> achieve such a large lead in switching performance? We may not be able to see it yet, but let’s look at the implementation of <code>futex_swap()</code> in the patches submitted by <code>Peter Oskolkov</code> to LKML (Linux Kernel Mailing List). It is certain that <code>SwitchTo</code> is built on top of this kernel function.</p>
+<h3 id="what-is-futex">What Is futex?</h3>
+<p><code>futex</code> stands for <code>fast user-space locking</code>. It is a basic synchronization primitive in the kernel that provides very fast uncontended lock acquisition and release, and is used to build complex synchronization structures: mutexes, condition variables, semaphores, etc. Because some of the mechanisms and usage of <code>futex</code> are overly complex, <code>glibc</code> does not provide a wrapper for <code>futex</code>, but we can still call this extremely hacky system call using <code>syscall</code>.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">uint32_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> futex_op</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">uint32_t</span><span style="color:#FFAB70"> val</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                 const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> timespec </span><span style="color:#F97583">*</span><span style="color:#FFAB70">timeout</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">uint32_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">uaddr2</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                 uint32_t</span><span style="color:#FFAB70"> val3</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#B392F0"> syscall</span><span style="color:#E1E4E8">(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<ul>
+<li><code>uaddr</code>: a four-byte user-space address. Multiple tasks can control blocking or running through changes in the value at <code>*uaddr</code>.</li>
+<li><code>futex_op</code>: used to control the command executed by <code>futex</code>, such as <code>FUTEX_WAIT</code>, <code>FUTEX_WAKE</code>, <code>FUTEX_LOCK_PI</code>, <code>FUTEX_UNLOCK_PI</code>, etc.</li>
+<li><code>val</code>: has different meanings in different <code>futex_op</code>s. For example, in <code>futex(uaddr, FUTEX_WAKE)</code> it is the number of tasks waiting on this <code>futex</code> to wake up.</li>
+<li><code>timeout</code>: used as the timeout for wait operations (such as <code>FUTEX_WAIT</code>).</li>
+<li><code>uaddr2</code>: a four-byte user-space address used in required scenarios (such as <code>FUTEX_SWAP</code> described later).</li>
+<li><code>val3</code>: the interpretation of the integer argument <code>val3</code> depends on the operation.</li>
+</ul>
+<h3 id="why-is-futex-fast">Why Is futex “Fast”?</h3>
+<p>Because context switching between user mode and kernel mode is expensive, synchronization structures implemented with <code>futex</code> stay in user space as much as possible, meaning they only need to perform fewer system calls. The state of <code>futex</code> is stored in a user-space variable, and <code>futex</code> can change its state through some atomic operations without contention, without the overhead of a system call.</p>
+<h3 id="futex_wait-and-futex_wake">futex_wait() and futex_wake()</h3>
+<p>Before looking at <code>futex_swap()</code>, let’s first look at the two most important kernel functions related to <code>futex</code> in the kernel:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex_wait</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">val</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">ktime_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">abs_time</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span></code></pre>
+<p>Simply put, the useful parameters for <code>futex_wait()</code> are only <code>uaddr</code>, <code>val</code>, and <code>abs_time</code>, like <code>futex_wait(uaddr, val, abs_time)</code>. Its meaning is: sleep when the value at user-space address <code>uaddr</code> equals the passed parameter <code>val</code>, i.e. <code>if (*uaddr == val) wait()</code>. <code>futex_wake()</code> can wake it up, and a timeout can also be specified for timeout wakeup.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex_wait</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">val</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">		      ktime_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">abs_time</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hrtimer_sleeper timeout, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">to;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> restart_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">restart;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> futex_hash_bucket </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">hb;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> futex_q q </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> futex_q_init;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">bitset)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">EINVAL;</span></span>
+<span class="line"><span style="color:#E1E4E8">	q.bitset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> bitset;</span></span>
+<span class="line"><span style="color:#6A737D">  /* 设置定时器 */</span></span>
+<span class="line"><span style="color:#E1E4E8">	to </span><span style="color:#F97583">=</span><span style="color:#B392F0"> futex_setup_timer</span><span style="color:#E1E4E8">(abs_time, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">timeout, flags,</span></span>
+<span class="line"><span style="color:#E1E4E8">			       current->timer_slack_ns);</span></span>
+<span class="line"><span style="color:#E1E4E8">retry:</span></span>
+<span class="line"><span style="color:#6A737D">	/*</span></span>
+<span class="line"><span style="color:#6A737D">	 * Prepare to wait on uaddr. On success, holds hb lock and increments</span></span>
+<span class="line"><span style="color:#6A737D">	 * q.key refs.</span></span>
+<span class="line"><span style="color:#6A737D">	 */</span></span>
+<span class="line"><span style="color:#6A737D">	/* 获取哈希桶自旋锁 如果 *uaddr == val return -EWOULDBLOCK 否则返回 0 */</span></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> futex_wait_setup</span><span style="color:#E1E4E8">(uaddr, val, flags, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">q, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (ret)</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> out;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* queue_me and wait for wakeup, timeout, or a signal. */</span></span>
+<span class="line"><span style="color:#6A737D">	/*将当前任务状态改为TASK_INTERRUPTIBLE，并将当前任务插入到futex等待队列，释放哈希桶自旋锁，然后重新调度*/</span></span>
+<span class="line"><span style="color:#B392F0">	futex_wait_queue_me</span><span style="color:#E1E4E8">(hb, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">q, to);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* If we were woken (and unqueued), we succeeded, whatever. */</span></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#6A737D">  /* 如果 unqueue_me 返回 0 表示已经被删除则是正常唤醒跳到 out 否则则是超时触发 */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">unqueue_me</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">q))</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> out;</span></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">ETIMEDOUT;</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (to </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">to->task)</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> out;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/*</span></span>
+<span class="line"><span style="color:#6A737D">	 * We expect signal_pending(current), but we might be the</span></span>
+<span class="line"><span style="color:#6A737D">	 * victim of a spurious wakeup as well.</span></span>
+<span class="line"><span style="color:#6A737D">	 */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">signal_pending</span><span style="color:#E1E4E8">(current))</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> retry;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">ERESTARTSYS;</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">abs_time)</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> out;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	restart </span><span style="color:#F97583">=</span><span style="color:#F97583"> &#x26;</span><span style="color:#E1E4E8">current->restart_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.uaddr </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> uaddr;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.val </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> val;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.time </span><span style="color:#F97583">=</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">abs_time;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.bitset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> bitset;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.flags </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> flags </span><span style="color:#F97583">|</span><span style="color:#E1E4E8"> FLAGS_HAS_TIMEOUT;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> set_restart_fn</span><span style="color:#E1E4E8">(restart, futex_wait_restart);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">out:</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (to) {</span></span>
+<span class="line"><span style="color:#6A737D">    /* 即将结束，取消定时任务 */</span></span>
+<span class="line"><span style="color:#B392F0">		hrtimer_cancel</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">to->timer);</span></span>
+<span class="line"><span style="color:#B392F0">		destroy_hrtimer_on_stack</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">to->timer);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Internally, <code>futex</code> uses a hash table data structure to store tasks that need to sleep. Through the user-space address <code>uaddr</code>, <code>flags</code>, and the read/write state of <code>futex</code>, the same <code>key</code> value can be computed, and the <code>task_struct</code> of the sleeping task is placed in a node in the priority list of the corresponding hash bucket.</p>
+<p><code>futex_wait()</code> flow:</p>
+<ol>
+<li>Find the <code>key</code> corresponding to the <code>futex</code>, and get the hash bucket corresponding to the <code>key</code>.</li>
+<li>Acquire the hash bucket spinlock; if <code>*uaddr == val</code>, return an error to user space.</li>
+<li>Otherwise, change the current task state to <code>TASK_INTERRUPTIBLE</code>, insert the current task into the <code>futex</code> wait queue, release the hash bucket spinlock, and let the scheduler reschedule.</li>
+<li>Wake up from sleep, handle timeout and wakeup cases respectively, and return to user space.</li>
+</ol>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span></code></pre>
+<p>The parameters of <code>futex_wake()</code> are slightly simpler; the most important ones are only the user address <code>uaddr</code> and the maximum number of tasks to wake <code>nr_wake</code>.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#6A737D">/*</span></span>
+<span class="line"><span style="color:#6A737D"> * Wake up waiters matching bitset queued on this futex (uaddr).</span></span>
+<span class="line"><span style="color:#6A737D"> */</span></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span></span>
+<span class="line"><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> futex_hash_bucket </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">hb;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> futex_q </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">this, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next;</span></span>
+<span class="line"><span style="color:#F97583">	union</span><span style="color:#E1E4E8"> futex_key key </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> FUTEX_KEY_INIT;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#B392F0">	DEFINE_WAKE_Q</span><span style="color:#E1E4E8">(wake_q);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">bitset)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">EINVAL;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  /* 寻找 futex 对应的 key */</span></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> get_futex_key</span><span style="color:#E1E4E8">(uaddr, flags </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> FLAGS_SHARED, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key, FUTEX_READ);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">unlikely</span><span style="color:#E1E4E8">(ret </span><span style="color:#F97583">!=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  /* 获取 key 对应的哈希桶 */</span></span>
+<span class="line"><span style="color:#E1E4E8">	hb </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hash_futex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* Make sure we really have tasks to wakeup */</span></span>
+<span class="line"><span style="color:#6A737D">  /* 如果哈希桶桑没有等待者...那么谁也不需要被唤醒 */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">hb_waiters_pending</span><span style="color:#E1E4E8">(hb))</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  /* 获取当前哈希桶的自旋锁 */</span></span>
+<span class="line"><span style="color:#B392F0">	spin_lock</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb->lock);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  /* 遍历这个哈系桶上的优先链表 */</span></span>
+<span class="line"><span style="color:#B392F0">	plist_for_each_entry_safe</span><span style="color:#E1E4E8">(this, next, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb->chain, list) {</span></span>
+<span class="line"><span style="color:#6A737D">    /* 如果 this 项的 key 与 futex 对应的 key 相同 说明该项在等待 futex */</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">match_futex</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">this->key, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key)) {</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (this->pi_state </span><span style="color:#F97583">||</span><span style="color:#E1E4E8"> this->rt_waiter) {</span></span>
+<span class="line"><span style="color:#E1E4E8">				ret </span><span style="color:#F97583">=</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">EINVAL;</span></span>
+<span class="line"><span style="color:#F97583">				break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">			}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">			/* Check if one of the bits is set in both bitsets */</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">(this->bitset </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> bitset))</span></span>
+<span class="line"><span style="color:#F97583">				continue</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">      /* 将 this 添加到唤醒队列 wake_q 中 */</span></span>
+<span class="line"><span style="color:#B392F0">			mark_wake_futex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q, this);</span></span>
+<span class="line"><span style="color:#6A737D">      /* ret此时为0 递增至 nr_wake 最大唤醒任务数量则退出循环 */</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">ret </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> nr_wake)</span></span>
+<span class="line"><span style="color:#F97583">				break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	spin_unlock</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb->lock);</span></span>
+<span class="line"><span style="color:#B392F0">	wake_up_q</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>futex_wake()</code> flow:</p>
+<ol>
+<li>Find the <code>key</code> corresponding to the <code>futex</code>, and get the hash bucket corresponding to the <code>key</code>.</li>
+<li>Acquire the hash bucket spinlock, traverse the priority list of the hash bucket. If the current task’s <code>key</code> matches the <code>futex</code>’s <code>key</code>, it means the task is waiting for the futex; add the current task to the wakeup queue <code>wake_q</code>, and exit the loop if <code>nr_wake</code> tasks have been reached.</li>
+<li>Release the hash bucket spinlock, and wake up every task in the wakeup queue <code>wake_q</code>.</li>
+</ol>
+<p>Therefore, through <code>futex_wait()</code> and <code>futex_wake()</code>, we can implement task waiting and waking; see the small demo in the [5] man page.</p>
+<h3 id="futex_swap-related-patches">FUTEX_SWAP Related Patches</h3>
+<p>Based on the above understanding, let’s now look at the <code>FUTEX_SWAP</code> patch series submitted by <code>Peter Oskolkov</code> to the kernel. First, look at the relevant test patch in [4], where the key functional function <code>futex_swap_op()</code> caught our attention:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> futex_swap_op</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">int</span><span style="color:#FFAB70"> mode</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">futex_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">futex_this</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">futex_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">futex_that</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	switch</span><span style="color:#E1E4E8"> (mode) {</span></span>
+<span class="line"><span style="color:#F97583">	case</span><span style="color:#E1E4E8"> SWAP_WAKE_WAIT:</span></span>
+<span class="line"><span style="color:#B392F0">		futex_set</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING);</span></span>
+<span class="line"><span style="color:#B392F0">		futex_set</span><span style="color:#E1E4E8">(futex_that, FUTEX_WAKEUP);</span></span>
+<span class="line"><span style="color:#B392F0">		futex_wake</span><span style="color:#E1E4E8">(futex_that, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"><span style="color:#B392F0">		futex_wait</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">futex_this </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> FUTEX_WAKEUP) {</span></span>
+<span class="line"><span style="color:#B392F0">			fprintf</span><span style="color:#E1E4E8">(stderr, </span><span style="color:#9ECBFF">"unexpected futex_this value on wakeup</span><span style="color:#79B8FF">\n</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">			exit</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#F97583">		break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	case</span><span style="color:#E1E4E8"> SWAP_SWAP:</span></span>
+<span class="line"><span style="color:#B392F0">		futex_set</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING);</span></span>
+<span class="line"><span style="color:#B392F0">		futex_set</span><span style="color:#E1E4E8">(futex_that, FUTEX_WAKEUP);</span></span>
+<span class="line"><span style="color:#E1E4E8">		ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> futex_swap</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">				 futex_that, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (ret </span><span style="color:#F97583">&#x3C;</span><span style="color:#79B8FF"> 0</span><span style="color:#F97583"> &#x26;&#x26;</span><span style="color:#E1E4E8"> errno </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> ENOSYS) {</span></span>
+<span class="line"><span style="color:#6A737D">			/* futex_swap not implemented */</span></span>
+<span class="line"><span style="color:#B392F0">			perror</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"futex_swap"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">			exit</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">futex_this </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> FUTEX_WAKEUP) {</span></span>
+<span class="line"><span style="color:#B392F0">			fprintf</span><span style="color:#E1E4E8">(stderr, </span><span style="color:#9ECBFF">"unexpected futex_this value on wakeup</span><span style="color:#79B8FF">\n</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">			exit</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#F97583">		break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	default</span><span style="color:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#B392F0">		fprintf</span><span style="color:#E1E4E8">(stderr, </span><span style="color:#9ECBFF">"unknown mode in </span><span style="color:#79B8FF">%s\n</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">, __func__);</span></span>
+<span class="line"><span style="color:#B392F0">		exit</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>This compares two ways to implement thread switching: using <code>FUTEX_WAIT</code> and <code>FUTEX_WAKE</code>, and using <code>FUTEX_SWAP</code>.</p>
+<p>By calling <code>futex_swap()</code> with parameters containing <code>futex_this</code> and <code>futex_that</code>,</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#E1E4E8">ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> futex_swap</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">				 futex_that, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"></span></code></pre>
+<p>it replaces the two steps below,</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(futex_that, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"><span style="color:#B392F0">futex_wait</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"></span></code></pre>
+<p>achieving the effect of putting the current thread to sleep and switching to the specified thread.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">$</span><span style="color:#9ECBFF"> ./futex_swap</span><span style="color:#79B8FF"> -i</span><span style="color:#79B8FF"> 100000</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">-------</span><span style="color:#9ECBFF"> running</span><span style="color:#9ECBFF"> SWAP_WAKE_WAIT</span><span style="color:#79B8FF"> -----------</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">completed</span><span style="color:#79B8FF"> 100000</span><span style="color:#9ECBFF"> swap</span><span style="color:#9ECBFF"> and</span><span style="color:#9ECBFF"> back</span><span style="color:#9ECBFF"> iterations</span><span style="color:#9ECBFF"> in</span><span style="color:#79B8FF"> 820683263</span><span style="color:#9ECBFF"> ns:</span><span style="color:#79B8FF"> 4103</span><span style="color:#9ECBFF"> ns</span><span style="color:#9ECBFF"> per</span><span style="color:#9ECBFF"> swap</span></span>
+<span class="line"><span style="color:#B392F0">PASS</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">-------</span><span style="color:#9ECBFF"> running</span><span style="color:#9ECBFF"> SWAP_SWAP</span><span style="color:#79B8FF"> -----------</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">completed</span><span style="color:#79B8FF"> 100000</span><span style="color:#9ECBFF"> swap</span><span style="color:#9ECBFF"> and</span><span style="color:#9ECBFF"> back</span><span style="color:#9ECBFF"> iterations</span><span style="color:#9ECBFF"> in</span><span style="color:#79B8FF"> 124034476</span><span style="color:#9ECBFF"> ns:</span><span style="color:#79B8FF"> 620</span><span style="color:#9ECBFF"> ns</span><span style="color:#9ECBFF"> per</span><span style="color:#9ECBFF"> swap</span></span>
+<span class="line"><span style="color:#B392F0">PASS</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p>As you can see, on a 100k-level batch of task switches, the context-switching performance of the new <code>futex_swap()</code> interface is much better than before.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#6A737D"> /*</span></span>
+<span class="line"><span style="color:#6A737D">- * Wake up waiters matching bitset queued on this futex (uaddr).</span></span>
+<span class="line"><span style="color:#6A737D">+ * Prepare wake queue matching bitset queued on this futex (uaddr).</span></span>
+<span class="line"><span style="color:#6A737D">  */</span></span>
+<span class="line"><span style="color:#F97583"> static</span><span style="color:#F97583"> int</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">prepare_wake_q</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">		       struct</span><span style="color:#E1E4E8"> wake_q_head </span><span style="color:#F97583">*</span><span style="color:#FFAB70">wake_q</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583"> 	struct</span><span style="color:#E1E4E8"> futex_hash_bucket </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">hb;</span></span>
+<span class="line"><span style="color:#F97583"> 	struct</span><span style="color:#E1E4E8"> futex_q </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">this, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next;</span></span>
+<span class="line"><span style="color:#F97583"> 	union</span><span style="color:#E1E4E8"> futex_key key </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> FUTEX_KEY_INIT;</span></span>
+<span class="line"><span style="color:#F97583"> 	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">	DEFINE_WAKE_Q</span><span style="color:#E1E4E8">(wake_q);</span></span>
+<span class="line"><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#F97583"> 	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">bitset)</span></span>
+<span class="line"><span style="color:#F97583"> 		return</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">EINVAL;</span></span>
+<span class="line"><span style="color:#E1E4E8">@@ </span><span style="color:#F97583">-</span><span style="color:#79B8FF">1629</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">20</span><span style="color:#F97583"> +</span><span style="color:#79B8FF">1629</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">34</span><span style="color:#E1E4E8"> @@ </span><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">uaddr, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> flags, </span><span style="color:#F97583">int</span><span style="color:#E1E4E8"> nr_wake, u32 bitset)</span></span>
+<span class="line"><span style="color:#F97583"> 			if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">(this->bitset </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> bitset))</span></span>
+<span class="line"><span style="color:#F97583"> 				continue</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">			mark_wake_futex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q, this);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">			mark_wake_futex</span><span style="color:#E1E4E8">(wake_q, this);</span></span>
+<span class="line"><span style="color:#F97583"> 			if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">ret </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> nr_wake)</span></span>
+<span class="line"><span style="color:#F97583"> 				break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8"> 		}</span></span>
+<span class="line"><span style="color:#E1E4E8"> 	}</span></span>
+<span class="line"><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#B392F0"> 	spin_unlock</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb</span><span style="color:#F97583">-></span><span style="color:#FFAB70">lock</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">	wake_up_q</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70">wake_q</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8"> out_put_key:</span></span>
+<span class="line"><span style="color:#B392F0"> 	put_futex_key</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8"> out:</span></span>
+<span class="line"><span style="color:#F97583"> 	return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#E1E4E8"> }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#6A737D">/*</span></span>
+<span class="line"><span style="color:#6A737D">+ * Wake up waiters matching bitset queued on this futex (uaddr).</span></span>
+<span class="line"><span style="color:#6A737D">+ */</span></span>
+<span class="line"><span style="color:#F97583">+static</span><span style="color:#F97583"> int</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">	DEFINE_WAKE_Q</span><span style="color:#E1E4E8">(wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> prepare_wake_q</span><span style="color:#E1E4E8">(uaddr, flags, nr_wake, bitset, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">	wake_up_q</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#E1E4E8"> s</span></span>
+<span class="line"></span></code></pre>
+<p>First, a <code>prepare_wake_q()</code> is extracted from <code>futex_wake()</code> to obtain <code>nr_wake</code> tasks waiting on the <code>futex</code> and fill them into the passed wakeup queue <code>wake_q</code>.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">+static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex_swap</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">val</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#79B8FF">		      ktime_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">abs_time</span><span style="color:#E1E4E8">, u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr2</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">	u32 bitset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> FUTEX_BITSET_MATCH_ANY;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> task_struct </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">	DEFINE_WAKE_Q</span><span style="color:#E1E4E8">(wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> prepare_wake_q</span><span style="color:#E1E4E8">(uaddr2, flags, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, bitset, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">wake_q_empty</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q)) {</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#6A737D">		/* Pull the first wakee out of the queue to swap into. */</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">		next </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(wake_q.first, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> task_struct, wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">		wake_q.first </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> wake_q.first->next;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">		next->wake_q.next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">+		 * Note that wake_up_q does not touch wake_q.last, so we</span></span>
+<span class="line"><span style="color:#6A737D">+		 * do not bother with it here.</span></span>
+<span class="line"><span style="color:#6A737D">+		 */</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">		wake_up_q</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (ret </span><span style="color:#F97583">&#x3C;</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">		return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	return</span><span style="color:#B392F0"> futex_wait</span><span style="color:#E1E4E8">(uaddr, flags, val, abs_time, bitset, next);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>futex_swap()</code> flow:</p>
+<ol>
+<li>Obtain the prepared wakeup queue of tasks waiting on <code>uaddr2</code>, record the first task in the queue as <code>next</code>, and wake the other tasks.</li>
+<li>Perform <code>futex_wait()</code> on <code>uaddr1</code>, passing <code>next</code>.</li>
+</ol>
+<p>Let’s look at what changes occurred in <code>futex_wait()</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#E1E4E8">@@ </span><span style="color:#F97583">-</span><span style="color:#79B8FF">2600</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">9</span><span style="color:#F97583"> +</span><span style="color:#79B8FF">2614</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">12</span><span style="color:#E1E4E8"> @@ </span><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> fixup_owner</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> futex_q </span><span style="color:#F97583">*</span><span style="color:#FFAB70">q</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> locked</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">  *</span><span style="color:#E1E4E8"> @hb:		the futex hash bucket, must be locked by the caller</span></span>
+<span class="line"><span style="color:#F97583">  *</span><span style="color:#E1E4E8"> @q:		the futex_q to queue up on</span></span>
+<span class="line"><span style="color:#F97583">  *</span><span style="color:#E1E4E8"> @timeout:	the prepared hrtimer_sleeper, or null </span><span style="color:#F97583">for</span><span style="color:#E1E4E8"> no timeout</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8"> @next:	</span><span style="color:#F97583">if</span><span style="color:#E1E4E8"> present, wake next and hint to the scheduler that we</span><span style="color:#9ECBFF">'d</span></span>
+<span class="line"><span style="color:#9ECBFF">+ * 		prefer to execute it locally.</span></span>
+<span class="line"><span style="color:#9ECBFF">  */</span></span>
+<span class="line"><span style="color:#9ECBFF"> static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,</span></span>
+<span class="line"><span style="color:#9ECBFF">-				struct hrtimer_sleeper *timeout)</span></span>
+<span class="line"><span style="color:#9ECBFF">+				struct hrtimer_sleeper *timeout,</span></span>
+<span class="line"><span style="color:#9ECBFF">+				struct task_struct *next)</span></span>
+<span class="line"><span style="color:#9ECBFF"> {</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	/*</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	 * The task state is guaranteed to be set before another task can</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2627,10 +2644,27 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		 *</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		 * flagged for rescheduling. Only call schedule if there</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		 * is no timeout, or if it has yet to expire.</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		 */</span></span>
+<span class="line"><span style="color:#9ECBFF">-		if (!timeout || timeout->task)</span></span>
+<span class="line"><span style="color:#9ECBFF">+		if (!timeout || timeout->task) {</span></span>
+<span class="line"><span style="color:#9ECBFF">+			if (next) {</span></span>
+<span class="line"><span style="color:#9ECBFF">+				/*</span></span>
+<span class="line"><span style="color:#9ECBFF">+				 * wake_up_process() below will be replaced</span></span>
+<span class="line"><span style="color:#9ECBFF">+				 * in the next patch with</span></span>
+<span class="line"><span style="color:#9ECBFF">+				 * wake_up_process_prefer_current_cpu().</span></span>
+<span class="line"><span style="color:#9ECBFF">+				 */</span></span>
+<span class="line"><span style="color:#9ECBFF">+				wake_up_process(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+				put_task_struct(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+				next = NULL;</span></span>
+<span class="line"><span style="color:#9ECBFF">+			}</span></span>
+<span class="line"><span style="color:#9ECBFF"> 			freezable_schedule();</span></span>
+<span class="line"><span style="color:#9ECBFF">+		}</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	}</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	__set_current_state(TASK_RUNNING);</span></span>
+<span class="line"><span style="color:#9ECBFF">+</span></span>
+<span class="line"><span style="color:#9ECBFF">+	if (next) {</span></span>
+<span class="line"><span style="color:#9ECBFF">+		/* Maybe call wake_up_process_prefer_current_cpu()? */</span></span>
+<span class="line"><span style="color:#9ECBFF">+		wake_up_process(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+		put_task_struct(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+	}</span></span>
+<span class="line"><span style="color:#9ECBFF"> }</span></span>
+<span class="line"><span style="color:#9ECBFF"> </span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2710,7 +2744,7 @@ static int futex_wait_setup(u32 __user *uaddr, u32 val, unsigned int flags,</span></span>
+<span class="line"><span style="color:#9ECBFF"> }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF"> static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,</span></span>
+<span class="line"><span style="color:#9ECBFF">-		      ktime_t *abs_time, u32 bitset)</span></span>
+<span class="line"><span style="color:#9ECBFF">+		      ktime_t *abs_time, u32 bitset, struct task_struct *next)</span></span>
+<span class="line"><span style="color:#9ECBFF"> {</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	struct hrtimer_sleeper timeout, *to;</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	struct restart_block *restart;</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2734,7 +2768,8 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		goto out;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF"> 	/* queue_me and wait for wakeup, timeout, or a signal. */</span></span>
+<span class="line"><span style="color:#9ECBFF">-	futex_wait_queue_me(hb, &#x26;q, to);</span></span>
+<span class="line"><span style="color:#9ECBFF">+	futex_wait_queue_me(hb, &#x26;q, to, next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+	next = NULL;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF"> 	/* If we were woken (and unqueued), we succeeded, whatever. */</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	ret = 0;</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2767,6 +2802,10 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	ret = -ERESTART_RESTARTBLOCK;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF"> out:</span></span>
+<span class="line"><span style="color:#9ECBFF">+	if (next) {</span></span>
+<span class="line"><span style="color:#9ECBFF">+		wake_up_process(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+		put_task_struct(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+	}</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	if (to) {</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		hrtimer_cancel(&#x26;to->timer);</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		destroy_hrtimer_on_stack(&#x26;to->timer);</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2774,7 +2813,6 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	return ret;</span></span>
+<span class="line"><span style="color:#9ECBFF"> }</span></span>
+<span class="line"></span></code></pre>
+<p>We can see that the <code>next</code> task passed to <code>futex_wait()</code> is woken up in two cases:</p>
+<ol>
+<li>The current task wakes up from waiting on <code>uaddr</code>, and then at the end of <code>futex_wait()</code> it executes <code>wake_up_process()</code> to switch to the <code>next</code> task.</li>
+<li>In <code>futex_wait_queue_me()</code>, waiting times out (which also means the current task finishes waiting for the lock), and it executes <code>wake_up_process()</code> to switch to the <code>next</code> task.</li>
+</ol>
+<p>Through this modification of <code>futex</code>, we seem to have the ability to use <code>switch_to()</code> in user space to specify task switching, which is really exciting! This is the purpose of user-mode threads: extremely low switching overhead means the thousands of threads our OS can support can be increased by more than 10 times, even to the million level!</p>
+<p>Unfortunately, the patch seems to have been abandoned by the Linux kernel community. Today, the patch author <code>Peter Oskolkov</code> is trying to introduce another Google user-space task scheduling framework, <code>Fiber</code> [7], into the Linux kernel to support the needs of C programmers in the Linux world for cooperative task switching.</p>
+<h3 id="references">References</h3>
+<p>[1] <a href="https://lore.kernel.org/lkml/414e292195d720c780fab2781c749df3be6566aa.camel@posk.io/">https://lore.kernel.org/lkml/414e292195d720c780fab2781c749df3be6566aa.camel@posk.io/</a></p>
+<p>[2] <a href="https://lore.kernel.org/lkml/48058b850de10f949f96b4f311adb649b1fb3ff2.camel@posk.io/">https://lore.kernel.org/lkml/48058b850de10f949f96b4f311adb649b1fb3ff2.camel@posk.io/</a></p>
+<p>[3] <a href="https://lore.kernel.org/lkml/d5cf58486a6a5e41581bed9183e8a831908ede0b.camel@posk.io/">https://lore.kernel.org/lkml/d5cf58486a6a5e41581bed9183e8a831908ede0b.camel@posk.io/</a></p>
+<p>[4] <a href="https://lore.kernel.org/lkml/a06a25f1380e0da48946b1bb958e1745e5fac964.camel@posk.io/">https://lore.kernel.org/lkml/a06a25f1380e0da48946b1bb958e1745e5fac964.camel@posk.io/</a></p>
+<p>[5] <a href="https://man7.org/linux/man-pages/man2/futex.2.html">https://man7.org/linux/man-pages/man2/futex.2.html</a></p>
+<p>[6] <a href="https://lwn.net/Articles/360699/">https://lwn.net/Articles/360699/</a></p>
+<p>[7] <a href="https://lore.kernel.org/lkml/20210520183614.1227046-1-posk@google.com/">https://lore.kernel.org/lkml/20210520183614.1227046-1-posk@google.com/</a></p>
+</div>
+<div class="lang-section" data-lang="zh">
+<h2 id="futex_swap-介绍">FUTEX_SWAP 介绍</h2>
+<h3 id="google-switchto-1">Google SwitchTo</h3>
+<p>由于协程本身对操作系统的不可见性，协程中出现的 BUG 往往不能通过一些已有的工具去排查。在谷歌内部有一套闭源的用户态任务调度框架 <code>SwitchTo</code>, 这个框架可以为谷歌提供延迟敏感的服务，对运行的内容进行细粒度的用户空间控制/调度，它可以让内核来实现上下文的切换，同时将任务何时切换，何时恢复的工作交给了用户态的程序来做，这样既可以实现在任务间协作式切换的功能，又可以不丧失内核对于任务的控制和观察能力。谷歌去年恢复尝试将其 <code>SwitchTo</code> API 上游引入 Linux。相关补丁见：[1]，[2]，[3]，[4].</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">pid_t</span><span style="color:#B392F0"> switchto_wait</span><span style="color:#E1E4E8">(timespec </span><span style="color:#F97583">*</span><span style="color:#FFAB70">timeout</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#6A737D">/*  Enter an 'unscheduled state', until our control is re-initiated by another thread or external event (signal). */</span></span>
+<span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> switchto_resume</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">pid_t</span><span style="color:#FFAB70"> tid</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#6A737D">/* Resume regular execution of tid */</span></span>
+<span class="line"><span style="color:#F97583">pid_t</span><span style="color:#B392F0"> switchto_switch</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">pid_t</span><span style="color:#FFAB70"> tid</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#6A737D">/* Synchronously transfer control to target sibling thread, leaving the current thread unscheduled.Analogous to:Atomically { Resume(t1); Wait(NULL); }</span></span>
+<span class="line"><span style="color:#6A737D">*/</span></span>
+<span class="line"></span></code></pre>
+<p>这是使用 <code>SwitchTo</code> 和使用其他线程间切换的组件的上下文切换性能对比：</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Benchmark</th><th>Time(ns)</th><th>CPU(ns)</th><th>Iterations</th></tr></thead><tbody><tr><td>BM_Futex</td><td>2905</td><td>1958</td><td>1000000</td></tr><tr><td>BM_GoogleMutex</td><td>3102</td><td>2326</td><td>1000000</td></tr><tr><td>BM_SwitchTo</td><td>179</td><td>178</td><td>3917412</td></tr><tr><td>BM_SwitchResume</td><td>2734</td><td>1554</td><td>1000000</td></tr></tbody></table>
+<p>可以看到在使用 <code>SwitchTo</code> 后切换的性能比其他组件提高了一个数量级别。</p>
+<p><code>SwitchTo</code> 是如何做到在切换性能上大幅度领先的呢？我们暂时可能无法看到它们，但让我们来看看 <code>Peter Oskolkov</code> 向 LKML（Linux Kernel Mail List） 提出的补丁中有关 <code>futex_swap()</code> 的实现。可以确定的是，<code>SwitchTo</code> 构建在这个内核函数之上。</p>
+<h3 id="什么是-futex">什么是 futex</h3>
+<p><code>futex</code> 全称 <code>fast user-space locking</code>，快速用户空间互斥锁，作为内核中一种基本的同步原语，它提供了非常快速的无竞争锁获取和释放，用于构建复杂的同步结构：互斥锁、条件变量、信号量等。 由于 <code>futex</code> 的一些机制和使用过于复杂，<code>glibc</code> 没有为 <code>futex</code> 提供包装器，但我们仍然可以使用 <code>syscall</code> 来调用这个 极其 hack 的系统调用。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">uint32_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> futex_op</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">uint32_t</span><span style="color:#FFAB70"> val</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                 const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> timespec </span><span style="color:#F97583">*</span><span style="color:#FFAB70">timeout</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">uint32_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">uaddr2</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                 uint32_t</span><span style="color:#FFAB70"> val3</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#B392F0"> syscall</span><span style="color:#E1E4E8">(SYS_futex, uaddr, futex_op, val, timeout, uaddr2, val3);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<ul>
+<li><code>uaddr</code>: 一个四字节的用户空间地址。多个任务间可以通过 <code>*uaddr</code> 的值的变化来控制阻塞或者运行。</li>
+<li><code>futex_op</code>: 用于控制 <code>futex</code> 执行的命令 如 <code>FUTEX_WAIT</code>，<code>FUTEX_WAKE</code>，<code>FUTEX_LOCK_PI</code>，<code>FUTEX_UNLOCK_PI</code>…</li>
+<li><code>val</code>: 在不同的 <code>futex_op</code> 具有不同的含义，如在 <code>futex(uaddr, FUTEX_WAKE)</code> 中作为唤醒等待在该 <code>futex</code> 上所有任务的数量。</li>
+<li><code>timeout</code>: 作为等待（如 <code>FUTEX_WAIT</code>）的超时时间。</li>
+<li><code>uaddr2</code>: <code>uaddr2</code> 参数是一个四字节的用户空间地址 在需要的场景使用（如后文的 <code>FUTEX_SWAP</code> ）。</li>
+<li><code>val3</code>: 整数参数<code>val3</code>的解释取决于在操作上。</li>
+</ul>
+<h3 id="为什么-futex-快速">为什么 futex “快速”？</h3>
+<p>由于用户模式和内核模式之间的上下文切换很昂贵，<code>futex</code> 实现的同步结构会尽可能多地留在用户空间，这意味着它们只需要执行更少的系统调用。<code>futex</code> 的状态存储在用户空间变量中，<code>futex</code> 可以通过一些原子操作在没有竞争的情况下更改 <code>futex</code> 的状态，而无需系统调用的开销。</p>
+<h3 id="futex_wait-和-futex_wake">futex_wait() 和 futex_wake()</h3>
+<p>在看 <code>futex_swap()</code> 之前让我们先看看 内核中 与 <code>futex</code> 最重要的两个内核函数：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex_wait</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">val</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">ktime_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">abs_time</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span></code></pre>
+<p>简单来说 对于 <code>futex_wait()</code> 有用的参数就只有 <code>uaddr</code>，<code>val</code>，<code>abs_time</code>，就像 <code>futex_wait(uaddr,val,abs_time)</code>。其含义是当这个用户空间地址 <code>uaddr</code>的值等于传入的参数 <code>val</code> 的时候睡眠，即 <code>if (*uaddr == val) wait()</code>. <code>futex_wake()</code> 可以将它唤醒，另外还可以通过指定超时时间来超时唤醒。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex_wait</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">val</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#79B8FF">		      ktime_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">abs_time</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hrtimer_sleeper timeout, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">to;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> restart_block </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">restart;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> futex_hash_bucket </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">hb;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> futex_q q </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> futex_q_init;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">bitset)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">EINVAL;</span></span>
+<span class="line"><span style="color:#E1E4E8">	q.bitset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> bitset;</span></span>
+<span class="line"><span style="color:#6A737D">  /* 设置定时器 */</span></span>
+<span class="line"><span style="color:#E1E4E8">	to </span><span style="color:#F97583">=</span><span style="color:#B392F0"> futex_setup_timer</span><span style="color:#E1E4E8">(abs_time, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">timeout, flags,</span></span>
+<span class="line"><span style="color:#E1E4E8">			       current->timer_slack_ns);</span></span>
+<span class="line"><span style="color:#E1E4E8">retry:</span></span>
+<span class="line"><span style="color:#6A737D">	/*</span></span>
+<span class="line"><span style="color:#6A737D">	 * Prepare to wait on uaddr. On success, holds hb lock and increments</span></span>
+<span class="line"><span style="color:#6A737D">	 * q.key refs.</span></span>
+<span class="line"><span style="color:#6A737D">	 */</span></span>
+<span class="line"><span style="color:#6A737D">	/* 获取哈希桶自旋锁 如果 *uaddr == val return -EWOULDBLOCK 否则返回 0 */</span></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> futex_wait_setup</span><span style="color:#E1E4E8">(uaddr, val, flags, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">q, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (ret)</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> out;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* queue_me and wait for wakeup, timeout, or a signal. */</span></span>
+<span class="line"><span style="color:#6A737D">	/*将当前任务状态改为TASK_INTERRUPTIBLE，并将当前任务插入到futex等待队列，释放哈希桶自旋锁，然后重新调度*/</span></span>
+<span class="line"><span style="color:#B392F0">	futex_wait_queue_me</span><span style="color:#E1E4E8">(hb, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">q, to);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* If we were woken (and unqueued), we succeeded, whatever. */</span></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#6A737D">  /* 如果 unqueue_me 返回 0 表示已经被删除则是正常唤醒跳到 out 否则则是超时触发 */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">unqueue_me</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">q))</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> out;</span></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">ETIMEDOUT;</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (to </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">to->task)</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> out;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/*</span></span>
+<span class="line"><span style="color:#6A737D">	 * We expect signal_pending(current), but we might be the</span></span>
+<span class="line"><span style="color:#6A737D">	 * victim of a spurious wakeup as well.</span></span>
+<span class="line"><span style="color:#6A737D">	 */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">signal_pending</span><span style="color:#E1E4E8">(current))</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> retry;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">ERESTARTSYS;</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">abs_time)</span></span>
+<span class="line"><span style="color:#F97583">		goto</span><span style="color:#E1E4E8"> out;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	restart </span><span style="color:#F97583">=</span><span style="color:#F97583"> &#x26;</span><span style="color:#E1E4E8">current->restart_block;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.uaddr </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> uaddr;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.val </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> val;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.time </span><span style="color:#F97583">=</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">abs_time;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.bitset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> bitset;</span></span>
+<span class="line"><span style="color:#E1E4E8">	restart->futex.flags </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> flags </span><span style="color:#F97583">|</span><span style="color:#E1E4E8"> FLAGS_HAS_TIMEOUT;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> set_restart_fn</span><span style="color:#E1E4E8">(restart, futex_wait_restart);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">out:</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (to) {</span></span>
+<span class="line"><span style="color:#6A737D">    /* 即将结束，取消定时任务 */</span></span>
+<span class="line"><span style="color:#B392F0">		hrtimer_cancel</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">to->timer);</span></span>
+<span class="line"><span style="color:#B392F0">		destroy_hrtimer_on_stack</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">to->timer);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>futex</code> 内部采用了哈希表的数据结构来保存那些需要睡眠的任务。通过用户空间地址 <code>uaddr</code>,<code>flag</code>,以及 <code>futex</code> 的读写状态可以计算出相同的 <code>key</code> 值，将需要睡眠的任务的 <code>task_struct</code>放到对应的哈希桶上的优先链表的节点中。</p>
+<p><code>futex_wait()</code> 流程：</p>
+<ol>
+<li>寻找 <code>futex</code> 对应的 <code>key</code>，获取 <code>key</code> 对应的哈希桶。</li>
+<li>获取哈希桶自旋锁，如果 <code>*uaddr == val</code> 返回错误给用户态。</li>
+<li>否则将当前任务状态改为 <code>TASK_INTERRUPTIBLE</code>，并将当前任务插入到 <code>futex</code> 等待队列，释放哈希桶自旋锁，然后调度器重新调度。</li>
+<li>从睡眠中苏醒，进行超时和唤醒两种情况的相应处理，返回用户态。</li>
+</ol>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span></code></pre>
+<p><code>futex_wake()</code> 的参数稍微简单一些，最重要的只有一个用户地址 <code>uaddr</code>，以及触发唤醒的任务数最大值 <code>nr_wake</code>。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#6A737D">/*</span></span>
+<span class="line"><span style="color:#6A737D"> * Wake up waiters matching bitset queued on this futex (uaddr).</span></span>
+<span class="line"><span style="color:#6A737D"> */</span></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span></span>
+<span class="line"><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> futex_hash_bucket </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">hb;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> futex_q </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">this, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next;</span></span>
+<span class="line"><span style="color:#F97583">	union</span><span style="color:#E1E4E8"> futex_key key </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> FUTEX_KEY_INIT;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#B392F0">	DEFINE_WAKE_Q</span><span style="color:#E1E4E8">(wake_q);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">bitset)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">EINVAL;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  /* 寻找 futex 对应的 key */</span></span>
+<span class="line"><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> get_futex_key</span><span style="color:#E1E4E8">(uaddr, flags </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> FLAGS_SHARED, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key, FUTEX_READ);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">unlikely</span><span style="color:#E1E4E8">(ret </span><span style="color:#F97583">!=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  /* 获取 key 对应的哈希桶 */</span></span>
+<span class="line"><span style="color:#E1E4E8">	hb </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hash_futex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* Make sure we really have tasks to wakeup */</span></span>
+<span class="line"><span style="color:#6A737D">  /* 如果哈希桶桑没有等待者...那么谁也不需要被唤醒 */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">hb_waiters_pending</span><span style="color:#E1E4E8">(hb))</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  /* 获取当前哈希桶的自旋锁 */</span></span>
+<span class="line"><span style="color:#B392F0">	spin_lock</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb->lock);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  /* 遍历这个哈系桶上的优先链表 */</span></span>
+<span class="line"><span style="color:#B392F0">	plist_for_each_entry_safe</span><span style="color:#E1E4E8">(this, next, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb->chain, list) {</span></span>
+<span class="line"><span style="color:#6A737D">    /* 如果 this 项的 key 与 futex 对应的 key 相同 说明该项在等待 futex */</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">match_futex</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">this->key, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key)) {</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (this->pi_state </span><span style="color:#F97583">||</span><span style="color:#E1E4E8"> this->rt_waiter) {</span></span>
+<span class="line"><span style="color:#E1E4E8">				ret </span><span style="color:#F97583">=</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">EINVAL;</span></span>
+<span class="line"><span style="color:#F97583">				break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">			}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">			/* Check if one of the bits is set in both bitsets */</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">(this->bitset </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> bitset))</span></span>
+<span class="line"><span style="color:#F97583">				continue</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">      /* 将 this 添加到唤醒队列 wake_q 中 */</span></span>
+<span class="line"><span style="color:#B392F0">			mark_wake_futex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q, this);</span></span>
+<span class="line"><span style="color:#6A737D">      /* ret此时为0 递增至 nr_wake 最大唤醒任务数量则退出循环 */</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">ret </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> nr_wake)</span></span>
+<span class="line"><span style="color:#F97583">				break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	spin_unlock</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb->lock);</span></span>
+<span class="line"><span style="color:#B392F0">	wake_up_q</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>futex_wake()</code> 流程：</p>
+<ol>
+<li>寻找 <code>futex</code> 对应的 <code>key</code>，获取 <code>key</code> 对应的哈希桶。</li>
+<li>获取哈希桶的自旋锁，遍历这个哈系桶上的优先链表，如果当前任务的 <code>key</code> 与 <code>futex</code> 对应的 <code>key</code> 相同，说明该任务在等待 futex，将当前任务添加到唤醒队列 <code>wake_q</code> 中，如果达到了 <code>nr_wake</code> 个，则退出循环。</li>
+<li>释放哈希桶自旋锁，唤醒队列 <code>wake_q</code> 中每一个任务。</li>
+</ol>
+<p>因此，通过 <code>futex_wait()</code> 和 <code>futex_wake()</code>，我们可以实现任务的等待和唤醒，见 [5] man 手册中的小 demo。</p>
+<h3 id="futex_swap-相关补丁">FUTEX_SWAP 相关补丁</h3>
+<p>基于以上的了解，现在我们来看 <code>Peter Oskolkov</code> 向内核提交的 <code>FUTEX_SWAP</code> 补丁系列。首先看 [4] 中有关 <code>FUTEX_SWAP</code> 的相关测试补丁，其中关键的功能函数 <code>futex_swap_op()</code> 引起了我们的注意：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> futex_swap_op</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">int</span><span style="color:#FFAB70"> mode</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">futex_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">futex_this</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">futex_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">futex_that</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	switch</span><span style="color:#E1E4E8"> (mode) {</span></span>
+<span class="line"><span style="color:#F97583">	case</span><span style="color:#E1E4E8"> SWAP_WAKE_WAIT:</span></span>
+<span class="line"><span style="color:#B392F0">		futex_set</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING);</span></span>
+<span class="line"><span style="color:#B392F0">		futex_set</span><span style="color:#E1E4E8">(futex_that, FUTEX_WAKEUP);</span></span>
+<span class="line"><span style="color:#B392F0">		futex_wake</span><span style="color:#E1E4E8">(futex_that, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"><span style="color:#B392F0">		futex_wait</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">futex_this </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> FUTEX_WAKEUP) {</span></span>
+<span class="line"><span style="color:#B392F0">			fprintf</span><span style="color:#E1E4E8">(stderr, </span><span style="color:#9ECBFF">"unexpected futex_this value on wakeup</span><span style="color:#79B8FF">\n</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">			exit</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#F97583">		break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	case</span><span style="color:#E1E4E8"> SWAP_SWAP:</span></span>
+<span class="line"><span style="color:#B392F0">		futex_set</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING);</span></span>
+<span class="line"><span style="color:#B392F0">		futex_set</span><span style="color:#E1E4E8">(futex_that, FUTEX_WAKEUP);</span></span>
+<span class="line"><span style="color:#E1E4E8">		ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> futex_swap</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">				 futex_that, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (ret </span><span style="color:#F97583">&#x3C;</span><span style="color:#79B8FF"> 0</span><span style="color:#F97583"> &#x26;&#x26;</span><span style="color:#E1E4E8"> errno </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> ENOSYS) {</span></span>
+<span class="line"><span style="color:#6A737D">			/* futex_swap not implemented */</span></span>
+<span class="line"><span style="color:#B392F0">			perror</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"futex_swap"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">			exit</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">futex_this </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> FUTEX_WAKEUP) {</span></span>
+<span class="line"><span style="color:#B392F0">			fprintf</span><span style="color:#E1E4E8">(stderr, </span><span style="color:#9ECBFF">"unexpected futex_this value on wakeup</span><span style="color:#79B8FF">\n</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">			exit</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#F97583">		break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	default</span><span style="color:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#B392F0">		fprintf</span><span style="color:#E1E4E8">(stderr, </span><span style="color:#9ECBFF">"unknown mode in </span><span style="color:#79B8FF">%s\n</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">, __func__);</span></span>
+<span class="line"><span style="color:#B392F0">		exit</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>其中比较了使用 <code>FUTEX_WAIT</code>, <code>FUTEX_WAKE</code> 实现线程切换以及使用 <code>FUTEX_SWAP</code> 实现线程切换的两种方式。</p>
+<p>其中 通过调用参数含有 <code>futex_this</code> 和 <code>futex_that</code> 的 <code>futex_swap()</code>，</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#E1E4E8">ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> futex_swap</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">				 futex_that, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"></span></code></pre>
+<p>代替了下面 <code>futex_wake()</code> 和 <code>futex_wait()</code> 的两步操作,</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(futex_that, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"><span style="color:#B392F0">futex_wait</span><span style="color:#E1E4E8">(futex_this, FUTEX_WAITING, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">, FUTEX_PRIVATE_FLAG);</span></span>
+<span class="line"></span></code></pre>
+<p>实现了让当前线程睡眠，并切换到指定线程的作用。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">$</span><span style="color:#9ECBFF"> ./futex_swap</span><span style="color:#79B8FF"> -i</span><span style="color:#79B8FF"> 100000</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">-------</span><span style="color:#9ECBFF"> running</span><span style="color:#9ECBFF"> SWAP_WAKE_WAIT</span><span style="color:#79B8FF"> -----------</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">completed</span><span style="color:#79B8FF"> 100000</span><span style="color:#9ECBFF"> swap</span><span style="color:#9ECBFF"> and</span><span style="color:#9ECBFF"> back</span><span style="color:#9ECBFF"> iterations</span><span style="color:#9ECBFF"> in</span><span style="color:#79B8FF"> 820683263</span><span style="color:#9ECBFF"> ns:</span><span style="color:#79B8FF"> 4103</span><span style="color:#9ECBFF"> ns</span><span style="color:#9ECBFF"> per</span><span style="color:#9ECBFF"> swap</span></span>
+<span class="line"><span style="color:#B392F0">PASS</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">-------</span><span style="color:#9ECBFF"> running</span><span style="color:#9ECBFF"> SWAP_SWAP</span><span style="color:#79B8FF"> -----------</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">completed</span><span style="color:#79B8FF"> 100000</span><span style="color:#9ECBFF"> swap</span><span style="color:#9ECBFF"> and</span><span style="color:#9ECBFF"> back</span><span style="color:#9ECBFF"> iterations</span><span style="color:#9ECBFF"> in</span><span style="color:#79B8FF"> 124034476</span><span style="color:#9ECBFF"> ns:</span><span style="color:#79B8FF"> 620</span><span style="color:#9ECBFF"> ns</span><span style="color:#9ECBFF"> per</span><span style="color:#9ECBFF"> swap</span></span>
+<span class="line"><span style="color:#B392F0">PASS</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p>可见在 100k 级别的任务切换批处理上，使用新接口 futex_swap() 的上下文切换性能要比之前好很多。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#6A737D"> /*</span></span>
+<span class="line"><span style="color:#6A737D">- * Wake up waiters matching bitset queued on this futex (uaddr).</span></span>
+<span class="line"><span style="color:#6A737D">+ * Prepare wake queue matching bitset queued on this futex (uaddr).</span></span>
+<span class="line"><span style="color:#6A737D">  */</span></span>
+<span class="line"><span style="color:#F97583"> static</span><span style="color:#F97583"> int</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">prepare_wake_q</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">		       struct</span><span style="color:#E1E4E8"> wake_q_head </span><span style="color:#F97583">*</span><span style="color:#FFAB70">wake_q</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583"> 	struct</span><span style="color:#E1E4E8"> futex_hash_bucket </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">hb;</span></span>
+<span class="line"><span style="color:#F97583"> 	struct</span><span style="color:#E1E4E8"> futex_q </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">this, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next;</span></span>
+<span class="line"><span style="color:#F97583"> 	union</span><span style="color:#E1E4E8"> futex_key key </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> FUTEX_KEY_INIT;</span></span>
+<span class="line"><span style="color:#F97583"> 	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">	DEFINE_WAKE_Q</span><span style="color:#E1E4E8">(wake_q);</span></span>
+<span class="line"><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#F97583"> 	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">bitset)</span></span>
+<span class="line"><span style="color:#F97583"> 		return</span><span style="color:#F97583"> -</span><span style="color:#E1E4E8">EINVAL;</span></span>
+<span class="line"><span style="color:#E1E4E8">@@ </span><span style="color:#F97583">-</span><span style="color:#79B8FF">1629</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">20</span><span style="color:#F97583"> +</span><span style="color:#79B8FF">1629</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">34</span><span style="color:#E1E4E8"> @@ </span><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">uaddr, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> flags, </span><span style="color:#F97583">int</span><span style="color:#E1E4E8"> nr_wake, u32 bitset)</span></span>
+<span class="line"><span style="color:#F97583"> 			if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">(this->bitset </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> bitset))</span></span>
+<span class="line"><span style="color:#F97583"> 				continue</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">			mark_wake_futex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q, this);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">			mark_wake_futex</span><span style="color:#E1E4E8">(wake_q, this);</span></span>
+<span class="line"><span style="color:#F97583"> 			if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">ret </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> nr_wake)</span></span>
+<span class="line"><span style="color:#F97583"> 				break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8"> 		}</span></span>
+<span class="line"><span style="color:#E1E4E8"> 	}</span></span>
+<span class="line"><span style="color:#E1E4E8"> </span></span>
+<span class="line"><span style="color:#B392F0"> 	spin_unlock</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">hb</span><span style="color:#F97583">-></span><span style="color:#FFAB70">lock</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">-</span><span style="color:#B392F0">	wake_up_q</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70">wake_q</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8"> out_put_key:</span></span>
+<span class="line"><span style="color:#B392F0"> 	put_futex_key</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8"> out:</span></span>
+<span class="line"><span style="color:#F97583"> 	return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#E1E4E8"> }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#6A737D">/*</span></span>
+<span class="line"><span style="color:#6A737D">+ * Wake up waiters matching bitset queued on this futex (uaddr).</span></span>
+<span class="line"><span style="color:#6A737D">+ */</span></span>
+<span class="line"><span style="color:#F97583">+static</span><span style="color:#F97583"> int</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">futex_wake</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> nr_wake</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">bitset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">	DEFINE_WAKE_Q</span><span style="color:#E1E4E8">(wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> prepare_wake_q</span><span style="color:#E1E4E8">(uaddr, flags, nr_wake, bitset, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">	wake_up_q</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#E1E4E8"> s</span></span>
+<span class="line"></span></code></pre>
+<p>首先是通过从 futex_wake() 中抽出一个 <code>prepare_wake_q()</code> 获得 <code>nr_wake</code> 个等待在 <code>futex</code> 的任务并填入到传入的唤醒队列 <code>wake_q</code> 中。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">+static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> futex_swap</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> flags</span><span style="color:#E1E4E8">, u32 </span><span style="color:#FFAB70">val</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#79B8FF">		      ktime_t</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">abs_time</span><span style="color:#E1E4E8">, u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr2</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">	u32 bitset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> FUTEX_BITSET_MATCH_ANY;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> task_struct </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">	DEFINE_WAKE_Q</span><span style="color:#E1E4E8">(wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">	ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> prepare_wake_q</span><span style="color:#E1E4E8">(uaddr2, flags, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, bitset, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">wake_q_empty</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q)) {</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#6A737D">		/* Pull the first wakee out of the queue to swap into. */</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">		next </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(wake_q.first, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> task_struct, wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">		wake_q.first </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> wake_q.first->next;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">		next->wake_q.next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">+		 * Note that wake_up_q does not touch wake_q.last, so we</span></span>
+<span class="line"><span style="color:#6A737D">+		 * do not bother with it here.</span></span>
+<span class="line"><span style="color:#6A737D">+		 */</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#B392F0">		wake_up_q</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">wake_q);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (ret </span><span style="color:#F97583">&#x3C;</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">		return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#F97583">+</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583">	return</span><span style="color:#B392F0"> futex_wait</span><span style="color:#E1E4E8">(uaddr, flags, val, abs_time, bitset, next);</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>futex_swap()</code> 流程：</p>
+<ol>
+<li>获得等待在 <code>uaddr2</code> 上的预备唤醒队列，记录队列第一个任务为 <code>next</code>，对其他任务则执行唤醒。</li>
+<li>对 <code>uaddr1</code> 执行 <code>futex_wait()</code>，传入 <code>next</code>。</li>
+</ol>
+<p>我们看看 <code>futex_wait()</code> 上发生了哪些更改：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#E1E4E8">@@ </span><span style="color:#F97583">-</span><span style="color:#79B8FF">2600</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">9</span><span style="color:#F97583"> +</span><span style="color:#79B8FF">2614</span><span style="color:#E1E4E8">,</span><span style="color:#79B8FF">12</span><span style="color:#E1E4E8"> @@ </span><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> fixup_owner</span><span style="color:#E1E4E8">(u32 __user </span><span style="color:#F97583">*</span><span style="color:#FFAB70">uaddr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> futex_q </span><span style="color:#F97583">*</span><span style="color:#FFAB70">q</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> locked</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#F97583">  *</span><span style="color:#E1E4E8"> @hb:		the futex hash bucket, must be locked by the caller</span></span>
+<span class="line"><span style="color:#F97583">  *</span><span style="color:#E1E4E8"> @q:		the futex_q to queue up on</span></span>
+<span class="line"><span style="color:#F97583">  *</span><span style="color:#E1E4E8"> @timeout:	the prepared hrtimer_sleeper, or null </span><span style="color:#F97583">for</span><span style="color:#E1E4E8"> no timeout</span></span>
+<span class="line"><span style="color:#F97583">+</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8"> @next:	</span><span style="color:#F97583">if</span><span style="color:#E1E4E8"> present, wake next and hint to the scheduler that we</span><span style="color:#9ECBFF">'d</span></span>
+<span class="line"><span style="color:#9ECBFF">+ * 		prefer to execute it locally.</span></span>
+<span class="line"><span style="color:#9ECBFF">  */</span></span>
+<span class="line"><span style="color:#9ECBFF"> static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,</span></span>
+<span class="line"><span style="color:#9ECBFF">-				struct hrtimer_sleeper *timeout)</span></span>
+<span class="line"><span style="color:#9ECBFF">+				struct hrtimer_sleeper *timeout,</span></span>
+<span class="line"><span style="color:#9ECBFF">+				struct task_struct *next)</span></span>
+<span class="line"><span style="color:#9ECBFF"> {</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	/*</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	 * The task state is guaranteed to be set before another task can</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2627,10 +2644,27 @@ static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		 *</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		 * flagged for rescheduling. Only call schedule if there</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		 * is no timeout, or if it has yet to expire.</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		 */</span></span>
+<span class="line"><span style="color:#9ECBFF">-		if (!timeout || timeout->task)</span></span>
+<span class="line"><span style="color:#9ECBFF">+		if (!timeout || timeout->task) {</span></span>
+<span class="line"><span style="color:#9ECBFF">+			if (next) {</span></span>
+<span class="line"><span style="color:#9ECBFF">+				/*</span></span>
+<span class="line"><span style="color:#9ECBFF">+				 * wake_up_process() below will be replaced</span></span>
+<span class="line"><span style="color:#9ECBFF">+				 * in the next patch with</span></span>
+<span class="line"><span style="color:#9ECBFF">+				 * wake_up_process_prefer_current_cpu().</span></span>
+<span class="line"><span style="color:#9ECBFF">+				 */</span></span>
+<span class="line"><span style="color:#9ECBFF">+				wake_up_process(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+				put_task_struct(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+				next = NULL;</span></span>
+<span class="line"><span style="color:#9ECBFF">+			}</span></span>
+<span class="line"><span style="color:#9ECBFF"> 			freezable_schedule();</span></span>
+<span class="line"><span style="color:#9ECBFF">+		}</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	}</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	__set_current_state(TASK_RUNNING);</span></span>
+<span class="line"><span style="color:#9ECBFF">+</span></span>
+<span class="line"><span style="color:#9ECBFF">+	if (next) {</span></span>
+<span class="line"><span style="color:#9ECBFF">+		/* Maybe call wake_up_process_prefer_current_cpu()? */</span></span>
+<span class="line"><span style="color:#9ECBFF">+		wake_up_process(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+		put_task_struct(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+	}</span></span>
+<span class="line"><span style="color:#9ECBFF"> }</span></span>
+<span class="line"><span style="color:#9ECBFF"> </span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2710,7 +2744,7 @@ static int futex_wait_setup(u32 __user *uaddr, u32 val, unsigned int flags,</span></span>
+<span class="line"><span style="color:#9ECBFF"> }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF"> static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,</span></span>
+<span class="line"><span style="color:#9ECBFF">-		      ktime_t *abs_time, u32 bitset)</span></span>
+<span class="line"><span style="color:#9ECBFF">+		      ktime_t *abs_time, u32 bitset, struct task_struct *next)</span></span>
+<span class="line"><span style="color:#9ECBFF"> {</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	struct hrtimer_sleeper timeout, *to;</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	struct restart_block *restart;</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2734,7 +2768,8 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		goto out;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF"> 	/* queue_me and wait for wakeup, timeout, or a signal. */</span></span>
+<span class="line"><span style="color:#9ECBFF">-	futex_wait_queue_me(hb, &#x26;q, to);</span></span>
+<span class="line"><span style="color:#9ECBFF">+	futex_wait_queue_me(hb, &#x26;q, to, next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+	next = NULL;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF"> 	/* If we were woken (and unqueued), we succeeded, whatever. */</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	ret = 0;</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2767,6 +2802,10 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	ret = -ERESTART_RESTARTBLOCK;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#9ECBFF"> out:</span></span>
+<span class="line"><span style="color:#9ECBFF">+	if (next) {</span></span>
+<span class="line"><span style="color:#9ECBFF">+		wake_up_process(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+		put_task_struct(next);</span></span>
+<span class="line"><span style="color:#9ECBFF">+	}</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	if (to) {</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		hrtimer_cancel(&#x26;to->timer);</span></span>
+<span class="line"><span style="color:#9ECBFF"> 		destroy_hrtimer_on_stack(&#x26;to->timer);</span></span>
+<span class="line"><span style="color:#9ECBFF">@@ -2774,7 +2813,6 @@ static int futex_wait(u32 __user *uaddr, unsigned int flags, u32 val,</span></span>
+<span class="line"><span style="color:#9ECBFF"> 	return ret;</span></span>
+<span class="line"><span style="color:#9ECBFF"> }</span></span>
+<span class="line"></span></code></pre>
+<p>我们可以看到 <code>futex_wait()</code> 传入的 <code>next</code> 任务在两种情况下会被唤醒：</p>
+<ol>
+<li>当前任务从对 <code>uaddr</code> 的等待中苏醒，接着在<code>futex_wait</code>结束的时候执行 <code>wake_up_process()</code> 切换到 <code>next</code> 任务。</li>
+<li>在 <code>futex_wait_queue_me()</code> 中等待超时（也代表着当前任务从对锁的等待中结束），执行 <code>wake_up_process()</code>切换到 <code>next</code> 任务。</li>
+</ol>
+<p>通过对 <code>futex</code> 的魔改, 我们仿佛有了在用户态使用 <code>switch_to()</code> 指定任务切换的能力，这真是让人感到兴奋！这就是用户模式线程的用途：极低的切换开销，意味着我们操作系统可以支持的数以千计的线程可以提高到 10 倍以上甚至百万级别！</p>
+<p>不过很可惜，该补丁似乎被 Linux 内核社区遗弃。如今补丁作者 <code>Peter Oskolkov</code> 正在试图向 Linux 内核引入另外一套 Google 的用户态任务调度框架 <code>Fiber</code> [7]，来支持 Linux 世界中 c 系程序员对协作式任务切换的需求。</p>
+<h3 id="参考资料">参考资料</h3>
+<p>[1] <a href="https://lore.kernel.org/lkml/414e292195d720c780fab2781c749df3be6566aa.camel@posk.io/">https://lore.kernel.org/lkml/414e292195d720c780fab2781c749df3be6566aa.camel@posk.io/</a></p>
+<p>[2] <a href="https://lore.kernel.org/lkml/48058b850de10f949f96b4f311adb649b1fb3ff2.camel@posk.io/">https://lore.kernel.org/lkml/48058b850de10f949f96b4f311adb649b1fb3ff2.camel@posk.io/</a></p>
+<p>[3] <a href="https://lore.kernel.org/lkml/d5cf58486a6a5e41581bed9183e8a831908ede0b.camel@posk.io/">https://lore.kernel.org/lkml/d5cf58486a6a5e41581bed9183e8a831908ede0b.camel@posk.io/</a></p>
+<p>[4] <a href="https://lore.kernel.org/lkml/a06a25f1380e0da48946b1bb958e1745e5fac964.camel@posk.io/">https://lore.kernel.org/lkml/a06a25f1380e0da48946b1bb958e1745e5fac964.camel@posk.io/</a></p>
+<p>[5] <a href="https://man7.org/linux/man-pages/man2/futex.2.html">https://man7.org/linux/man-pages/man2/futex.2.html</a></p>
+<p>[6] <a href="https://lwn.net/Articles/360699/">https://lwn.net/Articles/360699/</a></p>
+<p>[7] <a href="https://lore.kernel.org/lkml/20210520183614.1227046-1-posk@google.com/">https://lore.kernel.org/lkml/20210520183614.1227046-1-posk@google.com/</a></p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag os" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag os</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

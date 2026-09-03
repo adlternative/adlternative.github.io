@@ -1,0 +1,193 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>what-is-wrong-with-cpp-double-check-lock - ZheNing Hu</title><meta name="description" content="what-is-wrong-with-cpp-double-check-lock"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="what-is-wrong-with-cpp-double-check-lock" data-title-zh="C++ 双检查锁有什么问题" data-astro-cid-egg7nqdx> what-is-wrong-with-cpp-double-check-lock </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2021-03-09 19:17:48</span>   <span class="tag" data-astro-cid-egg7nqdx>cpp</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<p>One important pattern in design patterns is called the Singleton pattern.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>In software engineering, the singleton pattern is a software design pattern that restricts the instantiation of a class to one "single" instance. This is useful when exactly one object is needed to coordinate actions across the system. --wiki</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>That is, we can make an object be created only once. For example, if we want only one thread pool globally in a program, or in server programming we want only one <code>TcpServer</code> globally, then the Singleton pattern comes in handy.</p>
+<h2 id="v0">v0</h2>
+<p>Before double-checked locking, the global object was obtained like this:
+After taking a lock, check whether the global object exists
+and return a pointer to a dynamically allocated object.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">Singleton</span><span style="color:#F97583">*</span><span style="color:#B392F0"> Singleton</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">getInstance</span><span style="color:#E1E4E8"> () {</span></span>
+<span class="line"><span style="color:#E1E4E8">	lock_guard</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">mutex</span><span style="color:#F97583">></span><span style="color:#B392F0"> lock</span><span style="color:#E1E4E8">(m_mutex);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (m_Instance </span><span style="color:#F97583">==</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">		m_Instance </span><span style="color:#F97583">=</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> Singleton;</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> Singleton;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Correctness: yes
+Drawback: locks, low performance</p>
+<h2 id="v1">v1</h2>
+<p>The original double-checked locking checks once whether the global object does not exist, then takes a lock and checks again whether the global object does not exist; if it still does not exist, it creates a new object. As everyone probably knows, the second check at #2 is because between #1 and #2 another thread may have initialized the global object.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">Singleton</span><span style="color:#F97583">*</span><span style="color:#B392F0"> Singleton</span><span style="color:#E1E4E8">::m_Instance </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">Singleton</span><span style="color:#F97583">*</span><span style="color:#B392F0"> Singleton</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">getInstance</span><span style="color:#E1E4E8"> () {</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (m_Instance </span><span style="color:#F97583">==</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">) {</span><span style="color:#6A737D">//#1</span></span>
+<span class="line"><span style="color:#E1E4E8">		lock_guard</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">mutex</span><span style="color:#F97583">></span><span style="color:#B392F0"> lock</span><span style="color:#E1E4E8">(m_mutex);</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (m_Instance </span><span style="color:#F97583">==</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">) {</span><span style="color:#6A737D">//#2</span></span>
+<span class="line"><span style="color:#E1E4E8">			m_Instance </span><span style="color:#F97583">=</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> Singleton;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> Singleton;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>But this seemingly clever double-checked locking was proven to be a wrong pattern long ago. In this mode:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">m_Instance </span><span style="color:#F97583">=</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> Singleton</span></span>
+<span class="line"></span></code></pre>
+<p>Assigning a pointer while constructing an object is a dangerous operation.
+Generally doing this is fine, after all it is</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">tmp </span><span style="color:#F97583">=</span><span style="color:#F97583"> operator</span><span style="color:#B392F0"> new</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">Singleton</span><span style="color:#E1E4E8">));</span><span style="color:#6A737D"> //#3</span></span>
+<span class="line"><span style="color:#F97583">new</span><span style="color:#E1E4E8"> (pInstance) Singleton;</span><span style="color:#6A737D"> //#4</span></span>
+<span class="line"><span style="color:#E1E4E8">m_Instance </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> tmp;</span><span style="color:#6A737D"> //#5</span></span>
+<span class="line"></span></code></pre>
+<p>execute the constructor first, then assign the global pointer. However, both compiler reordering and CPU optimizations may reorder #4 and #5 (I think people back then must have run into problems and, unable to find the cause, discovered this infuriating optimization through assembly; now we may not necessarily be able to reproduce it: times have changed, machines have changed) (it may not be visible under the x86 strong model), because the pointer may be assigned before the object is fully constructed, causing other threads to potentially access a pointer to a not-yet-constructed object, which may lead to undefined behavior.</p>
+<h2 id="v2">v2</h2>
+<p>After C++11, we can directly create a singleton of a class; the code is extremely simple, as follows:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">Singleton</span><span style="color:#F97583">&#x26;</span><span style="color:#B392F0"> GetInstance</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">  static</span><span style="color:#E1E4E8"> Singleton s;</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> s;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>The above is one of the examples on Wikipedia, citing the C++ draft (“If control enters the declaration concurrently while the variable is being initialized, the concurrent execution shall wait for completion of the initialization.”), which may be relatively authoritative.
+But we should not blindly believe authority; let’s try it with gdb and look at its assembly code: we can see the lock and unlock operations of <code>__cxa_guard_acquire</code> and <code>__cxa_guard_abort</code>, which confirms the correctness of the above statement: lock before the first initialization completes, and concurrency must wait.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>  0x00005555555551b0 &#x3C;+0>:	 movzbl 0x2ea9(%rip),%eax        # 0x555555558060 &#x3C;_ZGVZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551b7 &#x3C;+7>:	 test   %al,%al</span></span>
+<span class="line"><span>   0x00005555555551b9 &#x3C;+9>:	 je     0x5555555551c8 &#x3C;_ZN9Singleton11getInstanceEv+24></span></span>
+<span class="line"><span>   0x00005555555551bb &#x3C;+11>:	 mov    0x2ea6(%rip),%rax        # 0x555555558068 &#x3C;_ZZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551c2 &#x3C;+18>:	 ret    </span></span>
+<span class="line"><span>   0x00005555555551c3 &#x3C;+19>:	 nopl   0x0(%rax,%rax,1)</span></span>
+<span class="line"><span>   0x00005555555551c8 &#x3C;+24>:	 push   %rbp</span></span>
+<span class="line"><span>   0x00005555555551c9 &#x3C;+25>:	 lea    0x2e90(%rip),%rdi        # 0x555555558060 &#x3C;_ZGVZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551d0 &#x3C;+32>:	 call   0x555555555070 &#x3C;__cxa_guard_acquire@plt></span></span>
+<span class="line"><span>   0x00005555555551d5 &#x3C;+37>:	 test   %eax,%eax</span></span>
+<span class="line"><span>   0x00005555555551d7 &#x3C;+39>:	 jne    0x5555555551e8 &#x3C;_ZN9Singleton11getInstanceEv+56></span></span>
+<span class="line"><span>   0x00005555555551d9 &#x3C;+41>:	 mov    0x2e88(%rip),%rax        # 0x555555558068 &#x3C;_ZZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551e0 &#x3C;+48>:	 pop    %rbp</span></span>
+<span class="line"><span>   0x00005555555551e1 &#x3C;+49>:	 ret    </span></span>
+<span class="line"><span>   0x00005555555551e2 &#x3C;+50>:	 nopw   0x0(%rax,%rax,1)</span></span>
+<span class="line"><span>   0x00005555555551e8 &#x3C;+56>:	 mov    $0x1,%edi</span></span>
+<span class="line"><span>   0x00005555555551ed &#x3C;+61>:	 call   0x555555555050 &#x3C;_Znwm@plt></span></span>
+<span class="line"><span>   0x00005555555551f2 &#x3C;+66>:	 lea    0x2e67(%rip),%rdi        # 0x555555558060 &#x3C;_ZGVZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551f9 &#x3C;+73>:	 mov    %rax,0x2e68(%rip)        # 0x555555558068 &#x3C;_ZZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>--Type &#x3C;RET> for more, q to quit, c to continue without paging--c</span></span>
+<span class="line"><span>   0x0000555555555200 &#x3C;+80>:	 call   0x555555555040 &#x3C;__cxa_guard_release@plt></span></span>
+<span class="line"><span>   0x0000555555555205 &#x3C;+85>:	 mov    0x2e5c(%rip),%rax        # 0x555555558068 &#x3C;_ZZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x000055555555520c &#x3C;+92>:	 pop    %rbp</span></span>
+<span class="line"><span>   0x000055555555520d &#x3C;+93>:	 ret    </span></span>
+<span class="line"><span>   0x000055555555520e &#x3C;+94>:	 mov    %rax,%rbp</span></span>
+<span class="line"><span>   0x0000555555555211 &#x3C;+97>:	 jmp    0x555555555080 &#x3C;_ZN9Singleton11getInstanceEv.cold></span></span>
+<span class="line"><span>Address range 0x555555555080 to 0x555555555094:</span></span>
+<span class="line"><span>   0x0000555555555080 &#x3C;-304>:	 lea    0x2fd9(%rip),%rdi        # 0x555555558060 &#x3C;_ZGVZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x0000555555555087 &#x3C;-297>:	 call   0x555555555030 &#x3C;__cxa_guard_abort@plt></span></span>
+<span class="line"><span>   0x000055555555508c &#x3C;-292>:	 mov    %rbp,%rdi</span></span>
+<span class="line"><span>   0x000055555555508f &#x3C;-289>:	 call   0x555555555060 &#x3C;_Unwind_Resume@plt></span></span>
+<span class="line"><span></span></span></code></pre>
+<p>But what is its advantage over #v0?
+#v0 takes a lock every time it fetches the object, while #v2 only needs to initialize once when the static local variable is initialized…</p>
+<p>Follow-up:</p>
+<p>Last time I looked at <code>__cxa_guard_acquire</code>, <code>__cxa_guard_abort</code>, it seemed that double-checked locking was used inside, so in the end, after C++11 the singleton is the compiler doing the double-checked locking work for us,
+without C++ programmers having to painfully write double-checked locking themselves.</p>
+<p>Reference:
+<a href="https://en.wikipedia.org/wiki/Singleton_pattern">wiki: Singleton pattern</a></p>
+</div>
+<div class="lang-section" data-lang="zh">
+<p>设计模式中有一个挺重要的模式叫单例模式，</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>在软件工程中，单件模式是设计模式，限制了实例化一个的类，以一个“单一”的实例。当仅需要一个对象来协调整个系统中的动作时，这很有用。 --wiki</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>也就是我们可以让一个对象只生成一次，比如我们希望程序全局只有一个线程池，或者服务器编程中让全局只有一个<code>TcpServer</code>,那么这时候单例模式就用上了。</p>
+<h2 id="v0-1">v0</h2>
+<p>之前没有双检查锁的时候是这么获取全局对象：
+加锁之后通过检查全局对象是否存在
+并返回一个动态分配的对象指针。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">Singleton</span><span style="color:#F97583">*</span><span style="color:#B392F0"> Singleton</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">getInstance</span><span style="color:#E1E4E8"> () {</span></span>
+<span class="line"><span style="color:#E1E4E8">	lock_guard</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">mutex</span><span style="color:#F97583">></span><span style="color:#B392F0"> lock</span><span style="color:#E1E4E8">(m_mutex);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (m_Instance </span><span style="color:#F97583">==</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">		m_Instance </span><span style="color:#F97583">=</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> Singleton;</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> Singleton;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>正确性：对
+缺点：加锁 性能低</p>
+<h2 id="v1-1">v1</h2>
+<p>双检查锁最初，在判断了一次全局对象不存在之后加锁，再判断一次全局对象是否存在，如果不存在就生成一个新对象，想必大家都知道，#2的再次检查是因为#1和#2之间可能其他线程初始化了全局对象。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">Singleton</span><span style="color:#F97583">*</span><span style="color:#B392F0"> Singleton</span><span style="color:#E1E4E8">::m_Instance </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">Singleton</span><span style="color:#F97583">*</span><span style="color:#B392F0"> Singleton</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">getInstance</span><span style="color:#E1E4E8"> () {</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (m_Instance </span><span style="color:#F97583">==</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">) {</span><span style="color:#6A737D">//#1</span></span>
+<span class="line"><span style="color:#E1E4E8">		lock_guard</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">mutex</span><span style="color:#F97583">></span><span style="color:#B392F0"> lock</span><span style="color:#E1E4E8">(m_mutex);</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (m_Instance </span><span style="color:#F97583">==</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">) {</span><span style="color:#6A737D">//#2</span></span>
+<span class="line"><span style="color:#E1E4E8">			m_Instance </span><span style="color:#F97583">=</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> Singleton;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> Singleton;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>但是这种看似巧妙的双检查锁在很久以前就被证明是一个错误的模式，在这种模式下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">m_Instance </span><span style="color:#F97583">=</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> Singleton</span></span>
+<span class="line"></span></code></pre>
+<p>指针赋值构造对象是个危险的操作，
+一般来说这么做没问题，毕竟是</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">tmp </span><span style="color:#F97583">=</span><span style="color:#F97583"> operator</span><span style="color:#B392F0"> new</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">Singleton</span><span style="color:#E1E4E8">));</span><span style="color:#6A737D"> //#3</span></span>
+<span class="line"><span style="color:#F97583">new</span><span style="color:#E1E4E8"> (pInstance) Singleton;</span><span style="color:#6A737D"> //#4</span></span>
+<span class="line"><span style="color:#E1E4E8">m_Instance </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> tmp;</span><span style="color:#6A737D"> //#5</span></span>
+<span class="line"></span></code></pre>
+<p>先执行其构造函数，再给全局指针赋值，但是 编译器重排或者cpu优化都有可能让#4#5重排（我觉得当时人肯定是用出问题却找不到问题后用汇编发现了这个令人恼怒的优化，现在我们不一定测的出来：时代变了，机器变了）(x86强模型下不一定能看得到)，因为可能对象没有构造完毕就提前给指针赋值，导致其他线程可能访问到一个未构造完成的指针，从而可能出现未定义行为。</p>
+<h2 id="v2-1">v2</h2>
+<p>c++11之后我们可以用直接生成一个类的单例，代码极其简单，如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">Singleton</span><span style="color:#F97583">&#x26;</span><span style="color:#B392F0"> GetInstance</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">  static</span><span style="color:#E1E4E8"> Singleton s;</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> s;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>上图是维基百科上的样例之一，引用了c++草案的话（如果控制在变量初始化时同时进入声明，则并发执行应等待初始化完成。），可能会比较权威，
+但我们不可以迷信权威，动手试一试gdb并查看它的汇编代码：我们可以看到<code>__cxa_guard_acquire</code>，<code>__cxa_guard_abort</code>的加锁和解锁操作，也就映证了上面这句话的正确性：在变量第一次初始化完成之前加锁，并发需等待。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>  0x00005555555551b0 &#x3C;+0>:	 movzbl 0x2ea9(%rip),%eax        # 0x555555558060 &#x3C;_ZGVZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551b7 &#x3C;+7>:	 test   %al,%al</span></span>
+<span class="line"><span>   0x00005555555551b9 &#x3C;+9>:	 je     0x5555555551c8 &#x3C;_ZN9Singleton11getInstanceEv+24></span></span>
+<span class="line"><span>   0x00005555555551bb &#x3C;+11>:	 mov    0x2ea6(%rip),%rax        # 0x555555558068 &#x3C;_ZZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551c2 &#x3C;+18>:	 ret    </span></span>
+<span class="line"><span>   0x00005555555551c3 &#x3C;+19>:	 nopl   0x0(%rax,%rax,1)</span></span>
+<span class="line"><span>   0x00005555555551c8 &#x3C;+24>:	 push   %rbp</span></span>
+<span class="line"><span>   0x00005555555551c9 &#x3C;+25>:	 lea    0x2e90(%rip),%rdi        # 0x555555558060 &#x3C;_ZGVZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551d0 &#x3C;+32>:	 call   0x555555555070 &#x3C;__cxa_guard_acquire@plt></span></span>
+<span class="line"><span>   0x00005555555551d5 &#x3C;+37>:	 test   %eax,%eax</span></span>
+<span class="line"><span>   0x00005555555551d7 &#x3C;+39>:	 jne    0x5555555551e8 &#x3C;_ZN9Singleton11getInstanceEv+56></span></span>
+<span class="line"><span>   0x00005555555551d9 &#x3C;+41>:	 mov    0x2e88(%rip),%rax        # 0x555555558068 &#x3C;_ZZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551e0 &#x3C;+48>:	 pop    %rbp</span></span>
+<span class="line"><span>   0x00005555555551e1 &#x3C;+49>:	 ret    </span></span>
+<span class="line"><span>   0x00005555555551e2 &#x3C;+50>:	 nopw   0x0(%rax,%rax,1)</span></span>
+<span class="line"><span>   0x00005555555551e8 &#x3C;+56>:	 mov    $0x1,%edi</span></span>
+<span class="line"><span>   0x00005555555551ed &#x3C;+61>:	 call   0x555555555050 &#x3C;_Znwm@plt></span></span>
+<span class="line"><span>   0x00005555555551f2 &#x3C;+66>:	 lea    0x2e67(%rip),%rdi        # 0x555555558060 &#x3C;_ZGVZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x00005555555551f9 &#x3C;+73>:	 mov    %rax,0x2e68(%rip)        # 0x555555558068 &#x3C;_ZZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>--Type &#x3C;RET> for more, q to quit, c to continue without paging--c</span></span>
+<span class="line"><span>   0x0000555555555200 &#x3C;+80>:	 call   0x555555555040 &#x3C;__cxa_guard_release@plt></span></span>
+<span class="line"><span>   0x0000555555555205 &#x3C;+85>:	 mov    0x2e5c(%rip),%rax        # 0x555555558068 &#x3C;_ZZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x000055555555520c &#x3C;+92>:	 pop    %rbp</span></span>
+<span class="line"><span>   0x000055555555520d &#x3C;+93>:	 ret    </span></span>
+<span class="line"><span>   0x000055555555520e &#x3C;+94>:	 mov    %rax,%rbp</span></span>
+<span class="line"><span>   0x0000555555555211 &#x3C;+97>:	 jmp    0x555555555080 &#x3C;_ZN9Singleton11getInstanceEv.cold></span></span>
+<span class="line"><span>Address range 0x555555555080 to 0x555555555094:</span></span>
+<span class="line"><span>   0x0000555555555080 &#x3C;-304>:	 lea    0x2fd9(%rip),%rdi        # 0x555555558060 &#x3C;_ZGVZN9Singleton11getInstanceEvE1s></span></span>
+<span class="line"><span>   0x0000555555555087 &#x3C;-297>:	 call   0x555555555030 &#x3C;__cxa_guard_abort@plt></span></span>
+<span class="line"><span>   0x000055555555508c &#x3C;-292>:	 mov    %rbp,%rdi</span></span>
+<span class="line"><span>   0x000055555555508f &#x3C;-289>:	 call   0x555555555060 &#x3C;_Unwind_Resume@plt></span></span>
+<span class="line"><span></span></span></code></pre>
+<p>但是它对于#v0的优点是什么呢？
+#v0每次拿对对象都要加锁，而#v2只需要在static局部变量初始化的时候初始化一次就好…</p>
+<p>后续：</p>
+<p>上次看 <code>__cxa_guard_acquire</code>，<code>__cxa_guard_abort</code>，好像是里面用了双检查锁，所以到头来，c++11 以后 单例 是编译器帮我们做了双检查锁的工作，
+而无需 c++ 程序员苦逼的继续自己写双检查锁。</p>
+<p>参考：
+<a href="https://en.wikipedia.org/wiki/Singleton_pattern">wiki: 单例模式</a></p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag cpp" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag cpp</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

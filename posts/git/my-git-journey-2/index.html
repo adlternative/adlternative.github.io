@@ -1,0 +1,144 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>My Git Learning Journey 2 - ZheNing Hu</title><meta name="description" content="My Git Learning Journey 2"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="My Git Learning Journey 2" data-title-zh="我的git学习之路2" data-astro-cid-egg7nqdx> My Git Learning Journey 2 </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2020-12-19 22:18:33</span>   <span class="tag" data-astro-cid-egg7nqdx>git</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<p>In Linus’s original vision, Git was designed as a file system. Many people now call it a “content-addressable file system.” Because Git keeps most of its design logic on the client side, it can also be described as a decentralized piece of software…</p>
+<p>Every day we run <code>git add</code>, <code>git commit</code>, <code>git push</code>, letting commands manage the storage and upload of our daily code repositories. When errors appear, we often feel at a loss. We can’t help but wonder: how does Git actually complete an upload? Why do we need to <code>add</code> files every time instead of committing and pushing directly? In VS Code, when I switch to the dev branch, new files appear locally and old files are deleted?</p>
+<p>It’s time to talk about how Git works under the hood.</p>
+<p>Git has three very important concepts: the working tree (W), the staging area/index (I), and the repository (R). There is also a “database.” All of these are essential components that keep Git running, and every Git command uses contents from these areas.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>$ tree .git</span></span>
+<span class="line"><span>.git</span></span>
+<span class="line"><span>├── branches</span></span>
+<span class="line"><span>├── config</span></span>
+<span class="line"><span>├── description</span></span>
+<span class="line"><span>├── HEAD</span></span>
+<span class="line"><span>├── hooks</span></span>
+<span class="line"><span>│   ├── applypatch-msg.sample</span></span>
+<span class="line"><span>│   ├── commit-msg.sample</span></span>
+<span class="line"><span>│   ├── fsmonitor-watchman.sample</span></span>
+<span class="line"><span>│   ├── post-update.sample</span></span>
+<span class="line"><span>│   ├── pre-applypatch.sample</span></span>
+<span class="line"><span>│   ├── pre-commit.sample</span></span>
+<span class="line"><span>│   ├── pre-merge-commit.sample</span></span>
+<span class="line"><span>│   ├── prepare-commit-msg.sample</span></span>
+<span class="line"><span>│   ├── pre-push.sample</span></span>
+<span class="line"><span>│   ├── pre-rebase.sample</span></span>
+<span class="line"><span>│   ├── pre-receive.sample</span></span>
+<span class="line"><span>│   └── update.sample</span></span>
+<span class="line"><span>├── info</span></span>
+<span class="line"><span>│   └── exclude</span></span>
+<span class="line"><span>├── objects</span></span>
+<span class="line"><span>│   ├── info</span></span>
+<span class="line"><span>│   └── pack</span></span>
+<span class="line"><span>└── refs</span></span>
+<span class="line"><span>    ├── heads</span></span>
+<span class="line"><span>    └── tags</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>9 directories, 16 files</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>When we create a new Git repository, the <code>.git</code> directory usually has this tree structure. For now, we won’t care about what <code>branches</code>, <code>info</code>, <code>hooks</code>, and <code>description</code> are used for.</p>
+<ol>
+<li>We can read <code>.git/config</code>, which stores some user configuration for the Git program to read, for example:</li>
+</ol>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>[core]</span></span>
+<span class="line"><span>        repositoryformatversion = 0</span></span>
+<span class="line"><span>        filemode = true</span></span>
+<span class="line"><span>        bare = false</span></span>
+<span class="line"><span>        logallrefupdates = true</span></span>
+<span class="line"><span></span></span></code></pre>
+<ol start="2">
+<li><code>refs</code> means references. We can look at the contents of files in the <code>refs/heads/</code> directory: a hash string, such as <code>4f0dd3c1d235806c685f6cd36acd11fecd2da1f2</code>.</li>
+<li><code>.git/HEAD</code> is a text file containing <code>ref: refs/heads/master</code>. It is a “pointer” (the head pointer, pointing to the last commit) that indicates the current commit position. Whenever the Git program needs to know the current commit, it follows the content in <code>HEAD</code> to find the file <code>.git/refs/heads/master</code>, and then uses the hash in <code>.git/refs/heads/master</code> to look up the object file in the database. Here this file will be a commit-type object. Of course, <code>.git/refs/heads/master</code> is still empty now, because we haven’t made any commits yet. After our first <code>git add</code> + <code>git commit</code>, <code>.git/refs/heads/master</code> will appear. With the <code>HEAD</code> design, Git can quickly find the content corresponding to the current commit by indexing <code>HEAD</code>.</li>
+<li><code>.git/objects</code> is what we call the Git database, or object store. For now it contains no stored objects. Once we run <code>git add</code>, this directory will have new files, which will hold our various “objects” (blob file objects, commit objects, tree directory objects, tag objects).</li>
+</ol>
+<p>Later, every time we run Git, it reads from or writes to this <code>.git</code> directory.
+So far we have seen the database <code>.git/objects</code> and the local working directory, but the concepts of the staging area and repository are still unclear. It seems we need to continue exploring.</p>
+<h3 id="when-we-add-a-file">When we add a file</h3>
+<p>Look, if we run <code>touch a.c &#x26;&#x26; echo aaa >a.c</code>, nothing in the <code>.git</code> directory changes. But when we run <code>git add a.c</code>, an <code>index</code> file suddenly appears — this is our staging area. A new directory and file also appear in our database, seemingly a hash string. Indeed that is the case. The formula for calculating this hash is also very simple: <code>textHash=sha1sum("blob (textSize)(null)(text)")</code>, where <code>text</code> is the content of <code>a.c</code> and <code>textSize</code> is the size of <code>a.c</code>. But what is the content of this hash file? If we directly <code>cat .git/objects/72/943a16fb2c8f38f9dde202b7a70ccc19c52f34</code>, we get a bunch of garbled bytes like <code>xK��OR0aHLL��!</code>. But when we use <code>git cat-file blob 72943a16fb2c8f38f9dde202b7a70ccc19c52f34</code>, we see the content we wrote into <code>a.c</code>: <code>aaa</code>. The reason we see garbled output is that Git has compressed the content. The formula for the compressed file content can also be summarized as <code>objText=compression("blob (textSize) 0 text")</code>. Without compression, our <code>.git</code> repository would be too large, which would be a huge burden for network transfer…</p>
+<p>So now we have seen the first blob-type object file. It is the result of Git serializing <code>a.c</code>, internally calling <code>hash_object</code> to obtain the hash and writing it into a file at <code>.git/hash[0:2]/hash[2:-1]</code>. It is worth mentioning that after obtaining the file’s hash, we can quickly locate the blob object file in the database, and we can also use this blob object file to quickly restore the original file locally based on the original file size and content recorded inside. Ah, this is really interesting! The hash feels as friendly as a C pointer, making it easy to address objects, and at the same time we seem to have the magic power of serializing pointers…</p>
+<p>(What are the benefits of content addressing?)</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>├── index</span></span>
+<span class="line"><span>├── info</span></span>
+<span class="line"><span>│   └── exclude</span></span>
+<span class="line"><span>├── objects</span></span>
+<span class="line"><span>│   ├── 72</span></span>
+<span class="line"><span>│   │   └── 943a16fb2c8f38f9dde202b7a70ccc19c52f34</span></span>
+<span class="line"><span>│   ├── info</span></span>
+<span class="line"><span>│   └── pack</span></span>
+<span class="line"><span>└── refs</span></span>
+<span class="line"><span></span></span></code></pre>
+</div>
+<div class="lang-section" data-lang="zh">
+<p>git 在linus原来的想法中是作为一个文件系统去设计的,现在很多人都称之为”内容寻址文件系统”,由于git把大部分的业务设计停留在客户端，所以也可以说git是一种去中心化的软件…</p>
+<p>我们平时天天都在<code>git add</code>,<code>git commit</code>,<code>git push</code>
+任由命令管理我们的日常的代码仓库的储存和上传，遇到了报错又经常手足无措，心中不免有所疑惑，git它是如何完成上传的呢?为什么每次我们都需要<code>add</code>文件呢,而不直接commit,push?在vscode上我一点切换到dev分支本地会有新的文件生成，旧的文件删除?</p>
+<p>是时候讲讲git原理了</p>
+<p>git 有三个很重要的概念：叫做工作区(W),暂存区(I),版本库(R).其实还应该有一个”数据库”，它们都是维护git运作的重要组成,所有的git命令都是会用到这些区的内容</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>$ tree .git</span></span>
+<span class="line"><span>.git</span></span>
+<span class="line"><span>├── branches</span></span>
+<span class="line"><span>├── config</span></span>
+<span class="line"><span>├── description</span></span>
+<span class="line"><span>├── HEAD</span></span>
+<span class="line"><span>├── hooks</span></span>
+<span class="line"><span>│   ├── applypatch-msg.sample</span></span>
+<span class="line"><span>│   ├── commit-msg.sample</span></span>
+<span class="line"><span>│   ├── fsmonitor-watchman.sample</span></span>
+<span class="line"><span>│   ├── post-update.sample</span></span>
+<span class="line"><span>│   ├── pre-applypatch.sample</span></span>
+<span class="line"><span>│   ├── pre-commit.sample</span></span>
+<span class="line"><span>│   ├── pre-merge-commit.sample</span></span>
+<span class="line"><span>│   ├── prepare-commit-msg.sample</span></span>
+<span class="line"><span>│   ├── pre-push.sample</span></span>
+<span class="line"><span>│   ├── pre-rebase.sample</span></span>
+<span class="line"><span>│   ├── pre-receive.sample</span></span>
+<span class="line"><span>│   └── update.sample</span></span>
+<span class="line"><span>├── info</span></span>
+<span class="line"><span>│   └── exclude</span></span>
+<span class="line"><span>├── objects</span></span>
+<span class="line"><span>│   ├── info</span></span>
+<span class="line"><span>│   └── pack</span></span>
+<span class="line"><span>└── refs</span></span>
+<span class="line"><span>    ├── heads</span></span>
+<span class="line"><span>    └── tags</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>9 directories, 16 files</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>当我们新建一个git仓库的时候往往<code>.git</code>目录是这样的树型结构,暂时不关心<code>branches</code>,<code>info</code>,<code>hooks</code>,<code>description</code>有什么用.</p>
+<ol>
+<li>我们可以读取<code>.git/config</code>是存储一些用户的配置，供git程序去读取,比如这样的</li>
+</ol>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>[core]</span></span>
+<span class="line"><span>        repositoryformatversion = 0</span></span>
+<span class="line"><span>        filemode = true</span></span>
+<span class="line"><span>        bare = false</span></span>
+<span class="line"><span>        logallrefupdates = true</span></span>
+<span class="line"><span></span></span></code></pre>
+<ol start="2">
+<li>refs是引用的意思,我们可以通过<code>refs/heads/</code>目录中文件中的内容:一串hash值，比如<code>4f0dd3c1d235806c685f6cd36acd11fecd2da1f2</code></li>
+<li><code>.git/HEAD</code>是一个文本文件,里面写着<code>ref: refs/heads/master</code>,它是一个表面当前提交位置的＂指针＂(头指针，指向最后一次commit)，git 程序每次需要知道当前的提交是谁的时候就会根据HEAD中的内容去寻找<code>.git/refs/heads/master</code>文件，再根据<code>.git/refs/heads/master</code>中的hash去数据库寻找对象文件，这里这个文件会是一个commit类型的文件.当然<code>.git/refs/heads/master</code>现在那里还是空的，因为我们当前尚未有过提交，等我们<code>git add</code>+<code>git commit</code>第一次提交以后就会出现<code>.git/refs/heads/master</code>,有了HEAD的设计，我们就能用git程序通过索引<code>HEAD</code>快速找到此刻对应的提交的内容</li>
+<li><code>.git/objects</code>,这就是我们叫做的git数据库或者说对象库,里面暂时还没有存入对象,等到我们<code>git add</code>了，这个目录就会有新的文件产生，里面将存放我们的各种”对象”(blob文件对象,commit提交对象,tree目录树对象,tag标签对象)</li>
+</ol>
+<p>后面每次执行git程序都会从这个.git目录读取或者写入内容.
+暂时我们已经看到数据库<code>.git/objects</code>，以及本地的工作目录,但暂存区和版本库的概念却依旧不明朗,看来还需要继续我们探究</p>
+<h3 id="当我们添加一个文件时">当我们添加一个文件时</h3>
+<p>look,我们<code>touch a.c &#x26;&#x26; echo aaa >a.c</code>发现git目录没啥变化，但当我们<code>git add a.c</code>的时候,竟然出现一个index文件，这就是我们的暂存区;在我们的数据库中也多出一个目录和文件，貌似就是一个串哈希值.的确如此，这串哈希的计算公式也很简单<code>textHash=sha1sum("blob (textSize)(null)(text)")</code>,其中<code>text是a.c的内容,textSize是a.c的大小</code>.但这个hash文件内容是什么呢?我们若直接用<code>cat .git/objects/72/943a16fb2c8f38f9dde202b7a70ccc19c52f34</code>读到是一串乱码，<code>xK��OR0aHLL��!</code>,但我们使用<code>git cat-file blob 72943a16fb2c8f38f9dde202b7a70ccc19c52f34</code>看到的就是我们写入<code>a.c</code>的内容<code>aaa</code>,看到乱码的原因是git做了一次压缩,这个压缩过后的文件内容公式其实也可以总结出一个公式<code>objText=compression("blob (textSize) 0 text")</code>,如果不去压缩文件,那么我们的<code>.git</code>仓库过大，对于网络传输来说是一个巨大的负担…
+于是乎我们已经看到第一个blob类型对象文件,它是git将<code>a.c</code>序列化的结果,底层调用了<code>hash_object</code>去获取hash并写入到<code>.git/hash[0:2]\hash[2:-1]</code>的文件中．可以提到的是,我们可以在获取了文件哈希的hash值以后快速找到数据库中的blob对象文件，也可以通过这个blob对象文件快速根据其文件中记载的原文件大小和原文件内容还原到本地，啊，这真的很有趣!hash仿佛就像一个c语言的地址一样亲切易于给对象寻址，同时我们仿佛有能将指针序列化的魔力…
+(基于内容寻址的好处是什么)</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>├── index</span></span>
+<span class="line"><span>├── info</span></span>
+<span class="line"><span>│   └── exclude</span></span>
+<span class="line"><span>├── objects</span></span>
+<span class="line"><span>│   ├── 72</span></span>
+<span class="line"><span>│   │   └── 943a16fb2c8f38f9dde202b7a70ccc19c52f34</span></span>
+<span class="line"><span>│   ├── info</span></span>
+<span class="line"><span>│   └── pack</span></span>
+<span class="line"><span>└── refs</span></span>
+<span class="line"><span></span></span></code></pre>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag git" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag git</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

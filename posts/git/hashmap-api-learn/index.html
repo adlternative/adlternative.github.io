@@ -1,0 +1,1116 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Learning the Git Hashmap API - ZheNing Hu</title><meta name="description" content="Learning the Git Hashmap API"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="Learning the Git Hashmap API" data-title-zh="Git 哈希表 API 学习" data-astro-cid-egg7nqdx> Learning the Git Hashmap API </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2021-01-28 21:06:26</span>   <span class="tag" data-astro-cid-egg7nqdx>git</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<p>A hashmap is a collection that stores keys and values; each key-value pair is called an entry. Each entry is scattered across individual “buckets”.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th></th><th>Lookup</th><th>Insert</th><th>Delete</th></tr></thead><tbody><tr><td>Average</td><td>O(1)</td><td>O(1)</td><td>O(1)</td></tr><tr><td>Worst</td><td>O(N)</td><td>O(N)</td><td>O(N)</td></tr></tbody></table>
+<p>There are many different hash algorithms; among them, open addressing and chaining are the most common.</p>
+<p>Git uses chaining.</p>
+<p>The quality of hash storage depends to a large extent on the hash algorithm. Git uses the well-known SHA1 algorithm; of course, this algorithm may now be considered insecure, but Git also has a fallback plan for SHA256.</p>
+<p>Today, I will introduce the hash table implementation APIs in Git.</p>
+<h3 id="hash-algorithm">Hash Algorithm</h3>
+<p>The APIs <code>strhash</code>, <code>strihash</code>, <code>memhash</code>, <code>memihash</code>, and <code>memihash_cont</code> are basically the same. As shown in <code>strhash</code> below, each character in the string is XORed with the product of the current hash value and <code>FNV32_PRIME</code>, and the final hash value is returned. <code>strihash</code> simply converts lowercase characters to uppercase before performing the same calculation as <code>strhash</code>; <code>memhash</code> does the same for every byte in a buffer; and <code>memihash</code> is analogous to <code>strihash</code>.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> strhash</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">str</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> c, hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> FNV32_BASE;</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> ((c </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> char</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">str</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#E1E4E8">		hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (hash </span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> FNV32_PRIME) </span><span style="color:#F97583">^</span><span style="color:#E1E4E8"> c;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> hash;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>memihash_cont</code> has a small difference: based on <code>memihash</code>, the initial hash value is no longer <code>FNV32_BASE</code> but an externally provided <code>hash_seed</code>.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#6A737D">/*</span></span>
+<span class="line"><span style="color:#6A737D"> *将另一块数据合并到memihash中</span></span>
+<span class="line"><span style="color:#6A737D"> *计算。</span></span>
+<span class="line"><span style="color:#6A737D"> */</span></span>
+<span class="line"><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> memihash_cont</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> hash_seed</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">buf</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> len</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> hash_seed;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">ucbuf </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">) buf;</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> (len</span><span style="color:#F97583">--</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">		unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> c </span><span style="color:#F97583">=</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">ucbuf</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (c </span><span style="color:#F97583">>=</span><span style="color:#9ECBFF"> 'a'</span><span style="color:#F97583"> &#x26;&#x26;</span><span style="color:#E1E4E8"> c </span><span style="color:#F97583">&#x3C;=</span><span style="color:#9ECBFF"> 'z'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">			c </span><span style="color:#F97583">-=</span><span style="color:#9ECBFF"> 'a'</span><span style="color:#F97583"> -</span><span style="color:#9ECBFF"> 'A'</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">		hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (hash </span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> FNV32_PRIME) </span><span style="color:#F97583">^</span><span style="color:#E1E4E8"> c;</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> hash;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<h3 id="data-structures">Data Structures</h3>
+<p><code>hashmap_entry</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> hash;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span></code></pre>
+<p><code>hash</code>: stores a hash value.
+<code>next</code>: a pointer to the next entry in a bucket.</p>
+<p><code>hashmap</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#E1E4E8">table;</span></span>
+<span class="line"><span style="color:#E1E4E8">	hashmap_cmp_fn cmpfn;</span></span>
+<span class="line"><span style="color:#F97583">	const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">cmpfn_data;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> private_size;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> tablesize;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> grow_at;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> shrink_at;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> do_count_items : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span></code></pre>
+<p><code>table</code>: the hashmap has a <code>table</code> which is a pointer to pointer of <code>hashmap_entry</code>; this means that after dynamically allocating memory for <code>table</code>, each element of the array is a pointer to a <code>hashmap_entry</code>, and these pointers are linked together via the <code>next</code> pointer.</p>
+<p><code>hashmap_cmp_fn</code>: a user-provided function used to test whether two hashmap entries are equal.</p>
+<p><code>private_size</code>: total number of items.</p>
+<p><code>tablesize</code>: number of buckets.</p>
+<p><code>grow_at</code>: the number of items at which the hash table performs expansion.</p>
+<p><code>shrink_at</code>: the number of items at which the hash table performs shrinking.</p>
+<p><code>do_count_items</code>: this single bit specifies whether to track the total number of entries (via <code>private_size</code>).</p>
+<p><code>hashmap_iter</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_iter {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">map;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> tablepos;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span></code></pre>
+<h3 id="apis">APIs:</h3>
+<p><code>hashmap_init</code> and <code>HASHMAP_INIT</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, hashmap_cmp_fn </span><span style="color:#FFAB70">equals_function</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">		  const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">cmpfn_data</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> initial_size</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> size </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> HASHMAP_INITIAL_SIZE;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(map, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">map));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	map->cmpfn </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> equals_function </span><span style="color:#F97583">?</span><span style="color:#E1E4E8"> equals_function </span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> always_equal;</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->cmpfn_data </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> cmpfn_data;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* calculate initial table size and allocate the table */</span></span>
+<span class="line"><span style="color:#E1E4E8">	initial_size </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8">) ((</span><span style="color:#F97583">uint64_t</span><span style="color:#E1E4E8">) initial_size </span><span style="color:#F97583">*</span><span style="color:#79B8FF"> 100</span></span>
+<span class="line"><span style="color:#F97583">			/</span><span style="color:#E1E4E8"> HASHMAP_LOAD_FACTOR);</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> (initial_size </span><span style="color:#F97583">></span><span style="color:#E1E4E8"> size)</span></span>
+<span class="line"><span style="color:#E1E4E8">		size </span><span style="color:#F97583">&#x3C;&#x3C;=</span><span style="color:#E1E4E8"> HASHMAP_RESIZE_BITS;</span></span>
+<span class="line"><span style="color:#B392F0">	alloc_table</span><span style="color:#E1E4E8">(map, size);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/*</span></span>
+<span class="line"><span style="color:#6A737D">	 * Keep track of the number of items in the map and</span></span>
+<span class="line"><span style="color:#6A737D">	 * allow the map to automatically grow as necessary.</span></span>
+<span class="line"><span style="color:#6A737D">	 */</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->do_count_items </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> HASHMAP_INIT</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">fn</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">data</span><span style="color:#E1E4E8">) { .cmpfn </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> fn, .cmpfn_data </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> data, </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">				 .do_count_items </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8"> }</span></span>
+<span class="line"></span></code></pre>
+<p>It sets the entry comparison function and its arguments for the hashmap, and decides the number of buckets to allocate based on <code>HASHMAP_INITIAL_SIZE</code> (64) and the user-provided <code>initial_size</code>. The actual allocation is done in <code>alloc_table()</code>.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> alloc_table</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> size</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->tablesize </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> size;</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->table </span><span style="color:#F97583">=</span><span style="color:#B392F0"> xcalloc</span><span style="color:#E1E4E8">(size, </span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* calculate resize thresholds for new size */</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->grow_at </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8">) ((</span><span style="color:#F97583">uint64_t</span><span style="color:#E1E4E8">) size </span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> HASHMAP_LOAD_FACTOR </span><span style="color:#F97583">/</span><span style="color:#79B8FF"> 100</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (size </span><span style="color:#F97583">&#x3C;=</span><span style="color:#E1E4E8"> HASHMAP_INITIAL_SIZE)</span></span>
+<span class="line"><span style="color:#E1E4E8">		map->shrink_at </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	else</span></span>
+<span class="line"><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">		 * The shrink-threshold must be slightly smaller than</span></span>
+<span class="line"><span style="color:#6A737D">		 * (grow-threshold / resize-factor) to prevent erratic resizing,</span></span>
+<span class="line"><span style="color:#6A737D">		 * thus we divide by (resize-factor + 1).</span></span>
+<span class="line"><span style="color:#6A737D">		 */</span></span>
+<span class="line"><span style="color:#E1E4E8">		map->shrink_at </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->grow_at </span><span style="color:#F97583">/</span><span style="color:#E1E4E8"> ((</span><span style="color:#79B8FF">1</span><span style="color:#F97583"> &#x3C;&#x3C;</span><span style="color:#E1E4E8"> HASHMAP_RESIZE_BITS) </span><span style="color:#F97583">+</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p>In <code>alloc_table()</code>, <code>grow_at</code> is set to roughly <code>0.8 * size</code>. If <code>size &#x3C; HASHMAP_INITIAL_SIZE</code>, <code>shrink_at</code> is set to 0; with few buckets, this means there is no need to call <code>realloc</code> to shrink capacity while the hash table still has items. Otherwise, <code>shrink_at</code> is set to roughly <code>0.16 * size</code>. Note that each bucket is allocated via <code>xcalloc</code>, which means each bucket’s linked-list head starts out as <code>NULL</code>. <code>HASHMAP_INIT</code> is another initialization method.</p>
+<p><code>hashmap_add</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_add</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> b;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#B392F0">		alloc_table</span><span style="color:#E1E4E8">(map, HASHMAP_INITIAL_SIZE);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	b </span><span style="color:#F97583">=</span><span style="color:#B392F0"> bucket</span><span style="color:#E1E4E8">(map, entry);</span></span>
+<span class="line"><span style="color:#6A737D">	/* add entry */</span></span>
+<span class="line"><span style="color:#E1E4E8">	entry->next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->table[b];</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->table[b] </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> entry;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* fix size and rehash if appropriate */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (map->do_count_items) {</span></span>
+<span class="line"><span style="color:#E1E4E8">		map->private_size</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (map->private_size </span><span style="color:#F97583">></span><span style="color:#E1E4E8"> map->grow_at)</span></span>
+<span class="line"><span style="color:#B392F0">			rehash</span><span style="color:#E1E4E8">(map, map->tablesize </span><span style="color:#F97583">&#x3C;&#x3C;</span><span style="color:#E1E4E8"> HASHMAP_RESIZE_BITS);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Adds an item to the hash table. First, <code>bucket</code> is used to find the corresponding bucket index from the item’s hash value:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> unsigned</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> bucket</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> key->hash </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> (map->tablesize </span><span style="color:#F97583">-</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Note that <code>bucket</code> obtains the bucket index using <code>&#x26;</code> rather than <code>%</code>—the code is really elegant. Then the item is inserted at the head of the corresponding bucket’s linked list. The total count is incremented, and if the item count reaches <code>grow_at</code>, the hash table is expanded via <code>rehash</code>.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> rehash</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> newsize</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#6A737D">	/* map->table MUST NOT be NULL when this function is called */</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> i, oldsize </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->tablesize;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#E1E4E8">oldtable </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->table;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	alloc_table</span><span style="color:#E1E4E8">(map, newsize);</span></span>
+<span class="line"><span style="color:#F97583">	for</span><span style="color:#E1E4E8"> (i </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">; i </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> oldsize; i</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">		struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">=</span><span style="color:#FFAB70"> oldtable</span><span style="color:#E1E4E8">[i];</span></span>
+<span class="line"><span style="color:#F97583">		while</span><span style="color:#E1E4E8"> (e) {</span></span>
+<span class="line"><span style="color:#F97583">			struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> e->next;</span></span>
+<span class="line"><span style="color:#F97583">			unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> b </span><span style="color:#F97583">=</span><span style="color:#B392F0"> bucket</span><span style="color:#E1E4E8">(map, e);</span></span>
+<span class="line"><span style="color:#E1E4E8">			e->next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->table[b];</span></span>
+<span class="line"><span style="color:#E1E4E8">			map->table[b] </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> e;</span></span>
+<span class="line"><span style="color:#E1E4E8">			e </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> next;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#B392F0">	free</span><span style="color:#E1E4E8">(oldtable);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>The expansion size <code>newsize</code> is double the previous size. Inside <code>alloc_table</code>, <code>calloc</code> is called again to allocate more buckets, and <code>grow_at</code> and <code>shrink_at</code> are reset. Then all items on the old hash table are re-inserted by recomputing their bucket indices with <code>bucket</code> and placing them back into the linked lists of the new buckets. Finally, the old hash table is freed.</p>
+<p><code>hashmap_get</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_get</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#F97583"> *</span><span style="color:#B392F0">find_entry_ptr</span><span style="color:#E1E4E8">(map, key, keydata);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>It calls <code>find_entry_ptr</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#B392F0">find_entry_ptr</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">		const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#6A737D">	/* map->table MUST NOT be NULL when this function is called */</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">=</span><span style="color:#F97583"> &#x26;</span><span style="color:#E1E4E8">map->table[</span><span style="color:#B392F0">bucket</span><span style="color:#E1E4E8">(map, key)];</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#F97583"> !</span><span style="color:#B392F0">entry_equals</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e, key, keydata))</span></span>
+<span class="line"><span style="color:#E1E4E8">		e </span><span style="color:#F97583">=</span><span style="color:#F97583"> &#x26;</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e)->next;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> e;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>First, it finds the bucket corresponding to the desired <code>hashmap_entry *key</code>, then iterates through each node in the bucket, using <code>entry_equals</code> to find the entry that is “equal” to our key and returns it. (Here, “equal” is not determined solely by the hash value; it can also be decided by the user function and the passed <code>keydata</code>, as shown below.)</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> entry_equals</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			       const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">e1</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			       const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">e2</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			       const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> (e1 </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> e2) </span><span style="color:#F97583">||</span></span>
+<span class="line"><span style="color:#E1E4E8">	       (e1->hash </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> e2->hash </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#F97583">		!</span><span style="color:#E1E4E8">map-></span><span style="color:#B392F0">cmpfn</span><span style="color:#E1E4E8">(map->cmpfn_data, e1, e2, keydata));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Some readers may wonder why <code>cmpfn</code> also compares <code>keydata</code>. In fact, some data may have different hash values but still represent the same thing. For example, “adl” and “hzn” may both refer to the same person. Although “adl” and “hzn” may have different hash values, we can store the person’s ID in a struct; then, when looking for items containing that person in the hash table, finding either “adl” or “hzn” would make sense.
+As shown in the following string-pool comparison function, the corresponding <code>pool_entry</code> of the <code>hash_entry</code> is compared, and <code>keydata</code> is compared with <code>e1->data</code> for pointer equality or content equality as an additional check.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> pool_entry_cmp</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">unused_cmp_data</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">eptr</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry_or_key</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e1, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e2;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	e1 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(eptr, </span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry, ent);</span></span>
+<span class="line"><span style="color:#E1E4E8">	e2 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(entry_or_key, </span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry, ent);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> e1->data </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> keydata </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">	       (e1->len </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> e2->len </span><span style="color:#F97583">||</span><span style="color:#B392F0"> memcmp</span><span style="color:#E1E4E8">(e1->data, keydata, e1->len));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Returning to the main point, <code>find_entry_ptr</code> finds and returns the hash entry matching <code>key</code> or <code>keydata</code>. Note that it returns a pointer to a pointer to the hash entry. <code>hashmap_get</code> then returns the dereferenced value of <code>find_entry_ptr</code>.</p>
+<p><code>hashmap_remove</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_remove</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				     const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				     const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">old;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#E1E4E8">e;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	e </span><span style="color:#F97583">=</span><span style="color:#B392F0"> find_entry_ptr</span><span style="color:#E1E4E8">(map, key, keydata);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!*</span><span style="color:#E1E4E8">e)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* remove existing entry */</span></span>
+<span class="line"><span style="color:#E1E4E8">	old </span><span style="color:#F97583">=</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">e;</span></span>
+<span class="line"><span style="color:#F97583">	*</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> old->next;</span></span>
+<span class="line"><span style="color:#E1E4E8">	old->next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* fix size and rehash if appropriate */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (map->do_count_items) {</span></span>
+<span class="line"><span style="color:#E1E4E8">		map->private_size</span><span style="color:#F97583">--</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (map->private_size </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> map->shrink_at)</span></span>
+<span class="line"><span style="color:#B392F0">			rehash</span><span style="color:#E1E4E8">(map, map->tablesize </span><span style="color:#F97583">>></span><span style="color:#E1E4E8"> HASHMAP_RESIZE_BITS);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> old;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>This is simple: first find the pointer to the hash entry and remove it from the linked list. (Think about what would happen if <code>find_entry_ptr</code> used a single-level pointer.)</p>
+<p>Then decrement <code>private_size</code> by one, and possibly perform a shrinking rehash.</p>
+<p><code>hashmap_put</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_put</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				  struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">old </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_remove</span><span style="color:#E1E4E8">(map, entry, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">	hashmap_add</span><span style="color:#E1E4E8">(map, entry);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> old;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Removes the old entry, adds the new entry, and returns the old entry.</p>
+<p><code>hashmap_get_next</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_get_next</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				       const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> entry->next;</span></span>
+<span class="line"><span style="color:#F97583">	for</span><span style="color:#E1E4E8"> (; e; e </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> e->next)</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">entry_equals</span><span style="color:#E1E4E8">(map, entry, e, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#E1E4E8"> e;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>The previous matching entry is passed in, and <code>hashmap_get_next</code> can be used to find the next matching entry (equal by hash or by specified content).</p>
+<p><code>hashmap_iter_init</code> and <code>hashmap_iter_next</code> and <code>hashmap_iter_first</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_iter_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_iter </span><span style="color:#F97583">*</span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">	iter->map </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map;</span></span>
+<span class="line"><span style="color:#E1E4E8">	iter->tablepos </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	iter->next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_iter_next</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_iter </span><span style="color:#F97583">*</span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">current </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> iter->next;</span></span>
+<span class="line"><span style="color:#F97583">	for</span><span style="color:#E1E4E8"> (;;) {</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (current) {</span></span>
+<span class="line"><span style="color:#E1E4E8">			iter->next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> current->next;</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#E1E4E8"> current;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (iter->tablepos </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> iter->map->tablesize)</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">		current </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> iter->map->table[iter->tablepos</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">];</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_iter_first</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">					       struct</span><span style="color:#E1E4E8"> hashmap_iter </span><span style="color:#F97583">*</span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#B392F0">	hashmap_iter_init</span><span style="color:#E1E4E8">(map, iter);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> hashmap_iter_next</span><span style="color:#E1E4E8">(iter);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>hashmap_iter_first</code> obtains a pointer to the first hash entry in the hash table. <code>hashmap_iter_next</code> can be used to get the next hash entry after the previously retrieved one. Thus, <code>hashmap_iter_first</code> and <code>hashmap_iter_next</code> can be used to iterate over all items in the hash table.</p>
+<p><code>hashmap_clear</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_clear</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">) </span><span style="color:#B392F0">hashmap_clear_</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">-</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_clear_</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">ssize_t</span><span style="color:#FFAB70"> entry_offset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map </span><span style="color:#F97583">||</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (entry_offset </span><span style="color:#F97583">>=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">)</span><span style="color:#6A737D">  /* called by hashmap_clear_and_free */</span></span>
+<span class="line"><span style="color:#B392F0">		free_individual_entries</span><span style="color:#E1E4E8">(map, entry_offset);</span></span>
+<span class="line"><span style="color:#B392F0">	free</span><span style="color:#E1E4E8">(map->table);</span></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(map, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">map));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>It is clear that <code>hashmap_clear</code> only frees the buckets of the hash table and does not clean up the data corresponding to each hash entry.
+<code>hashmap_partial_clear</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_partial_clear</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">) </span><span style="color:#B392F0">hashmap_partial_clear_</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">-</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_partial_clear_</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">ssize_t</span><span style="color:#FFAB70"> entry_offset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map </span><span style="color:#F97583">||</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (entry_offset </span><span style="color:#F97583">>=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">)</span><span style="color:#6A737D">  /* called by hashmap_clear_entries */</span></span>
+<span class="line"><span style="color:#B392F0">		free_individual_entries</span><span style="color:#E1E4E8">(map, entry_offset);</span></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(map->table, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, map->tablesize </span><span style="color:#F97583">*</span><span style="color:#F97583"> sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">));</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->shrink_at </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->private_size </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>This one does not even free the buckets of the hash table; instead, it clears them with <code>memset</code>.</p>
+<p><code>hashmap_clear_and_free</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_clear_and_free</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">type</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_clear_</span><span style="color:#E1E4E8">(map, </span><span style="color:#B392F0">offsetof</span><span style="color:#E1E4E8">(type, member))</span></span>
+<span class="line"></span></code></pre>
+<p>At this point we should look at what <code>free_individual_entries</code> does.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> free_individual_entries</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">ssize_t</span><span style="color:#FFAB70"> entry_offset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_iter iter;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	hashmap_iter_init</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">iter);</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> ((e </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_iter_next</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">iter)))</span></span>
+<span class="line"><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">		 * like container_of, but using caller-calculated</span></span>
+<span class="line"><span style="color:#6A737D">		 * offset (caller being hashmap_clear_and_free)</span></span>
+<span class="line"><span style="color:#6A737D">		 */</span></span>
+<span class="line"><span style="color:#B392F0">		free</span><span style="color:#E1E4E8">((</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)e </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> entry_offset);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>It can be seen that it iterates over the entire hash table and frees the corresponding data items.
+<code>hashmap_partial_clear_and_free</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_partial_clear_and_free</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">type</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_partial_clear_</span><span style="color:#E1E4E8">(map, </span><span style="color:#B392F0">offsetof</span><span style="color:#E1E4E8">(type, member))</span></span>
+<span class="line"></span></code></pre>
+<p>Similarly, <code>hashmap_partial_clear_and_free</code> frees the corresponding data items and clears the hash table.</p>
+<p><code>hashmap_entry_init</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> hashmap_entry_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">e</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				      unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> hash</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">	e->hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> hash;</span></span>
+<span class="line"><span style="color:#E1E4E8">	e->next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Fills the hash value into the hash entry.</p>
+<p><code>hashmap_get_size</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> unsigned</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> hashmap_get_size</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (map->do_count_items)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8"> map->private_size;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	BUG</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"hashmap_get_size: size not set"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Gets the number of items in the hash table.
+<code>hashmap_get_from_hash</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_get_from_hash</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#F97583">					const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">					unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> hash</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">					const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry key;</span></span>
+<span class="line"><span style="color:#B392F0">	hashmap_entry_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key, hash);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> hashmap_get</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key, keydata);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Gets a hash entry directly from a hash value.</p>
+<p>hashmap_for_each_entry</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_for_each_entry</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">var</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#F97583">		for</span><span style="color:#E1E4E8"> (var </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">,</span><span style="color:#6A737D"> /* for systems without typeof */</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#E1E4E8">		     var </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_iter_first_entry_offset</span><span style="color:#E1E4E8">(map, iter, </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">							OFFSETOF_VAR</span><span style="color:#E1E4E8">(var, member)); </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">			var; </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">			var </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_iter_next_entry_offset</span><span style="color:#E1E4E8">(iter, </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">							OFFSETOF_VAR</span><span style="color:#E1E4E8">(var, member)))</span></span>
+<span class="line"></span></code></pre>
+<p>Iterates over the entire hash table; this writing style may seem odd.</p>
+<p>First, the beginning of the <code>for</code> loop sets <code>var</code> to <code>NULL</code>; I think this is to ensure that <code>var</code> is a pointer.</p>
+<p>Next, look at <code>hashmap_iter_first_entry_offset</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_iter_first_entry_offset</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">offset</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">	container_of_or_null_offset</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">hashmap_iter_first</span><span style="color:#E1E4E8">(map, iter), offset)</span></span>
+<span class="line"></span></code></pre>
+<p>Then look at <code>container_of_or_null_offset</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#B392F0">container_of_or_null_offset</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">ptr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> offset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> ptr </span><span style="color:#F97583">?</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)ptr </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> offset </span><span style="color:#F97583">:</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>Note that <code>container_of</code> obtains the base address of a struct from the address of one of its members, i.e.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">ptr</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">type</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">	((type </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">) ((</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)(ptr) </span><span style="color:#F97583">-</span><span style="color:#B392F0"> offsetof</span><span style="color:#E1E4E8">(type, member)))</span></span>
+<span class="line"></span></code></pre>
+<p>We can obtain the address of <code>s</code> as follows:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">  typedef</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">    int</span><span style="color:#E1E4E8"> a;</span></span>
+<span class="line"><span style="color:#F97583">    int</span><span style="color:#E1E4E8"> b;</span></span>
+<span class="line"><span style="color:#E1E4E8">  }st;</span></span>
+<span class="line"><span style="color:#F97583">  void</span><span style="color:#B392F0"> func</span><span style="color:#E1E4E8">(){</span></span>
+<span class="line"><span style="color:#E1E4E8">    st s;</span></span>
+<span class="line"><span style="color:#F97583">    int</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">pb</span><span style="color:#F97583">=&#x26;</span><span style="color:#E1E4E8">s.b;</span></span>
+<span class="line"><span style="color:#B392F0">    printf</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"address:</span><span style="color:#79B8FF">%p\n</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">,</span><span style="color:#B392F0">container_of</span><span style="color:#E1E4E8">(pb,st,b));</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span></code></pre>
+<p>Therefore, <code>container_of_or_null_offset</code> performs the <code>container_of</code> work only when <code>ptr</code> is not <code>NULL</code>. Why do it this way? Probably for “higher efficiency”.</p>
+<p>Then
+<code>OFFSETOF_VAR(var, member)</code> can find the offset of the corresponding member within a struct.</p>
+<p><code>OFFSETOF_VAR</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>#if defined(__GNUC__) /* clang sets this, too */</span></span>
+<span class="line"><span>#define OFFSETOF_VAR(ptr, member) offsetof(__typeof__(*ptr), member)</span></span>
+<span class="line"><span>#else /* !__GNUC__ */</span></span>
+<span class="line"><span>#define OFFSETOF_VAR(ptr, member) \</span></span>
+<span class="line"><span>	((uintptr_t)&#x26;(ptr)->member - (uintptr_t)(ptr))</span></span>
+<span class="line"><span>#endif /* !__GNUC__ */</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>On machines with <code>GNU</code>, it directly uses <code>__typeof__</code> to obtain the type of a variable; for example, <code>OFFSETOF_VAR(&#x26;s, b)</code> can find the offset of member <code>b</code> in struct <code>st</code>.</p>
+<p><code>hashmap_iter_first</code> provides the first hash entry.
+<code>hashmap_iter_first_entry_offset</code> can directly find the first data item from the hash entry and the offset of the hash entry within the struct. Nice!
+<code>hashmap_iter_next_entry_offset</code> similarly obtains the next data item,
+so <code>hashmap_for_each_entry</code> can iterate over all data items in the hash table.</p>
+<p><code>hashmap_get_entry</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_get_entry</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">keyvar</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">	container_of_or_null_offset</span><span style="color:#E1E4E8">( </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">				hashmap_get</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">(keyvar)->member, keydata), </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">				OFFSETOF_VAR</span><span style="color:#E1E4E8">(keyvar, member))</span></span>
+<span class="line"></span></code></pre>
+<p>First, <code>hashmap_get</code> obtains the hash entry; <code>OFFSETOF_VAR</code> obtains the offset of the hash entry within the data item; finally, <code>container_of_or_null_offset</code> obtains the address of the data item.</p>
+<p>Most of the APIs have been covered here.</p>
+<p>Finally, let’s look at the pool:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> FLEX_ARRAY</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> pool_entry {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry ent;</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> char</span><span style="color:#FFAB70"> data</span><span style="color:#E1E4E8">[FLEX_ARRAY];</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> pool_entry_cmp</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">unused_cmp_data</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">eptr</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry_or_key</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e1, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e2;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	e1 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(eptr, </span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry, ent);</span></span>
+<span class="line"><span style="color:#E1E4E8">	e2 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(entry_or_key, </span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry, ent);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> e1->data </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> keydata </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">	       (e1->len </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> e2->len </span><span style="color:#F97583">||</span><span style="color:#B392F0"> memcmp</span><span style="color:#E1E4E8">(e1->data, keydata, e1->len));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#B392F0">memintern</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">data</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> len</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	static</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap map;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> pool_entry key, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* initialize string pool hashmap */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map.tablesize)</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">map, pool_entry_cmp, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* lookup interned string in pool */</span></span>
+<span class="line"><span style="color:#B392F0">	hashmap_entry_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key.ent, </span><span style="color:#B392F0">memhash</span><span style="color:#E1E4E8">(data, len));</span></span>
+<span class="line"><span style="color:#E1E4E8">	key.len </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#E1E4E8">	e </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_get_entry</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key, ent, data);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">e) {</span></span>
+<span class="line"><span style="color:#6A737D">		/* not found: create it */</span></span>
+<span class="line"><span style="color:#B392F0">		FLEX_ALLOC_MEM</span><span style="color:#E1E4E8">(e, data, data, len);</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_entry_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">e->ent, key.ent.hash);</span></span>
+<span class="line"><span style="color:#E1E4E8">		e->len </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_add</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">e->ent);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> e->data;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#B392F0">strintern</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">string</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> memintern</span><span style="color:#E1E4E8">(string, </span><span style="color:#B392F0">strlen</span><span style="color:#E1E4E8">(string));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>First, we can see that each <code>pool_entry</code> contains a hash entry, which means we can find all pool entries by subtracting the offset from this hash entry.</p>
+<p>In <code>memintern</code>, we search the static <code>hashmap</code> for the hash entry corresponding to <code>data</code>; if found, we return the <code>data</code> member of the corresponding pool entry (which holds the string). Otherwise, <code>FLEX_ALLOC_MEM</code> allocates memory for the pool entry, fills the <code>data</code> field with the function parameter <code>data</code>, initializes the hash entry, adds it to the hash table, and returns the <code>data</code> from the pool entry.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> FLEX_ALLOC_MEM</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">x</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">flexname</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">buf</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">len</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">do</span><span style="color:#E1E4E8"> { </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> flex_array_len_ </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (len); </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">	(x) </span><span style="color:#F97583">=</span><span style="color:#B392F0"> xcalloc</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, </span><span style="color:#B392F0">st_add3</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">(x)), flex_array_len_, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">)); </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">	memcpy</span><span style="color:#E1E4E8">((</span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)(x)->flexname, (buf), flex_array_len_); </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">} </span><span style="color:#F97583">while</span><span style="color:#E1E4E8"> (</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>static inline size_t st_add(size_t a, size_t b)</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>	if (unsigned_add_overflows(a, b))</span></span>
+<span class="line"><span>		die("size_t overflow: %"PRIuMAX" + %"PRIuMAX,</span></span>
+<span class="line"><span>		    (uintmax_t)a, (uintmax_t)b);</span></span>
+<span class="line"><span>	return a + b;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span>#define st_add3(a,b,c)   st_add(st_add((a),(b)),(c))</span></span>
+<span class="line"><span></span></span></code></pre>
+<p><code>FLEX_ALLOC_MEM</code> essentially <code>xcalloc</code>s a block of memory whose size is struct size + string length + 1, uses it as the address of the struct, and fills the corresponding field with the string. <code>st_add3</code> just checks for overflow.</p>
+<p>Note that <code>FLEX_ARRAY</code> in the pool entry has no value, meaning that <code>data</code> is a flexible array; later, you can directly <code>malloc</code> a block larger than the struct size for the struct to serve as the size of <code>data</code>.</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> char</span><span style="color:#FFAB70"> data</span><span style="color:#E1E4E8">[FLEX_ARRAY];</span></span>
+<span class="line"></span></code></pre>
+<p>Finally, <code>strintern</code> takes a static string; repeated calls return the same dynamic string. There is no need to repeatedly call <code>strdup</code> and dynamic allocation, which would hurt performance.</p>
+<p>Summary: Git adapts the hash table with various interfaces through macro functions. The design is exquisite (though perhaps somewhat difficult), striving for peak performance optimization.</p>
+<p>But this is probably the simplest API in Git! A newbie cries ;-)</p>
+</div>
+<div class="lang-section" data-lang="zh">
+<p>hashmap是一种存储Key 和Value的集合，每个键值对称为Entry。每个Entry被分散存储在一个个“桶”中。</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th></th><th>查找</th><th>插入</th><th>删除</th></tr></thead><tbody><tr><td>平均</td><td>O(1)</td><td>O(1)</td><td>O(1)</td></tr><tr><td>最坏</td><td>O(N)</td><td>O(N)</td><td>O(N)</td></tr></tbody></table>
+<p>而hash有很多中不同的算法，其中开放寻址法和链式存储法是最常见的。</p>
+<p>git中采取的是链式存储的方式。</p>
+<p>而hash存储的好坏很大一部分程度上取决于hash算法，git中采取就是著名的SHA1算法，当然现在可能这种算法也是不安全的，不过git中也为SHA256准备了备用方案。</p>
+<p>今天将介绍Git中hashtable的实现api。</p>
+<h3 id="hash算法">hash算法</h3>
+<p>strhash,strihash,memhash,memihash,
+memihash_cont这几种api基本都一致。如下图的strhash，通过字符串中每一个字符和 当前hash值和FNV32_PRIME 的乘积做异或运算，返回最终hash值。strihash也不过是在strhash中小写字符转大写去做运算，memhash对缓冲区中每个字符做同样运算，memihash同理strihash。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> strhash</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">str</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> c, hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> FNV32_BASE;</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> ((c </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> char</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">str</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#E1E4E8">		hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (hash </span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> FNV32_PRIME) </span><span style="color:#F97583">^</span><span style="color:#E1E4E8"> c;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> hash;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>memihash_cont有一点小不同，在memihash的基础上 hash的初始值不再是FNV32_BASE而是外界提供的hash_seed。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#6A737D">/*</span></span>
+<span class="line"><span style="color:#6A737D"> *将另一块数据合并到memihash中</span></span>
+<span class="line"><span style="color:#6A737D"> *计算。</span></span>
+<span class="line"><span style="color:#6A737D"> */</span></span>
+<span class="line"><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> memihash_cont</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> hash_seed</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">buf</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> len</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> hash_seed;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">ucbuf </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">) buf;</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> (len</span><span style="color:#F97583">--</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">		unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> c </span><span style="color:#F97583">=</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">ucbuf</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (c </span><span style="color:#F97583">>=</span><span style="color:#9ECBFF"> 'a'</span><span style="color:#F97583"> &#x26;&#x26;</span><span style="color:#E1E4E8"> c </span><span style="color:#F97583">&#x3C;=</span><span style="color:#9ECBFF"> 'z'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">			c </span><span style="color:#F97583">-=</span><span style="color:#9ECBFF"> 'a'</span><span style="color:#F97583"> -</span><span style="color:#9ECBFF"> 'A'</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">		hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (hash </span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> FNV32_PRIME) </span><span style="color:#F97583">^</span><span style="color:#E1E4E8"> c;</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> hash;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<h3 id="数据结构">数据结构</h3>
+<p><code>hashmap_entry</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> hash;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span></code></pre>
+<p><code>hash</code>: 存放一个hash值。
+<code>next</code>: 一个桶中下一个Entry的指针。</p>
+<p><code>hashmap</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#E1E4E8">table;</span></span>
+<span class="line"><span style="color:#E1E4E8">	hashmap_cmp_fn cmpfn;</span></span>
+<span class="line"><span style="color:#F97583">	const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">cmpfn_data;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> private_size;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> tablesize;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> grow_at;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> shrink_at;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> do_count_items : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span></code></pre>
+<p><code>table</code>: hashmap中有一个hashmap_entry的二级指针table,这代表之后我们使用动态分配table的内存之后数组中每个都是一个
+hashmap_entry的指针，这些指针通过<code>next</code>指针串联。</p>
+<p><code>hashmap_cmp_fn</code>: 用户提供的函数，用于测试两个hashmap条目是否相等。</p>
+<p><code>private_size</code>: 项的总数。</p>
+<p><code>tablesize</code>: 桶的数量。</p>
+<p><code>grow_at</code>: hashtable在有多少项的时候执行扩容操作。</p>
+<p><code>shrink_at</code>: hashtable在桶有多少项的时候执行缩小操作。</p>
+<p><code>do_count_items</code>: 这一个bit可以指定是否需要跟踪Entry总数（通过private_size）。</p>
+<p><code>hashmap_iter</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_iter {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">map;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> tablepos;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span></code></pre>
+<h3 id="api">api:</h3>
+<p><code>hashmap_init</code>and <code>HASHMAP_INIT</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, hashmap_cmp_fn </span><span style="color:#FFAB70">equals_function</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">		  const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">cmpfn_data</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> initial_size</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> size </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> HASHMAP_INITIAL_SIZE;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(map, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">map));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	map->cmpfn </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> equals_function </span><span style="color:#F97583">?</span><span style="color:#E1E4E8"> equals_function </span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> always_equal;</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->cmpfn_data </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> cmpfn_data;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* calculate initial table size and allocate the table */</span></span>
+<span class="line"><span style="color:#E1E4E8">	initial_size </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8">) ((</span><span style="color:#F97583">uint64_t</span><span style="color:#E1E4E8">) initial_size </span><span style="color:#F97583">*</span><span style="color:#79B8FF"> 100</span></span>
+<span class="line"><span style="color:#F97583">			/</span><span style="color:#E1E4E8"> HASHMAP_LOAD_FACTOR);</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> (initial_size </span><span style="color:#F97583">></span><span style="color:#E1E4E8"> size)</span></span>
+<span class="line"><span style="color:#E1E4E8">		size </span><span style="color:#F97583">&#x3C;&#x3C;=</span><span style="color:#E1E4E8"> HASHMAP_RESIZE_BITS;</span></span>
+<span class="line"><span style="color:#B392F0">	alloc_table</span><span style="color:#E1E4E8">(map, size);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/*</span></span>
+<span class="line"><span style="color:#6A737D">	 * Keep track of the number of items in the map and</span></span>
+<span class="line"><span style="color:#6A737D">	 * allow the map to automatically grow as necessary.</span></span>
+<span class="line"><span style="color:#6A737D">	 */</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->do_count_items </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> HASHMAP_INIT</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">fn</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">data</span><span style="color:#E1E4E8">) { .cmpfn </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> fn, .cmpfn_data </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> data, </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">				 .do_count_items </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8"> }</span></span>
+<span class="line"></span></code></pre>
+<p>为hashmap设置了项比较函数，函数的参数，并在<code>HASHMAP_INITIAL_SIZE</code>(64)和用户传入的<code>initial_size</code>取决出需要分配桶数量。
+在<code>alloc_table()</code>执行分配。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> alloc_table</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> size</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->tablesize </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> size;</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->table </span><span style="color:#F97583">=</span><span style="color:#B392F0"> xcalloc</span><span style="color:#E1E4E8">(size, </span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">));</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* calculate resize thresholds for new size */</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->grow_at </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8">) ((</span><span style="color:#F97583">uint64_t</span><span style="color:#E1E4E8">) size </span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> HASHMAP_LOAD_FACTOR </span><span style="color:#F97583">/</span><span style="color:#79B8FF"> 100</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (size </span><span style="color:#F97583">&#x3C;=</span><span style="color:#E1E4E8"> HASHMAP_INITIAL_SIZE)</span></span>
+<span class="line"><span style="color:#E1E4E8">		map->shrink_at </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	else</span></span>
+<span class="line"><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">		 * The shrink-threshold must be slightly smaller than</span></span>
+<span class="line"><span style="color:#6A737D">		 * (grow-threshold / resize-factor) to prevent erratic resizing,</span></span>
+<span class="line"><span style="color:#6A737D">		 * thus we divide by (resize-factor + 1).</span></span>
+<span class="line"><span style="color:#6A737D">		 */</span></span>
+<span class="line"><span style="color:#E1E4E8">		map->shrink_at </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->grow_at </span><span style="color:#F97583">/</span><span style="color:#E1E4E8"> ((</span><span style="color:#79B8FF">1</span><span style="color:#F97583"> &#x3C;&#x3C;</span><span style="color:#E1E4E8"> HASHMAP_RESIZE_BITS) </span><span style="color:#F97583">+</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p>在<code>alloc_table()</code>中，<code>grow_at</code>设置为差不多<code>0.8*size</code>的大小，如果<code>size &#x3C; HASHMAP_INITIAL_SIZE</code>，<code>shrink_at</code>设置为0,桶比较少，意味着在hashtable有项在桶中的时候不需要调用<code>realloc</code>缩小容量了;否则shrink_at设置为差不多<code>0.16*size</code>的大小。注意到每个桶是通过<code>xcalloc</code>分配的内存，这意味着每个桶的链表头开始都是<code>NULL</code>。<code>HASHMAP_INIT</code>是另外一种初始化方式。</p>
+<p><code>hashmap_add</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_add</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> b;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#B392F0">		alloc_table</span><span style="color:#E1E4E8">(map, HASHMAP_INITIAL_SIZE);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	b </span><span style="color:#F97583">=</span><span style="color:#B392F0"> bucket</span><span style="color:#E1E4E8">(map, entry);</span></span>
+<span class="line"><span style="color:#6A737D">	/* add entry */</span></span>
+<span class="line"><span style="color:#E1E4E8">	entry->next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->table[b];</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->table[b] </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> entry;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* fix size and rehash if appropriate */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (map->do_count_items) {</span></span>
+<span class="line"><span style="color:#E1E4E8">		map->private_size</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (map->private_size </span><span style="color:#F97583">></span><span style="color:#E1E4E8"> map->grow_at)</span></span>
+<span class="line"><span style="color:#B392F0">			rehash</span><span style="color:#E1E4E8">(map, map->tablesize </span><span style="color:#F97583">&#x3C;&#x3C;</span><span style="color:#E1E4E8"> HASHMAP_RESIZE_BITS);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>向hash表添加项，首先用<code>bucket</code>以项的hash值找到对应的桶坐标：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> unsigned</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> bucket</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> key->hash </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> (map->tablesize </span><span style="color:#F97583">-</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>可以注意到<code>bucket</code>通过<code>&#x26;</code>而不是<code>%</code>获得桶的坐标，真的代码写的很精妙。
+接着往对应的桶插入链表的头部。
+并总数计数，如果项数到了<code>grow_at</code>，通过rehash将hash表扩容。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> rehash</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> newsize</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#6A737D">	/* map->table MUST NOT be NULL when this function is called */</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> i, oldsize </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->tablesize;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#E1E4E8">oldtable </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->table;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	alloc_table</span><span style="color:#E1E4E8">(map, newsize);</span></span>
+<span class="line"><span style="color:#F97583">	for</span><span style="color:#E1E4E8"> (i </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">; i </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> oldsize; i</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">		struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">=</span><span style="color:#FFAB70"> oldtable</span><span style="color:#E1E4E8">[i];</span></span>
+<span class="line"><span style="color:#F97583">		while</span><span style="color:#E1E4E8"> (e) {</span></span>
+<span class="line"><span style="color:#F97583">			struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> e->next;</span></span>
+<span class="line"><span style="color:#F97583">			unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> b </span><span style="color:#F97583">=</span><span style="color:#B392F0"> bucket</span><span style="color:#E1E4E8">(map, e);</span></span>
+<span class="line"><span style="color:#E1E4E8">			e->next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map->table[b];</span></span>
+<span class="line"><span style="color:#E1E4E8">			map->table[b] </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> e;</span></span>
+<span class="line"><span style="color:#E1E4E8">			e </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> next;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#B392F0">	free</span><span style="color:#E1E4E8">(oldtable);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>扩容的大小<code>newsize</code>是之前的俩倍，在alloc_table中重新调用<code>calloc</code>分配更多的项，并重新设置了<code>graw_at</code>和<code>shrink_at</code>。接着将旧的hash表上所有的项重新用<code>bucket</code>计算桶坐标，并重新放入桶上的链表上。最后将旧的哈希表释放。</p>
+<p><code>hashmap_get</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_get</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#F97583"> *</span><span style="color:#B392F0">find_entry_ptr</span><span style="color:#E1E4E8">(map, key, keydata);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>其中调用<code>find_entry_ptr</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#B392F0">find_entry_ptr</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">		const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#6A737D">	/* map->table MUST NOT be NULL when this function is called */</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">=</span><span style="color:#F97583"> &#x26;</span><span style="color:#E1E4E8">map->table[</span><span style="color:#B392F0">bucket</span><span style="color:#E1E4E8">(map, key)];</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#F97583"> !</span><span style="color:#B392F0">entry_equals</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e, key, keydata))</span></span>
+<span class="line"><span style="color:#E1E4E8">		e </span><span style="color:#F97583">=</span><span style="color:#F97583"> &#x26;</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e)->next;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> e;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>首先找到我们想要的<code>hashmap_entry *key</code>所对应的桶，在遍历桶上每个节点通过<code>entry_equals</code>找到和我们的key“相同”的项并返回（这里的相同不仅仅靠着hash值，还可以通过用户函数和传入的keydata来判断相同。如下）</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> entry_equals</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			       const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">e1</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			       const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">e2</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			       const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> (e1 </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> e2) </span><span style="color:#F97583">||</span></span>
+<span class="line"><span style="color:#E1E4E8">	       (e1->hash </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> e2->hash </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#F97583">		!</span><span style="color:#E1E4E8">map-></span><span style="color:#B392F0">cmpfn</span><span style="color:#E1E4E8">(map->cmpfn_data, e1, e2, keydata));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>可能大家会有些困惑这个cmpfn为什么还要去比较<code>keydata</code>，其实有些数据也许hash值不同，但是它们其实都算同一个东西，比如”adl”和”hzn”都它们都指向同一个人，也许”adl”和”hzn”的哈希值是不同的，但是我们可以在一个结构体里面放如人的ID，这样在hash表中想找含有该人的项，找到”adl”或者”hzn”都符合常理。
+正如下面这样一个字符串池的比较函数，通过比较<code>hash_entry</code>对应的<code>pool_entry</code>，并比较<code>keydata</code>是否和<code>e1->data</code>相同或内容相等来作为额外的比较。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> pool_entry_cmp</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">unused_cmp_data</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">eptr</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry_or_key</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e1, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e2;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	e1 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(eptr, </span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry, ent);</span></span>
+<span class="line"><span style="color:#E1E4E8">	e2 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(entry_or_key, </span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry, ent);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> e1->data </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> keydata </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">	       (e1->len </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> e2->len </span><span style="color:#F97583">||</span><span style="color:#B392F0"> memcmp</span><span style="color:#E1E4E8">(e1->data, keydata, e1->len));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>言归正传，<code>find_entry_ptr</code>找到了和<code>key</code>或者<code>keydata</code>匹配的哈希项并返回，注意这里返回了哈希项的二级指针。<code>hashmap_get</code>则返回了<code>find_entry_ptr</code>的解引用。</p>
+<p><code>hashmap_remove</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_remove</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				     const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">key</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				     const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">old;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">**</span><span style="color:#E1E4E8">e;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	e </span><span style="color:#F97583">=</span><span style="color:#B392F0"> find_entry_ptr</span><span style="color:#E1E4E8">(map, key, keydata);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!*</span><span style="color:#E1E4E8">e)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* remove existing entry */</span></span>
+<span class="line"><span style="color:#E1E4E8">	old </span><span style="color:#F97583">=</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">e;</span></span>
+<span class="line"><span style="color:#F97583">	*</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> old->next;</span></span>
+<span class="line"><span style="color:#E1E4E8">	old->next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* fix size and rehash if appropriate */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (map->do_count_items) {</span></span>
+<span class="line"><span style="color:#E1E4E8">		map->private_size</span><span style="color:#F97583">--</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (map->private_size </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> map->shrink_at)</span></span>
+<span class="line"><span style="color:#B392F0">			rehash</span><span style="color:#E1E4E8">(map, map->tablesize </span><span style="color:#F97583">>></span><span style="color:#E1E4E8"> HASHMAP_RESIZE_BITS);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> old;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>很简单，先找到哈希项对应的二级指针，并在链表中删除它（想想如果<code>find_entry_ptr</code>使用一级指针会怎么样。）</p>
+<p>接着再<code>private_size</code>减1，可能执行缩小的rehash。</p>
+<p><code>hashmap_put</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_put</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				  struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">old </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_remove</span><span style="color:#E1E4E8">(map, entry, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">	hashmap_add</span><span style="color:#E1E4E8">(map, entry);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> old;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>remove旧项后add新项并返回旧项。</p>
+<p><code>hashmap_get_next</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_get_next</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				       const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> entry->next;</span></span>
+<span class="line"><span style="color:#F97583">	for</span><span style="color:#E1E4E8"> (; e; e </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> e->next)</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">entry_equals</span><span style="color:#E1E4E8">(map, entry, e, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#E1E4E8"> e;</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>传入的是前一个匹配项，通过<code>hashmap_get_next</code>可以找到下一个（相同或者指定内容相等）匹配项。</p>
+<p><code>hashmap_iter_init</code>and<code>hashmap_iter_next</code>and<code>hashmap_iter_first</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_iter_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_iter </span><span style="color:#F97583">*</span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">	iter->map </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> map;</span></span>
+<span class="line"><span style="color:#E1E4E8">	iter->tablepos </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	iter->next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_iter_next</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_iter </span><span style="color:#F97583">*</span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">current </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> iter->next;</span></span>
+<span class="line"><span style="color:#F97583">	for</span><span style="color:#E1E4E8"> (;;) {</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (current) {</span></span>
+<span class="line"><span style="color:#E1E4E8">			iter->next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> current->next;</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#E1E4E8"> current;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (iter->tablepos </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> iter->map->tablesize)</span></span>
+<span class="line"><span style="color:#F97583">			return</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">		current </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> iter->map->table[iter->tablepos</span><span style="color:#F97583">++</span><span style="color:#E1E4E8">];</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_iter_first</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">					       struct</span><span style="color:#E1E4E8"> hashmap_iter </span><span style="color:#F97583">*</span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#B392F0">	hashmap_iter_init</span><span style="color:#E1E4E8">(map, iter);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> hashmap_iter_next</span><span style="color:#E1E4E8">(iter);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p><code>hashmap_iter_first</code>获得哈希表第一个哈希项指针。
+<code>hashmap_iter_next</code>可以获得从第前一个获取到下一个哈希项。
+也就是通过<code>hashmap_iter_first</code>和<code>hashmap_iter_next</code>哈希表所有的项。</p>
+<p><code>hashmap_clear</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_clear</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">) </span><span style="color:#B392F0">hashmap_clear_</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">-</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_clear_</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">ssize_t</span><span style="color:#FFAB70"> entry_offset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map </span><span style="color:#F97583">||</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (entry_offset </span><span style="color:#F97583">>=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">)</span><span style="color:#6A737D">  /* called by hashmap_clear_and_free */</span></span>
+<span class="line"><span style="color:#B392F0">		free_individual_entries</span><span style="color:#E1E4E8">(map, entry_offset);</span></span>
+<span class="line"><span style="color:#B392F0">	free</span><span style="color:#E1E4E8">(map->table);</span></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(map, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">map));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>很清晰这个<code>hashmap_clear</code>只能free了哈希表上的桶，不会对每个哈希项对应的数据进行清理。
+<code>hashmap_partial_clear</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_partial_clear</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">) </span><span style="color:#B392F0">hashmap_partial_clear_</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">-</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> hashmap_partial_clear_</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">ssize_t</span><span style="color:#FFAB70"> entry_offset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map </span><span style="color:#F97583">||</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">map->table)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (entry_offset </span><span style="color:#F97583">>=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">)</span><span style="color:#6A737D">  /* called by hashmap_clear_entries */</span></span>
+<span class="line"><span style="color:#B392F0">		free_individual_entries</span><span style="color:#E1E4E8">(map, entry_offset);</span></span>
+<span class="line"><span style="color:#B392F0">	memset</span><span style="color:#E1E4E8">(map->table, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, map->tablesize </span><span style="color:#F97583">*</span><span style="color:#F97583"> sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">));</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->shrink_at </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">	map->private_size </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>这个甚至连哈希表上的桶都不会free掉，而是使用memset清空。</p>
+<p><code>hashmap_clear_and_free</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_clear_and_free</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">type</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_clear_</span><span style="color:#E1E4E8">(map, </span><span style="color:#B392F0">offsetof</span><span style="color:#E1E4E8">(type, member))</span></span>
+<span class="line"></span></code></pre>
+<p>这时候我们应该去看看<code>free_individual_entries</code>里面是啥了。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> free_individual_entries</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">ssize_t</span><span style="color:#FFAB70"> entry_offset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_iter iter;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	hashmap_iter_init</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">iter);</span></span>
+<span class="line"><span style="color:#F97583">	while</span><span style="color:#E1E4E8"> ((e </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_iter_next</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">iter)))</span></span>
+<span class="line"><span style="color:#6A737D">		/*</span></span>
+<span class="line"><span style="color:#6A737D">		 * like container_of, but using caller-calculated</span></span>
+<span class="line"><span style="color:#6A737D">		 * offset (caller being hashmap_clear_and_free)</span></span>
+<span class="line"><span style="color:#6A737D">		 */</span></span>
+<span class="line"><span style="color:#B392F0">		free</span><span style="color:#E1E4E8">((</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)e </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> entry_offset);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>可以看到遍历了整个哈希表并free掉对应的数据项。
+<code>hashmap_partial_clear_and_free</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_partial_clear_and_free</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">type</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_partial_clear_</span><span style="color:#E1E4E8">(map, </span><span style="color:#B392F0">offsetof</span><span style="color:#E1E4E8">(type, member))</span></span>
+<span class="line"></span></code></pre>
+<p>那么同理，<code>hashmap_partial_clear_and_free</code>会free对应的数据项，并将hash表清空。</p>
+<p><code>hashmap_entry_init</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> void</span><span style="color:#B392F0"> hashmap_entry_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">e</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">				      unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> hash</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">	e->hash </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> hash;</span></span>
+<span class="line"><span style="color:#E1E4E8">	e->next </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>向哈希项填入hash值</p>
+<p><code>hashmap_get_size</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> unsigned</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> hashmap_get_size</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (map->do_count_items)</span></span>
+<span class="line"><span style="color:#F97583">		return</span><span style="color:#E1E4E8"> map->private_size;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">	BUG</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"hashmap_get_size: size not set"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>获取哈希表中的项数。
+<code>hashmap_get_from_hash</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#B392F0">hashmap_get_from_hash</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#F97583">					const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap </span><span style="color:#F97583">*</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">					unsigned</span><span style="color:#F97583"> int</span><span style="color:#FFAB70"> hash</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">					const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry key;</span></span>
+<span class="line"><span style="color:#B392F0">	hashmap_entry_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key, hash);</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> hashmap_get</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key, keydata);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>直接从哈希值获取哈希项。</p>
+<p>hashmap_for_each_entry</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_for_each_entry</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">var</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#F97583">		for</span><span style="color:#E1E4E8"> (var </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">,</span><span style="color:#6A737D"> /* for systems without typeof */</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#E1E4E8">		     var </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_iter_first_entry_offset</span><span style="color:#E1E4E8">(map, iter, </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">							OFFSETOF_VAR</span><span style="color:#E1E4E8">(var, member)); </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">			var; </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">			var </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_iter_next_entry_offset</span><span style="color:#E1E4E8">(iter, </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">							OFFSETOF_VAR</span><span style="color:#E1E4E8">(var, member)))</span></span>
+<span class="line"></span></code></pre>
+<p>遍历整个hash表，这可能写法比较诡异。</p>
+<p>首先for循环的开头是将<code>var</code>置为NULL，以我觉得它是想保证<code>var</code>是个指针。</p>
+<p>接着看<code>hashmap_iter_first_entry_offset</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_iter_first_entry_offset</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">iter</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">offset</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">	container_of_or_null_offset</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">hashmap_iter_first</span><span style="color:#E1E4E8">(map, iter), offset)</span></span>
+<span class="line"></span></code></pre>
+<p>接着看<code>container_of_or_null_offset</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#B392F0">container_of_or_null_offset</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">ptr</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> offset</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> ptr </span><span style="color:#F97583">?</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)ptr </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> offset </span><span style="color:#F97583">:</span><span style="color:#79B8FF"> NULL</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>注意到<code>container_of</code>是获取一个结构体中某个成员所对应的该结构体首地址，即</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">ptr</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">type</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">	((type </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">) ((</span><span style="color:#F97583">char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)(ptr) </span><span style="color:#F97583">-</span><span style="color:#B392F0"> offsetof</span><span style="color:#E1E4E8">(type, member)))</span></span>
+<span class="line"></span></code></pre>
+<p>我们可以通入如下方式获得s的地址</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">  typedef</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">    int</span><span style="color:#E1E4E8"> a;</span></span>
+<span class="line"><span style="color:#F97583">    int</span><span style="color:#E1E4E8"> b;</span></span>
+<span class="line"><span style="color:#E1E4E8">  }st;</span></span>
+<span class="line"><span style="color:#F97583">  void</span><span style="color:#B392F0"> func</span><span style="color:#E1E4E8">(){</span></span>
+<span class="line"><span style="color:#E1E4E8">    st s;</span></span>
+<span class="line"><span style="color:#F97583">    int</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">pb</span><span style="color:#F97583">=&#x26;</span><span style="color:#E1E4E8">s.b;</span></span>
+<span class="line"><span style="color:#B392F0">    printf</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"address:</span><span style="color:#79B8FF">%p\n</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">,</span><span style="color:#B392F0">container_of</span><span style="color:#E1E4E8">(pb,st,b));</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span></code></pre>
+<p>因此<code>container_of_or_null_offset</code>就是在ptr不为NULL的时候采取做<code>container</code>的工作，至于为什么要这么做？可能是”更高效”。</p>
+<p>然后
+<code>OFFSETOF_VAR(var,member)</code>可以从一个结构体中找到对应内容的偏移量</p>
+<p><code>OFFSETOF_VAR</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>#if defined(__GNUC__) /* clang sets this, too */</span></span>
+<span class="line"><span>#define OFFSETOF_VAR(ptr, member) offsetof(__typeof__(*ptr), member)</span></span>
+<span class="line"><span>#else /* !__GNUC__ */</span></span>
+<span class="line"><span>#define OFFSETOF_VAR(ptr, member) \</span></span>
+<span class="line"><span>	((uintptr_t)&#x26;(ptr)->member - (uintptr_t)(ptr))</span></span>
+<span class="line"><span>#endif /* !__GNUC__ */</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>在有<code>GNU</code>的机器上直接使用<code>__typeof__</code>得到一个数据的类型，如<code>OFFSETOF_VAR(&#x26;s,b)</code>就可以找到结构体st上成员b对应的偏移量。</p>
+<p><code>hashmap_iter_first</code>提供第一个哈希项，
+<code>hashmap_iter_first_entry_offset</code>可以直接通过哈希项和哈希项在结构体中的偏移量找到第一个数据项。妙啊！
+<code>hashmap_iter_next_entry_offset</code>同理可以获得下一个数据项，
+所以<code>hashmap_for_each_entry</code>可以遍历整个哈希表的数据项。</p>
+<p><code>hashmap_get_entry</code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> hashmap_get_entry</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">map</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">keyvar</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">member</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">) </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">	container_of_or_null_offset</span><span style="color:#E1E4E8">( </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">				hashmap_get</span><span style="color:#E1E4E8">(map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">(keyvar)->member, keydata), </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">				OFFSETOF_VAR</span><span style="color:#E1E4E8">(keyvar, member))</span></span>
+<span class="line"></span></code></pre>
+<p>首先<code>hashmap_get</code>获得哈希项，<code>OFFSETOF_VAR</code>获得哈希项在数据项的偏移量，最终
+<code>container_of_or_null_offset</code>获得数据项地址。</p>
+<p>这里大部分api讲到了。</p>
+<p>可以最后看看池</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> FLEX_ARRAY</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> pool_entry {</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> hashmap_entry ent;</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> char</span><span style="color:#FFAB70"> data</span><span style="color:#E1E4E8">[FLEX_ARRAY];</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> int</span><span style="color:#B392F0"> pool_entry_cmp</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">unused_cmp_data</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">eptr</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap_entry </span><span style="color:#F97583">*</span><span style="color:#FFAB70">entry_or_key</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">			  const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">keydata</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e1, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e2;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">	e1 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(eptr, </span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry, ent);</span></span>
+<span class="line"><span style="color:#E1E4E8">	e2 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> container_of</span><span style="color:#E1E4E8">(entry_or_key, </span><span style="color:#F97583">const</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> pool_entry, ent);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> e1->data </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> keydata </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">	       (e1->len </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> e2->len </span><span style="color:#F97583">||</span><span style="color:#B392F0"> memcmp</span><span style="color:#E1E4E8">(e1->data, keydata, e1->len));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#B392F0">memintern</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> void</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">data</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">size_t</span><span style="color:#FFAB70"> len</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	static</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> hashmap map;</span></span>
+<span class="line"><span style="color:#F97583">	struct</span><span style="color:#E1E4E8"> pool_entry key, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">e;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* initialize string pool hashmap */</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">map.tablesize)</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">map, pool_entry_cmp, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">	/* lookup interned string in pool */</span></span>
+<span class="line"><span style="color:#B392F0">	hashmap_entry_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key.ent, </span><span style="color:#B392F0">memhash</span><span style="color:#E1E4E8">(data, len));</span></span>
+<span class="line"><span style="color:#E1E4E8">	key.len </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#E1E4E8">	e </span><span style="color:#F97583">=</span><span style="color:#B392F0"> hashmap_get_entry</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">key, ent, data);</span></span>
+<span class="line"><span style="color:#F97583">	if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">e) {</span></span>
+<span class="line"><span style="color:#6A737D">		/* not found: create it */</span></span>
+<span class="line"><span style="color:#B392F0">		FLEX_ALLOC_MEM</span><span style="color:#E1E4E8">(e, data, data, len);</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_entry_init</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">e->ent, key.ent.hash);</span></span>
+<span class="line"><span style="color:#E1E4E8">		e->len </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#B392F0">		hashmap_add</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">map, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">e->ent);</span></span>
+<span class="line"><span style="color:#E1E4E8">	}</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#E1E4E8"> e->data;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> inline</span><span style="color:#F97583"> const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#B392F0">strintern</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">string</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">	return</span><span style="color:#B392F0"> memintern</span><span style="color:#E1E4E8">(string, </span><span style="color:#B392F0">strlen</span><span style="color:#E1E4E8">(string));</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span></code></pre>
+<p>首先我们可以看到<code>pool_entry</code>池项中有一个哈希项，这说明我们可以通过这个哈希项减去偏移量的方式找到所有的池项。</p>
+<p><code>memintern</code>中，我们会在一个静态的<code>hashmap</code>中寻找<code>data</code>所对应的哈希项，如果找到了就返回对应的池项的data成员（这里存放字符串），否则<code>FLEX_ALLOC_MEM</code>为池项分配内存并填写了<code>data</code>字段为我们的函数形参<code>data</code>，并初始化哈希项并加入到哈希表中，返回池项中的<code>data</code>。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">#define</span><span style="color:#B392F0"> FLEX_ALLOC_MEM</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">x</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">flexname</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">buf</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">len</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">do</span><span style="color:#E1E4E8"> { </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> flex_array_len_ </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> (len); </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">	(x) </span><span style="color:#F97583">=</span><span style="color:#B392F0"> xcalloc</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, </span><span style="color:#B392F0">st_add3</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">sizeof</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">(x)), flex_array_len_, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">)); </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#B392F0">	memcpy</span><span style="color:#E1E4E8">((</span><span style="color:#F97583">void</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">)(x)->flexname, (buf), flex_array_len_); </span><span style="color:#79B8FF">\</span></span>
+<span class="line"><span style="color:#E1E4E8">} </span><span style="color:#F97583">while</span><span style="color:#E1E4E8"> (</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>static inline size_t st_add(size_t a, size_t b)</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>	if (unsigned_add_overflows(a, b))</span></span>
+<span class="line"><span>		die("size_t overflow: %"PRIuMAX" + %"PRIuMAX,</span></span>
+<span class="line"><span>		    (uintmax_t)a, (uintmax_t)b);</span></span>
+<span class="line"><span>	return a + b;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span>#define st_add3(a,b,c)   st_add(st_add((a),(b)),(c))</span></span>
+<span class="line"><span></span></span></code></pre>
+<p><code>FLEX_ALLOC_MEM</code>其中是<code>xcalloc</code>了一块 结构体大小+字符串长度+1 的空间作为结构体的地址，并将字符串填入对应字段。<code>st_add3</code>不过是检查了下是否溢出。</p>
+<p>注意到池项中FLEX_ARRAY没有值，也就是说<code>data</code>是个可增长数组，之后可以直接给结构体malloc比结构体大小大的空间作为<code>data</code>的大小。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">	size_t</span><span style="color:#E1E4E8"> len;</span></span>
+<span class="line"><span style="color:#F97583">	unsigned</span><span style="color:#F97583"> char</span><span style="color:#FFAB70"> data</span><span style="color:#E1E4E8">[FLEX_ARRAY];</span></span>
+<span class="line"></span></code></pre>
+<p>最后<code>strintern</code>也就是填入了静态的字符串多次调用会返回单一的动态的字符串。
+不需要重复多次调用<code>strdup</code>动态分配影响性能。</p>
+<p>总结：git 通过宏函数为哈希表适配了各式各样的接口，设计精巧（可能也有些困难），为性能优化做到了精益求精。</p>
+<p>不过这可能是git中最简单的api了吧！小白痛哭;-）</p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag git" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag git</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

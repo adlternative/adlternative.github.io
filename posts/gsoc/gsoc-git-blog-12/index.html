@@ -1,0 +1,215 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>GSOC, Git Blog 12 - ZheNing Hu</title><meta name="description" content="GSOC, Git Blog 12"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.C594gZsK.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="GSOC, Git Blog 12" data-title-zh="GSoC Git 博客 12" data-astro-cid-egg7nqdx> GSOC, Git Blog 12 </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2021-08-09 08:34:29</span>   <span class="tag" data-astro-cid-egg7nqdx>git</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<h2 id="week12-avoid-repetitive-parsing">Week12 Avoid repetitive parsing</h2>
+<p>After we brought around <code>10%</code> optimization to <code>git cat-file --batch</code> through skip parse_object_buffer(), let’s take a look at the result of gprof again:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>  %</span></span>
+<span class="line"><span> time     calls(before)       calls(after)     name</span></span>
+<span class="line"><span>  1.24               0              349756     format_ref_array_item</span></span>
+<span class="line"><span>  1.24               0              349756     get_object</span></span>
+<span class="line"><span>  0.83         4184784             4534690     do_xmalloc</span></span>
+<span class="line"><span>  0.83               0             1399028     parse_ref_filter_atom</span></span>
+<span class="line"><span>  0.41         4184936             5932565     memory_limit_check</span></span>
+<span class="line"><span>  0.41          701711             1400412     strbuf_add</span></span>
+<span class="line"><span>  0.41               0             1399024     append_atom</span></span>
+<span class="line"><span>  0.41               0             1399024     quote_formatting</span></span>
+<span class="line"><span>  0.41              14              349770     strbuf_init</span></span>
+<span class="line"><span>  0.41               0              349756     populate_value</span></span>
+<span class="line"><span>  0.00         2100807             2449753     strbuf_grow</span></span>
+<span class="line"><span>  0.00         1973422             1973568     xmallocz</span></span>
+<span class="line"><span>  0.00               0             1399024     get_ref_atom_value</span></span>
+<span class="line"><span>  0.00               0             1399024     grab_values</span></span>
+<span class="line"><span>  0.00              77              699589     xstrdup</span></span>
+<span class="line"><span>  0.00              46              699558     xcalloc</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>gprof tells us that cat-file —batch will make a lot of copies by <code>xstrdup()</code>, <code>strbuf_add()</code>… after using the logic of ref-filter. But at present, the overhead of these copies cannot be easily avoided due to the inherent logic of ref-filter. So ref-filter has no good optimization points? We must re-observe the whole problem from a macro perspective.</p>
+<p><code>oid_object_info_extended()</code> can get some metadata of the object, e.g. <code>size</code>, <code>type</code>, <code>deltabase</code>, then we can use <code>grab_common_values()</code> to grab them. And those data in the content of the object like commits’ <code>tree-oid</code>, <code>parent-oid</code> or tags’ <code>deref-oid</code>, can be parsed by <code>parse_object_buffer()</code>, then in <code>grab_tag_values()</code> or <code>grab_commit_values()</code>, we can grab them. But many attributes of commit and tag are not obtained through <code>parse_object_buffer()</code>, such as <code>author-info</code> ,<code>commiter-info</code>, <code>tagger-info</code> etc.
+We need to call grab_sub_body_contents(), grab_person() to rescan the buffer and extract the data. What if we can combine these multiple scanning and parsing into one completion?
+At least intuitively, this has an opportunity to improve performance. So I check the implementation details of <code>parse_commit_buffer()</code> and <code>parse_tag_buffer()</code>, maybe we can pass some “hook pointer” to these parsing functions like <code>oid_object_info_extended()</code> does to extract only the information we need? The commit-slab caught my attention. It can be used to get some specified data content from the object. I am thinking about whether it is possible to design a <code>struct object_view</code> (temporarily called <code>struct commit_view</code>) to store the offset of the parsed data in the object content. <code>parse_commit_buffer()</code> will check whether we need something for in-depth parsing. Like this:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> commit_view {</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_tree : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_parents : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_author : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_author_name : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_author_email : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_author_date : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_committer : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_committer_name : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_committer_email : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_committer_date : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> tree_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> tree_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> parents_nr;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">parents_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">parents_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_name_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_name_length;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_email_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_email_length;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_date_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_date_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_name_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_name_length;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_email_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_email_length;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_date_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_date_length;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">define_commit_slab</span><span style="color:#E1E4E8">(commit_view_slab, </span><span style="color:#F97583">struct</span><span style="color:#FFAB70"> commit_view</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> commit_view_slab view_slab </span><span style="color:#F97583">=</span><span style="color:#B392F0"> COMMIT_SLAB_INIT</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, view_slab);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">int</span><span style="color:#B392F0"> parse_commit_buffer</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">		...</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (view->need_author) {</span></span>
+<span class="line"><span style="color:#E1E4E8">			view->author_offset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> bufptr </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> head;</span></span>
+<span class="line"><span style="color:#E1E4E8">			view->author_length </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident_len;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (view->need_author_name </span><span style="color:#F97583">||</span><span style="color:#E1E4E8"> view->need_author_email </span><span style="color:#F97583">||</span></span>
+<span class="line"><span style="color:#E1E4E8">		    view->need_author_date) {</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">split_ident_line</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">ident, ident_line, ident_len) </span><span style="color:#F97583">||</span></span>
+<span class="line"><span style="color:#F97583">			!</span><span style="color:#E1E4E8">ident.date_begin </span><span style="color:#F97583">||</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">ident.date_end)</span></span>
+<span class="line"><span style="color:#F97583">				return</span><span style="color:#B392F0"> error</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"bad author line in commit </span><span style="color:#79B8FF">%s</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#B392F0">					     oid_to_hex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">item->object.oid));</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (view->need_author_name) {</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_name_offset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.name_begin </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> head;</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_name_length </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.name_end </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> ident.name_begin;</span></span>
+<span class="line"><span style="color:#E1E4E8">			}</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (view->need_author_email) {</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_email_offset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.mail_begin </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> head </span><span style="color:#F97583">+</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_email_length </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.mail_end </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> ident.mail_begin </span><span style="color:#F97583">+</span><span style="color:#79B8FF"> 2</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">			}</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (view->need_author_date) {</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_date_offset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.date_begin </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> head;</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_date_length </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.date_end </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> ident.date_begin;</span></span>
+<span class="line"><span style="color:#E1E4E8">			}</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#E1E4E8">		...</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p>It’s still in WIP, hope it can bring some help! It seems that GSOC has only the last few weeks left, I’m not sure how far this patch series is from being merged by the master branch. Performance optimization may have no end. By the way, is there a chance to avoid a large number of copies in ref-filter? This may be another direction.</p>
+</div>
+<div class="lang-section" data-lang="zh">
+<h2 id="第-12-周-避免重复解析">第 12 周 避免重复解析</h2>
+<p>在通过跳过 <code>parse_object_buffer()</code> 为 <code>git cat-file --batch</code> 带来约 <code>10%</code> 的优化之后，让我们再来看看 gprof 的结果：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="plaintext"><code><span class="line"><span>  %</span></span>
+<span class="line"><span> time     calls(before)       calls(after)     name</span></span>
+<span class="line"><span>  1.24               0              349756     format_ref_array_item</span></span>
+<span class="line"><span>  1.24               0              349756     get_object</span></span>
+<span class="line"><span>  0.83         4184784             4534690     do_xmalloc</span></span>
+<span class="line"><span>  0.83               0             1399028     parse_ref_filter_atom</span></span>
+<span class="line"><span>  0.41         4184936             5932565     memory_limit_check</span></span>
+<span class="line"><span>  0.41          701711             1400412     strbuf_add</span></span>
+<span class="line"><span>  0.41               0             1399024     append_atom</span></span>
+<span class="line"><span>  0.41               0             1399024     quote_formatting</span></span>
+<span class="line"><span>  0.41              14              349770     strbuf_init</span></span>
+<span class="line"><span>  0.41               0              349756     populate_value</span></span>
+<span class="line"><span>  0.00         2100807             2449753     strbuf_grow</span></span>
+<span class="line"><span>  0.00         1973422             1973568     xmallocz</span></span>
+<span class="line"><span>  0.00               0             1399024     get_ref_atom_value</span></span>
+<span class="line"><span>  0.00               0             1399024     grab_values</span></span>
+<span class="line"><span>  0.00              77              699589     xstrdup</span></span>
+<span class="line"><span>  0.00              46              699558     xcalloc</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>gprof 告诉我们，在使用 ref-filter 的逻辑后，cat-file —batch 会通过 <code>xstrdup()</code>、<code>strbuf_add()</code> 等方式产生大量拷贝。但目前由于 ref-filter 的内在逻辑，这些拷贝开销难以轻易避免。那么 ref-filter 就没有好的优化点了吗？我们必须从宏观角度重新审视整个问题。</p>
+<p><code>oid_object_info_extended()</code> 可以获取对象的一些元数据，例如 <code>size</code>、<code>type</code>、<code>deltabase</code>，然后我们可以使用 <code>grab_common_values()</code> 来抓取它们。而对象内容中的数据，例如 commit 的 <code>tree-oid</code>、<code>parent-oid</code> 或 tag 的 <code>deref-oid</code>，可以通过 <code>parse_object_buffer()</code> 解析，然后在 <code>grab_tag_values()</code> 或 <code>grab_commit_values()</code> 中抓取。但 commit 和 tag 的许多属性并不是通过 <code>parse_object_buffer()</code> 获得的，例如 <code>author-info</code>、<code>commiter-info</code>、<code>tagger-info</code> 等。
+我们需要调用 <code>grab_sub_body_contents()</code>、<code>grab_person()</code> 来重新扫描缓冲区并提取数据。如果我们可以把这些多次扫描和解析合并为一次完成会怎样？
+至少直观上看，这有机会提升性能。于是我查看了 <code>parse_commit_buffer()</code> 和 <code>parse_tag_buffer()</code> 的实现细节，也许我们可以像 <code>oid_object_info_extended()</code> 那样向这些解析函数传入一些“钩子指针”，只提取我们需要的信息？commit-slab 引起了我的注意。它可以用来从对象中获取某些指定的数据内容。我在想是否可以设计一个 <code>struct object_view</code>（暂时称为 <code>struct commit_view</code>）来存储解析数据在对象内容中的偏移量。<code>parse_commit_buffer()</code> 会检查我们是否需要进行深度解析。就像这样：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="c"><code><span class="line"><span style="color:#F97583">struct</span><span style="color:#E1E4E8"> commit_view {</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_tree : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_parents : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_author : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_author_name : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_author_email : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_author_date : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_committer : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_committer_name : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_committer_email : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> need_committer_date : </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> tree_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> tree_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> parents_nr;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">parents_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">parents_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_name_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_name_length;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_email_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_email_length;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_date_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> author_date_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_length;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_name_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_name_length;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_email_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_email_length;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_date_offset;</span></span>
+<span class="line"><span style="color:#F97583">	int</span><span style="color:#E1E4E8"> committer_date_length;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">define_commit_slab</span><span style="color:#E1E4E8">(commit_view_slab, </span><span style="color:#F97583">struct</span><span style="color:#FFAB70"> commit_view</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> struct</span><span style="color:#E1E4E8"> commit_view_slab view_slab </span><span style="color:#F97583">=</span><span style="color:#B392F0"> COMMIT_SLAB_INIT</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, view_slab);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">int</span><span style="color:#B392F0"> parse_commit_buffer</span><span style="color:#E1E4E8">()</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">		...</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (view->need_author) {</span></span>
+<span class="line"><span style="color:#E1E4E8">			view->author_offset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> bufptr </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> head;</span></span>
+<span class="line"><span style="color:#E1E4E8">			view->author_length </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident_len;</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#F97583">		if</span><span style="color:#E1E4E8"> (view->need_author_name </span><span style="color:#F97583">||</span><span style="color:#E1E4E8"> view->need_author_email </span><span style="color:#F97583">||</span></span>
+<span class="line"><span style="color:#E1E4E8">		    view->need_author_date) {</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">split_ident_line</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">ident, ident_line, ident_len) </span><span style="color:#F97583">||</span></span>
+<span class="line"><span style="color:#F97583">			!</span><span style="color:#E1E4E8">ident.date_begin </span><span style="color:#F97583">||</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">ident.date_end)</span></span>
+<span class="line"><span style="color:#F97583">				return</span><span style="color:#B392F0"> error</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"bad author line in commit </span><span style="color:#79B8FF">%s</span><span style="color:#9ECBFF">"</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#B392F0">					     oid_to_hex</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">item->object.oid));</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (view->need_author_name) {</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_name_offset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.name_begin </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> head;</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_name_length </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.name_end </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> ident.name_begin;</span></span>
+<span class="line"><span style="color:#E1E4E8">			}</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (view->need_author_email) {</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_email_offset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.mail_begin </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> head </span><span style="color:#F97583">+</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_email_length </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.mail_end </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> ident.mail_begin </span><span style="color:#F97583">+</span><span style="color:#79B8FF"> 2</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">			}</span></span>
+<span class="line"><span style="color:#F97583">			if</span><span style="color:#E1E4E8"> (view->need_author_date) {</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_date_offset </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.date_begin </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> head;</span></span>
+<span class="line"><span style="color:#E1E4E8">				view->author_date_length </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ident.date_end </span><span style="color:#F97583">-</span><span style="color:#E1E4E8"> ident.date_begin;</span></span>
+<span class="line"><span style="color:#E1E4E8">			}</span></span>
+<span class="line"><span style="color:#E1E4E8">		}</span></span>
+<span class="line"><span style="color:#E1E4E8">		...</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"></span></code></pre>
+<p>这还在进行中（WIP），希望它能带来一些帮助！GSoC 似乎只剩下最后几周了，我不确定这个补丁系列距离被合并到 master 分支还有多远。性能优化也许永无止境。顺便问一下，有没有可能避免 ref-filter 中的大量拷贝？这可能是另一个方向。</p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag git" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag git</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

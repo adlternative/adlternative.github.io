@@ -1,0 +1,11 @@
+import"./hoisted.CeyvosN8.js";const u=document.getElementById("search-box"),i=document.getElementById("search-results"),d=document.getElementById("search-empty"),o=document.getElementById("cards-view"),a=document.getElementById("ls-view");let l=null;async function E(){return l||(l=await(await fetch("/search-index.json")).json(),l)}function I(t){i&&(i.innerHTML=t.map(e=>`
+        <li class="post-item">
+          <a href="${e.url}">
+            <div class="post-title">${e.title}</div>
+            <div class="post-meta">
+              <span>${e.date}</span>
+              <span class="tag">${e.category}</span>
+              ${e.tags.map(n=>`<span class="tag">${n}</span>`).join("")}
+            </div>
+          </a>
+        </li>`).join(""))}const g="adl-blog-view",m=document.querySelectorAll(".view-btn");let f="cards",y=!1;function w(t){f=t,y||(o&&(o.hidden=t!=="cards"),a&&(a.hidden=t!=="ls")),m.forEach(e=>{const n=e.getAttribute("data-view")===t;e.classList.toggle("selected",n),e.setAttribute("aria-pressed",String(n))});try{localStorage.setItem(g,t)}catch{}t==="ls"&&L()}m.forEach(t=>t.addEventListener("click",()=>w(t.getAttribute("data-view"))));function h(t){y=t,t?(o&&(o.hidden=!0),a&&(a.hidden=!0)):(o&&(o.hidden=f!=="cards"),a&&(a.hidden=f!=="ls")),i&&(i.hidden=!t)}async function j(){if(!u)return;const t=u.value.trim().toLowerCase();if(!t){h(!1),d&&(d.hidden=!0);return}const e=await E(),n=t.split(/\s+/),r=e.filter(c=>{const s=(c.title+" "+c.category+" "+c.tags.join(" ")+" "+c.text).toLowerCase();return n.every(v=>s.includes(v))});h(!0),I(r),d&&(d.hidden=r.length>0),i&&(i.hidden=r.length===0)}u?.addEventListener("input",j);let p=!1;async function L(){if(p||!a)return;p=!0;const t="https://adlternative.goatcounter.com/counter";a.querySelectorAll(".ls-row a[data-path]").forEach(n=>{const r=n.getAttribute("data-path"),c=n.querySelector(".ls-views-n");!r||!c||fetch(`${t}/${encodeURIComponent(r)}.json`).then(s=>s.status===200||s.status===404?s.json():Promise.reject()).then(s=>{s&&typeof s.count=="string"&&(c.textContent=s.count.replace(/\s/g,""),n.classList.add("has-views"))}).catch(()=>{})})}(function(){let e="cards";try{const n=localStorage.getItem(g);(n==="cards"||n==="ls")&&(e=n)}catch{}w(e)})();
