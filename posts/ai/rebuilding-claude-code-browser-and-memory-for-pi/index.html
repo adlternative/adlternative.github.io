@@ -1,0 +1,321 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>I Rebuilt Claude Code&#39;s Browser and Memory for Pi - ZheNing Hu</title><meta name="description" content="I Rebuilt Claude Code's Browser and Memory for Pi"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.D6BGEuYJ.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="I Rebuilt Claude Code's Browser and Memory for Pi" data-title-zh="被封号之后，我给 Pi 重新造了 Claude Code 的浏览器和记忆" data-astro-cid-egg7nqdx> I Rebuilt Claude Code&#39;s Browser and Memory for Pi </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2026-10-22 23:10:00</span>   <span class="tag" data-astro-cid-egg7nqdx>ai</span><span class="tag" data-astro-cid-egg7nqdx>agent</span><span class="tag" data-astro-cid-egg7nqdx>pi</span><span class="tag" data-astro-cid-egg7nqdx>chrome</span><span class="tag" data-astro-cid-egg7nqdx>memory</span><span class="tag" data-astro-cid-egg7nqdx>reverse-engineering</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<p>My Claude account got banned. <a href="https://www.anthropic.com">Anthropic</a> did not explain, and I am not going to invent a reason on its behalf. But the enthusiasm with which it shuts out users in mainland China is genuinely hard to understand — it stopped looking like a business decision a while ago. What I can say is what happened next: the subscription stopped, and with it stopped the two parts of <a href="https://github.com/anthropics/claude-code">Claude Code</a> I used every day.</p>
+<p>Not the chat. The other two: the Chrome extension that lets the agent actually click around a page, and the auto memory that lets it remember a project between sessions.</p>
+<p>Pi already has a healthy plugin ecosystem, and both of these areas are covered. There are several memory extensions, and several browser bridges built on <a href="https://playwright.dev">Playwright</a> or <a href="https://modelcontextprotocol.io">MCP</a>. I tried a few of each, and none of them was quite what I wanted. The memory plugins mostly stop at store-and-recall, or reach for a database and an embedding pipeline to manage a folder of Markdown. The browser bridges tend to open a browser of their own instead of the Chrome window I am already logged into, and few offer the accessibility-tree plus stable <code>[ref_X]</code> workflow that made the original extension pleasant to use.</p>
+<p>So I took both apart and rebuilt them for <a href="https://github.com/earendil-works/pi-coding-agent">Pi</a>. They are open source now:</p>
+<ul>
+<li><a href="https://github.com/adlternative/pi-in-chrome"><code>pi-in-chrome</code></a> — the browser extension and its bridge</li>
+<li><a href="https://github.com/adlternative/pi-project-memory"><code>pi-project-memory</code></a> — project-scoped Markdown memory</li>
+</ul>
+<p>Both were reverse-engineered from Claude Code’s own artifacts with <a href="https://github.com/morluto/rea">REA</a>.</p>
+<p>There is a lens that makes the whole thing legible. Anthropic is an Apple company: a polished walled garden, a login wall, app-store logic, and a quiet confidence about who deserves to hold the device. In the taxonomy popularized by the Chinese streamer <a href="https://zh.wikipedia.org/wiki/%E6%88%B7%E6%99%A8%E9%A3%8E">户晨风</a>, I am an Android person — the kind who unpacks the extension, reimplements the protocol, keeps the files on his own disk, and expects the model endpoint to be his too. This post is what happened when the wall met the screwdriver: two rebuilt projects, and the four places where copying Claude Code does not work.</p>
+<h2 id="why-these-two-capabilities">Why these two capabilities</h2>
+<p>Everything in Claude Code looks like a feature. Only some of it is a capability you can lose.</p>
+<p>A prompt template is a feature: you can rewrite it. A tool schema is a feature: you can re-declare it. But the Chrome extension and auto memory are <strong>capabilities wired to an account</strong>. The extension needs a <code>claude.ai</code> login and OAuth consent, it asks Anthropic’s cloud whether a URL is allowed (<code>url_hash_check</code>), and its background jobs sit behind remote flags. Auto memory’s extraction and its consolidation pass (<code>auto-dream</code>) are also flag-gated.</p>
+<p>That is why the ban did not degrade my workflow, it amputated it. The code was still on disk. The gates were closed.</p>
+<h2 id="rea-turn-a-product-back-into-a-protocol">REA: turn a product back into a protocol</h2>
+<p>Claude Code ships as a Bun-compiled binary. <a href="https://github.com/morluto/rea">REA</a> (<code>rea-agents</code>) is a multi-agent reverse-engineering framework: it maps the artifact, extracts the embedded JavaScript, and runs several analysis agents over different slices, cross-checking each other.</p>
+<p>For the memory work I kept the receipts, because “I decompiled it” is not an argument. The installed <code>claude.exe</code> was identified by hash, and the <code>__BUN/__bun</code> section at file offset <code>67993600</code> yielded NUL-delimited UTF-8 sources. That is extraction, not decompilation: no original source is recovered. Of the derived subset, 9 JS files parsed, 0 failed, and several semantic graphs were too large for the result budget. So the picture is <strong>partial by construction</strong>, and I wrote that down instead of pretending otherwise.</p>
+<p>The single most important discipline came out of this: <strong>presence is not activation.</strong> A shipped branch can sit behind a remote flag forever. <code>auto-dream</code> is gated by <code>tengu_onyx_plover</code> before its own <code>autoDreamEnabled</code> check; extraction is gated by another flag with a false fallback. If you read the code and conclude “Claude Code does X for every user”, you are usually wrong. You have to separate <em>what shipped</em> from <em>what runs for you</em>.</p>
+<p>That distinction is also what makes the rebuild honest: I am not cloning a product, I am re-implementing a protocol and a data layout, then choosing my own defaults.</p>
+<h2 id="pi-in-chrome">pi-in-chrome</h2>
+<p>The extension turned out to have four layers, in increasing order of interest:</p>
+<ol>
+<li><strong>A pairing tunnel.</strong> Claude Code and Chromium talk over a Unix domain socket with AES-GCM encrypted frames.</li>
+<li><strong><a href="https://chromedevtools.github.io/devtools-protocol/">A CDP driver</a>.</strong> Clicks, keys, scrolls and screenshots go through <code>chrome.debugger</code>, not synthetic DOM events.</li>
+<li><strong>An accessibility index.</strong> Pages are flattened into a screen-reader tree with stable <code>[ref_X]</code> identifiers, so the model can point at elements instead of guessing pixel coordinates.</li>
+<li><strong>Artificial bottlenecks.</strong> A cloud URL check, a 600×600 confirmation modal that aborts automation after 30 seconds, and a regex censor that rewrites anything matching <code>/author|auth|token|session/i</code> into <code>[BLOCKED]</code>.</li>
+</ol>
+<p>The rebuild keeps 1–3 and deletes 4. <code>localhost</code>, intranet hosts and offline apps just work; there is no login, no API key, and no popup. Tool calls stay inside a dedicated <code>Pi</code> tab group so personal tabs are untouched, and a 3-second heartbeat plus <code>chrome.alarms</code> reconnects the native host instead of dying on the first disconnect.</p>
+<p>Then I hit the interesting bug.</p>
+<h3 id="pitfall-1-find-insists-on-calling-haiku">Pitfall 1: <code>find</code> insists on calling Haiku</h3>
+<p><code>find</code> is a natural-language element finder: “the submit button in the second card”. Of the whole tool set, it is the only one that needs a model, because someone has to map a sentence onto an accessibility tree.</p>
+<p>Claude Code hard-wires that call into the extension’s own Anthropic client, using a small fast model (<a href="https://www.anthropic.com/claude/haiku"><code>claude-3-5-haiku</code></a>). No login or <code>anthropicApiKey</code> in <code>chrome.storage</code> meant every <code>find</code> failed with <code>Anthropic client not available</code>. The keyword fallback in the extension was dead code, because the MCP tool context always injects <code>createAnthropicMessage</code>.</p>
+<p>My first port kept that shape, and it failed exactly the same way. The fix was to invert the ownership: <strong>the host owns the model.</strong></p>
+<ul>
+<li>Pi advertises <code>relay_inference: true</code> when it executes a tool and has a model.</li>
+<li>The extension answers by emitting an <code>inference_request</code> notification instead of calling Anthropic.</li>
+<li>Pi runs <code>ctx.modelRegistry.complete()</code> with the current session model and returns the sample.</li>
+<li>The reply travels as <code>{method:"inference_response", params:{request_id, result}}</code> rather than a new top-level frame type, because the installed native host forwards frames only as <code>{type:"tool_request", method, params}</code>.</li>
+</ul>
+<p>If Pi has no model, the tool falls back to <code>read_page</code> plus refs. The model is optional again.</p>
+<p>The design point is not “Haiku is bad”. Routing a cheap model for “pick one element” is a sensible cost optimization. The problem is that it also makes <em>“can I automate my own localhost”</em> depend on a vendor account. A browser extension should not own a model; the agent it is attached to already has one. Spending a few more tokens is a much better trade than a single point of failure.</p>
+<h3 id="pitfall-2-the-bridge-has-an-owner">Pitfall 2: the bridge has an owner</h3>
+<p>The extension does not talk to the browser directly. It talks to a native messaging host, and Claude Code’s host binary and extension ID are fixed. Rebuilding means owning the whole chain: a new extension ID, your own native host manifest, your own socket directory, and a packaging step that rebuilds the service worker without Vite’s hashed chunks.</p>
+<p>There is a subtle failure mode here. Once your extension and Claude Code’s extension are both installed, a tool call can be routed back into Claude Code’s bridge, and you get a confusing half-working session where some calls are answered by the thing you were trying to escape. The last commit on the project is literally <code>fix: never route tool calls into Claude Code's bridge by default</code>.</p>
+<h2 id="pi-project-memory">pi-project-memory</h2>
+<p>Memory is a design argument, not a feature. Three agents, three answers:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th></th><th>Claude Code</th><th>Codex</th><th>This plugin</th></tr></thead><tbody><tr><td>Store</td><td><code>~/.claude/projects/&#x3C;project>/memory/</code></td><td><code>~/.codex/memories/</code> + SQLite</td><td><code>&#x3C;agent-dir>/project-memory/&#x3C;repo>__&#x3C;hash>/</code></td></tr><tr><td>Layout</td><td><code>MEMORY.md</code> index + one file per topic</td><td>index, summary, raw memories, rollout summaries</td><td>same as Claude Code</td></tr><tr><td>Scope</td><td>Git repository; worktrees share</td><td>global rollout consolidation</td><td>Git common dir; worktrees share, submodules don’t</td></tr><tr><td>Who writes</td><td>model (file tools) or background sub-agent</td><td>only the background pipeline</td><td>model (file tools) or background pass</td></tr><tr><td>Search</td><td>grep (plus a shipped BM25 index)</td><td>literal line matching</td><td>local BM25 + optional model pass</td></tr><tr><td>Consolidation</td><td>auto-dream</td><td>Phase 2 agent</td><td>none</td></tr></tbody></table>
+<h3 id="why-i-followed-claude-code">Why I followed Claude Code</h3>
+<p><a href="https://github.com/openai/codex">Codex</a>’s pipeline is the more impressive engineering: two phases, SQLite job state, leases, a git baseline for diffs, an internal consolidation agent. It is also a system the model cannot write to, and which needs a database and a worker before a single note exists.</p>
+<p>Claude Code’s answer is almost embarrassingly simple: memory is Markdown. <code>MEMORY.md</code> is an index, every topic is one file, and the model reads and writes them with the <code>read</code>/<code>edit</code>/<code>write</code> tools it already has. No new API to learn, no schema, and a human can open the folder, grep it, or put it in git.</p>
+<p>I chose that. It matches how an agent actually corrects itself: the moment it learns something, it edits a file. But I did implement the dedicated memory tools too, opt-in (<code>list</code>, <code>read</code>, <code>search</code>, <code>save</code>), because not every session has file tools and search is genuinely convenient. Default is files; tools are a convenience, not the interface.</p>
+<h3 id="pitfall-3-pis-storage-path-is-lossy-and-so-is-claude-codes">Pitfall 3: Pi’s storage path is lossy, and so is Claude Code’s</h3>
+<p>Claude Code stores memory at <code>~/.claude/projects/&#x3C;slug>/memory/</code>, where <code>/Users/adl/foo</code> becomes <code>-Users-adl-foo</code>. Pi stores sessions at <code>~/.pi/agent/sessions/--&#x3C;slug>--/</code>, using this sanitizer:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#F97583">const</span><span style="color:#79B8FF"> safePath</span><span style="color:#F97583"> =</span><span style="color:#9ECBFF"> `--${</span><span style="color:#E1E4E8">resolvedCwd</span><span style="color:#9ECBFF">.</span><span style="color:#B392F0">replace</span><span style="color:#9ECBFF">(</span><span style="color:#9ECBFF">/</span><span style="color:#F97583">^</span><span style="color:#79B8FF">[/</span><span style="color:#85E89D;font-weight:bold">\\</span><span style="color:#79B8FF">]</span><span style="color:#9ECBFF">/</span><span style="color:#9ECBFF">, </span><span style="color:#9ECBFF">""</span><span style="color:#9ECBFF">).</span><span style="color:#B392F0">replace</span><span style="color:#9ECBFF">(</span><span style="color:#9ECBFF">/</span><span style="color:#79B8FF">[/</span><span style="color:#85E89D;font-weight:bold">\\</span><span style="color:#79B8FF">:]</span><span style="color:#9ECBFF">/</span><span style="color:#F97583">g</span><span style="color:#9ECBFF">, </span><span style="color:#9ECBFF">"-"</span><span style="color:#9ECBFF">)</span><span style="color:#9ECBFF">}--`</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span></code></pre>
+<p>Both are <strong>sanitizers, not encoders</strong>. They guarantee a legal single path segment; neither promises uniqueness. So:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>/Users/adl/codex    → --Users-adl-codex--</span></span>
+<span class="line"><span>/Users/adl-codex    → --Users-adl-codex--   ← identical</span></span>
+<span class="line"><span>/Users/adl/a/b      → --Users-adl-a-b--</span></span>
+<span class="line"><span>/Users/adl/a-b      → --Users-adl-a-b--     ← identical</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>For session lists this is cosmetic. For memory it is a correctness and privacy bug: two unrelated projects would share one notebook. Copying Claude Code’s naming scheme would inherit the same defect.</p>
+<p>So the plugin derives identity from the <strong>canonical Git common directory</strong> — <code>git rev-parse --git-common-dir</code>, realpath’d, with <code>GIT_DIR</code>, <code>GIT_WORK_TREE</code> and <code>GIT_COMMON_DIR</code> stripped from the environment first, because inherited values silently point at the wrong repo — and hashes it. A readable prefix is kept for humans:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>&#x3C;agent-dir>/project-memory/codex__646b6ecb79c8/</span></span>
+<span class="line"><span>├── MEMORY.md</span></span>
+<span class="line"><span>├── package-manager.md</span></span>
+<span class="line"><span>├── review-process.md</span></span>
+<span class="line"><span>└── .state.json</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Three entry points into one repository produce one store; a submodule gets its own; a non-Git directory is keyed by its canonical cwd. The known limitation is renaming or moving a repo: the key changes and old notes become orphans, still on disk but no longer found. The hash also dodges long paths, case-insensitive filesystems, Windows reserved characters, and leaking the full path into a directory name.</p>
+<h3 id="pitfall-4-claude-codes-memory-is-asynchronous-pis-lifecycle-is-not">Pitfall 4: Claude Code’s memory is asynchronous, Pi’s lifecycle is not</h3>
+<p>Claude Code’s extraction is a background sub-agent with restricted tools, four or five turns, running every N messages and after idle time. It does not block the conversation, and if it fails you never notice.</p>
+<p>My first version wrote synchronously in a lifecycle hook. That is wrong in a way that is easy to miss: Pi’s <code>agent_end</code> is not necessarily final, because a retry or queued work can follow. Writing there can persist a memory from a turn that was later abandoned.</p>
+<p>The implementation that survives real use:</p>
+<ul>
+<li>prepare the candidate at a <strong>successful</strong> <code>turn_end</code>, while the abort signal is still live;</li>
+<li>commit only at successful <code>agent_before_settle</code>;</li>
+<li>discard on cancellation, continuation, or shutdown;</li>
+<li>run detached, so the turn settles immediately;</li>
+<li>one pass at a time, coalescing overlapping requests, re-checking the store revision before writing;</li>
+<li>trigger every 5 prompts or after 120 seconds idle, and drain in-flight work for up to 15 seconds at shutdown.</li>
+</ul>
+<p>Two modes: <code>call</code> sends one tool-free JSON request; <code>fork</code> runs a sub-agent for at most six turns with <code>read_memory</code> and <code>write_memory</code>, both confined to the project’s memory directory, then applies its staged files atomically. Extraction uses a dedicated fast model (<code>qoder/fast</code>), not the session model.</p>
+<p>None of this is prompt engineering. It is all lifecycle, and it is the part I would not have gotten right by copying the prompt.</p>
+<h3 id="bm25-claude-codes-ranking-reimplemented">BM25: Claude Code’s ranking, reimplemented</h3>
+<p>Claude Code ships a real <a href="https://en.wikipedia.org/wiki/Okapi_BM25">BM25</a> index, and it is worth being precise about what it does, because it is the piece I borrowed. The index lives <strong>inside the memory directory</strong> as <code>.bm25-index.json</code>. Its job is <strong>recall selection</strong>: the agent has a pile of topic files and needs to decide which handful are worth reading for the current request, so the index scores every document and the top matches become the candidates. It is not part of writing, and it is not embedding search.</p>
+<p>The parameters, from the 2.1.280 bundle:</p>
+<ul>
+<li><code>k1 = 1.2</code>, <code>b = 0.75</code></li>
+<li>field weights: filename 3, frontmatter 3, headings 2.5, body 1</li>
+<li>quoted phrases must match and get a 0.5 boost; every query term is required</li>
+<li><code>MEMORY.md</code> is deliberately excluded: it is the entry point, read directly</li>
+<li>incremental sync with added/updated/removed counts, a content hash, and a re-verification loop for files that changed mid-read</li>
+<li>caps at 2,000 files / 1 MB per file / 64 MB index, keeping the newest by mtime</li>
+</ul>
+<p>That is the ranking this plugin uses, reimplemented locally: title weight 3, description/body weight 1, English suffix folding, CJK indexed as characters and bigrams. My version drops the phrase boost and the separate frontmatter/heading weights, because with 128 small notes they buy nothing I can measure. No embeddings, no network, which is the point: a project with forty notes does not need a vector database.</p>
+<h3 id="what-i-did-not-build-dreaming">What I did not build: dreaming</h3>
+<p>Claude Code has <code>auto-dream</code>: a background pass that merges duplicates, rewrites stale notes, and cleans up, guarded by <code>.consolidate-lock</code> and live PID checks.</p>
+<p>I did not build it, and I want to be explicit about why. Right now duplicates come from the same fact being saved under two IDs, and exact-content fingerprinting already catches those. The case that needs an LLM is “different words, same meaning” and “this fact expired”, and I can observe that for free with a <code>/pmem doctor</code> similarity report before paying for a scheduler, a lock protocol, and a second model call. Adding that machinery now would double the failure surface to fix a problem I have not measured.</p>
+<p>Also not built: team/organization sync, the <code>/memory</code> browser UI, per-subagent stores. Those are real gaps; they are just not the gaps I have.</p>
+<h2 id="try-them">Try them</h2>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">pi</span><span style="color:#9ECBFF"> install</span><span style="color:#9ECBFF"> git:github.com/adlternative/pi-in-chrome</span></span>
+<span class="line"><span style="color:#B392F0">pi</span><span style="color:#9ECBFF"> install</span><span style="color:#9ECBFF"> git:github.com/adlternative/pi-project-memory</span></span>
+<span class="line"></span></code></pre>
+<p><code>pi-in-chrome</code> needs one extra step to register the native messaging host (<code>npm run setup</code> in the repo) and an unpacked extension loaded from <code>chrome-extension/</code>. <code>pi-project-memory</code> works out of the box; turn on background extraction with <code>autoExtract</code> if you want it.</p>
+<p>Both are macOS-tested against Pi 1.2.0. The Claude Code columns come from static analysis of version 2.1.280, so they will drift as Anthropic ships new gates. When they do, the interesting question will still be the same one: what actually runs, for whom, and who gets to decide.</p>
+<p>One loose end: both packages should be on <a href="https://www.npmjs.com">npm</a>, so that <code>pi install pi-in-chrome</code> works without a Git clone. <code>npm publish</code> would not accept my 2FA for reasons I still do not understand, so I used a recovery code to get back into the account and left publishing for later. Until then, install from Git.</p>
+</div>
+<div class="lang-section" data-lang="zh">
+<p>我的 Claude 账号被封了。<a href="https://www.anthropic.com">Anthropic</a> 没有给理由，我也不打算替它编一个。但它对中国用户的那股恨意，我是真的难以理解——锁区锁得这么投入，早就不像商业决策了。我能说的是接下来发生了什么：订阅停了，然后 <a href="https://github.com/anthropics/claude-code">Claude Code</a> 里我每天在用的两个能力也一起停了。</p>
+<p>不是聊天。是另外两个：那个让 Agent 真的能在页面上点来点去的 Chrome 扩展，以及那个让它跨会话记住一个项目的 auto memory。</p>
+<p>Pi 的插件生态其实并不缺这两块：memory 插件有好几个，浏览器桥也有基于 <a href="https://playwright.dev">Playwright</a> 或 <a href="https://modelcontextprotocol.io">MCP</a> 的若干实现。我试过其中几个，没有一个让我完全满意。memory 插件大多停在”存 + 召回”，或者为了管一个 Markdown 文件夹就上数据库和 embedding 流水线；浏览器桥则往往自己开一个浏览器，而不是接管我已经登录着的这个 Chrome，也很少提供原版扩展里那套无障碍树加稳定 <code>[ref_X]</code> 的用法。</p>
+<p>所以我把这两块都拆了，在 <a href="https://github.com/earendil-works/pi-coding-agent">Pi</a> 上重造了一遍，现在是开源的：</p>
+<ul>
+<li><a href="https://github.com/adlternative/pi-in-chrome"><code>pi-in-chrome</code></a>——浏览器扩展和它的桥</li>
+<li><a href="https://github.com/adlternative/pi-project-memory"><code>pi-project-memory</code></a>——按项目隔离的 Markdown 记忆</li>
+</ul>
+<p>两个都是用 <a href="https://github.com/morluto/rea">REA</a> 从 Claude Code 自己的产物里逆向出来的。</p>
+<p>有一个视角能把整件事看明白。Anthropic 是一家”苹果公司”：精致的封闭花园、登录墙、应用商店式的审核，以及对”谁配拿这台设备”的笃定。按<a href="https://zh.wikipedia.org/wiki/%E6%88%B7%E6%99%A8%E9%A3%8E">户晨风</a>那套分类，我就是个”安卓人”——拆扩展、重写协议、把文件留在自己硬盘上，还觉得模型端点也该归自己。这篇文章就是墙撞上螺丝刀的结果：两个重造的项目，以及我抄 Claude Code 时撞到的四个坑。</p>
+<h2 id="为什么偏偏是这两个能力">为什么偏偏是这两个能力</h2>
+<p>Claude Code 里看起来一切都是功能，但只有一部分是你真的会失去的能力。</p>
+<p>Prompt 模板是功能，你可以重写；工具 schema 是功能，你可以重新声明。但 Chrome 扩展和 auto memory 是<strong>挂在账号上的能力</strong>。扩展需要 <code>claude.ai</code> 登录和 OAuth 授权，会问 Anthropic 的云端某个 URL 能不能访问（<code>url_hash_check</code>），后台任务还挂在远程开关后面。auto memory 的提炼和它的整理阶段（<code>auto-dream</code>）同样被 flag 门控。</p>
+<p>所以封号不是让我的工作流退化，是把它截肢了。代码还在硬盘上，门关了。</p>
+<h2 id="rea把产品拆回协议">REA：把产品拆回协议</h2>
+<p>Claude Code 是 Bun 编译出来的二进制。<a href="https://github.com/morluto/rea">REA</a>（<code>rea-agents</code>）是一个多智能体逆向框架：先测绘产物，抽出内嵌的 JavaScript，再让几个分析 agent 分别啃不同切片、互相校验。</p>
+<p>做 memory 那部分时我特意留了证据，因为”我反编译过”不构成论据。被分析的是按哈希锁定的 <code>claude.exe</code>，文件偏移 <code>67993600</code> 处的 <code>__BUN/__bun</code> 段里是 NUL 分隔的 UTF-8 源码。这是<strong>抽取</strong>，不是反编译：没有恢复出原始源码。抽出来的子集里 9 个 JS 文件全部解析成功、0 失败，但有几个语义图超出了结果预算。所以这幅图<strong>天然是部分的</strong>，我把这一点写进文档，而不是假装完整。</p>
+<p>这件事给我最重要的纪律是：<strong>存在不等于启用。</strong> 一条发布出去的分支可以永远躺在远程开关后面。<code>auto-dream</code> 在它自己的 <code>autoDreamEnabled</code> 检查之前还有一层 <code>tengu_onyx_plover</code>；提炼也有一个默认 false 的 flag。只读代码就得出”Claude Code 对每个用户都做了 X”，通常是错的。你必须把<em>发布了什么</em>和<em>你机器上跑的是什么</em>分开。</p>
+<p>这个区分也是重建能诚实的原因：我不是在克隆一个产品，我是在重新实现一套协议和一种数据布局，然后自己决定默认值。</p>
+<h2 id="pi-in-chrome-1">pi-in-chrome</h2>
+<p>拆开之后，这个扩展有四层，越往下越有意思：</p>
+<ol>
+<li><strong>配对隧道。</strong> Claude Code 和 Chromium 通过 Unix domain socket 通信，帧用 AES-GCM 加密。</li>
+<li><strong><a href="https://chromedevtools.github.io/devtools-protocol/">CDP 驱动</a>。</strong> 点击、按键、滚动、截图都走 <code>chrome.debugger</code>，不是合成 DOM 事件。</li>
+<li><strong>可访问性索引。</strong> 页面被拍平成带稳定 <code>[ref_X]</code> 标识的无障碍树，模型可以指着元素说话，而不是猜坐标。</li>
+<li><strong>人为瓶颈。</strong> 云端 URL 校验、一个 600×600 的确认弹窗（30 秒不点就中止自动化）、以及一个把命中 <code>/author|auth|token|session/i</code> 的内容改写成 <code>[BLOCKED]</code> 的正则审查。</li>
+</ol>
+<p>重建保留了 1–3，删掉了 4。<code>localhost</code>、内网地址、离线应用直接可用；不需要登录，不需要 API key，不弹窗。工具调用被限制在专属的 <code>Pi</code> tab 组里，不碰你个人的标签页；3 秒心跳加 <code>chrome.alarms</code> 会在 native host 断线后自动重连，而不是第一次断开就永久死掉。</p>
+<p>然后就撞上了那个最有意思的 bug。</p>
+<h3 id="坑一find-非要用-haiku">坑一：<code>find</code> 非要用 Haiku</h3>
+<p><code>find</code> 是自然语言找元素：“第二张卡片里的提交按钮”。整套工具里只有它真的需要一个模型，因为总得有人把一句话映射到一棵无障碍树上。</p>
+<p>Claude Code 把这个调用硬编码进扩展自己的 Anthropic 客户端，用的是小快模型（<a href="https://www.anthropic.com/claude/haiku"><code>claude-3-5-haiku</code></a>）。没有登录、<code>chrome.storage</code> 里没有 <code>anthropicApiKey</code>，每次 <code>find</code> 就报 <code>Anthropic client not available</code>。扩展里那个关键字兜底是死代码，因为 MCP 工具上下文总会注入 <code>createAnthropicMessage</code>。</p>
+<p>我第一版照抄了这个形状，然后以完全相同的方式失败。修法是<strong>把模型的所有权倒过来：模型归宿主。</strong></p>
+<ul>
+<li>Pi 执行工具时如果手里有模型，就声明 <code>relay_inference: true</code>；</li>
+<li>扩展不再调 Anthropic，而是发一条 <code>inference_request</code> 通知；</li>
+<li>Pi 用当前会话模型跑 <code>ctx.modelRegistry.complete()</code>，把结果回传；</li>
+<li>回包走 <code>{method:"inference_response", params:{request_id, result}}</code>，而不是新的顶层帧类型，因为已安装的 native host 只按 <code>{type:"tool_request", method, params}</code> 转发帧。</li>
+</ul>
+<p>Pi 没有模型时，工具退化成 <code>read_page</code> 加 ref。模型重新变成可选项。</p>
+<p>这里的重点不是”Haiku 不好”。为”选一个元素”路由一个便宜模型，是合理的成本优化。问题是它同时让*“我能不能自动化我自己的 localhost”*取决于厂商账号。浏览器扩展不该拥有模型；它挂靠的 agent 本来就有。多花一点 token，换掉一个单点依赖，这笔交易划算得多。</p>
+<h3 id="坑二这座桥是有主人的">坑二：这座桥是有主人的</h3>
+<p>扩展不直接跟浏览器说话，它跟一个 native messaging host 说话，而 Claude Code 的 host 二进制和扩展 ID 都是固定的。重建意味着你要拥有整条链路：新的扩展 ID、自己的 native host manifest、自己的 socket 目录，以及一个把 service worker 重新打包、不留下 Vite 哈希分块的构建步骤。</p>
+<p>这里有个很隐蔽的故障模式：当你的扩展和 Claude Code 的扩展同时装着，工具调用可能被路由回 Claude Code 的桥，于是你得到一个诡异的半工作会话——一部分调用被你试图逃离的那个东西接管了。这个项目最后一个 commit 就叫 <code>fix: never route tool calls into Claude Code's bridge by default</code>。</p>
+<h2 id="pi-project-memory-1">pi-project-memory</h2>
+<p>记忆是一个设计论点，不是一个功能。三个 agent，三种答案：</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th></th><th>Claude Code</th><th>Codex</th><th>这个插件</th></tr></thead><tbody><tr><td>存储</td><td><code>~/.claude/projects/&#x3C;project>/memory/</code></td><td><code>~/.codex/memories/</code> + SQLite</td><td><code>&#x3C;agent-dir>/project-memory/&#x3C;repo>__&#x3C;hash>/</code></td></tr><tr><td>布局</td><td><code>MEMORY.md</code> 索引 + 一主题一文件</td><td>索引、摘要、raw memories、rollout summaries</td><td>同 Claude Code</td></tr><tr><td>作用域</td><td>Git 仓库，worktree 共享</td><td>全局汇总 rollout</td><td>git common dir；worktree 共享，submodule 独立</td></tr><tr><td>谁写</td><td>模型（文件工具）或后台子会话</td><td>只有后台流水线</td><td>模型（文件工具）或后台提炼</td></tr><tr><td>检索</td><td>grep（另有一份 BM25 索引）</td><td>字面行匹配</td><td>本地 BM25 + 可选模型辅助</td></tr><tr><td>整理</td><td>auto-dream</td><td>Phase 2 agent</td><td>无</td></tr></tbody></table>
+<h3 id="为什么我-follow-claude-code">为什么我 follow Claude Code</h3>
+<p><a href="https://github.com/openai/codex">Codex</a> 的流水线在工程上更漂亮：两个阶段、SQLite 记录 job 状态、lease、用 git baseline 做 diff、还有一个内部 consolidation agent。但它同时是一个模型写不进去的系统，而且一条笔记都还没有的时候，就得先有数据库和 worker。</p>
+<p>Claude Code 的答案简单到有点不好意思：记忆就是 Markdown。<code>MEMORY.md</code> 是索引，每个主题一个文件，模型用它已经会的 <code>read</code>/<code>edit</code>/<code>write</code> 直接读写。不用学新 API，没有 schema，人也能打开这个目录、grep 它、或者塞进 git。</p>
+<p>我选了这个。它符合 agent 纠正自己的实际方式：学到东西的那一刻，就去改文件。但我也把专用记忆工具实现了，可选开启（<code>list</code>、<code>read</code>、<code>search</code>、<code>save</code>），因为不是每个会话都有文件工具，而且搜索确实方便。默认是文件；工具只是便利，不是接口。</p>
+<h3 id="坑三pi-的存储路径有损claude-code-的也有">坑三：Pi 的存储路径有损，Claude Code 的也有</h3>
+<p>Claude Code 把记忆存在 <code>~/.claude/projects/&#x3C;slug>/memory/</code>，<code>/Users/adl/foo</code> 变成 <code>-Users-adl-foo</code>。Pi 把会话存在 <code>~/.pi/agent/sessions/--&#x3C;slug>--/</code>，用的是这个清洗函数：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#F97583">const</span><span style="color:#79B8FF"> safePath</span><span style="color:#F97583"> =</span><span style="color:#9ECBFF"> `--${</span><span style="color:#E1E4E8">resolvedCwd</span><span style="color:#9ECBFF">.</span><span style="color:#B392F0">replace</span><span style="color:#9ECBFF">(</span><span style="color:#9ECBFF">/</span><span style="color:#F97583">^</span><span style="color:#79B8FF">[/</span><span style="color:#85E89D;font-weight:bold">\\</span><span style="color:#79B8FF">]</span><span style="color:#9ECBFF">/</span><span style="color:#9ECBFF">, </span><span style="color:#9ECBFF">""</span><span style="color:#9ECBFF">).</span><span style="color:#B392F0">replace</span><span style="color:#9ECBFF">(</span><span style="color:#9ECBFF">/</span><span style="color:#79B8FF">[/</span><span style="color:#85E89D;font-weight:bold">\\</span><span style="color:#79B8FF">:]</span><span style="color:#9ECBFF">/</span><span style="color:#F97583">g</span><span style="color:#9ECBFF">, </span><span style="color:#9ECBFF">"-"</span><span style="color:#9ECBFF">)</span><span style="color:#9ECBFF">}--`</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span></code></pre>
+<p>两个都是<strong>清洗器，不是编码器</strong>。它们只保证结果是一个合法的单段路径；谁也不保证唯一。于是：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>/Users/adl/codex    → --Users-adl-codex--</span></span>
+<span class="line"><span>/Users/adl-codex    → --Users-adl-codex--   ← 完全相同</span></span>
+<span class="line"><span>/Users/adl/a/b      → --Users-adl-a-b--</span></span>
+<span class="line"><span>/Users/adl/a-b      → --Users-adl-a-b--     ← 完全相同</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>对会话列表，这只是难看。对记忆，这是正确性和隐私问题：两个无关项目会共用一本笔记。照抄 Claude Code 的命名方式，等于继承同一个缺陷。</p>
+<p>所以插件的身份键来自<strong>规范化后的 Git common dir</strong>——<code>git rev-parse --git-common-dir</code>，做 realpath，并且先从环境里删掉 <code>GIT_DIR</code>、<code>GIT_WORK_TREE</code>、<code>GIT_COMMON_DIR</code>，因为继承来的值会悄悄指向别的仓库——再哈希。同时保留一个可读前缀：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="text"><code><span class="line"><span>&#x3C;agent-dir>/project-memory/codex__646b6ecb79c8/</span></span>
+<span class="line"><span>├── MEMORY.md</span></span>
+<span class="line"><span>├── package-manager.md</span></span>
+<span class="line"><span>├── review-process.md</span></span>
+<span class="line"><span>└── .state.json</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>同一个仓库的三个入口会落到同一个 store；submodule 有自己的；非 Git 目录按规范化后的 cwd 取键。已知的限制是仓库改名或移动：键变了，旧笔记变成孤儿——还在磁盘上，但找不到了。哈希还顺带避开了超长路径、大小写不敏感文件系统、Windows 保留字符，以及把完整路径泄露到目录名里。</p>
+<h3 id="坑四claude-code-的记忆是异步的pi-的生命周期不是">坑四：Claude Code 的记忆是异步的，Pi 的生命周期不是</h3>
+<p>Claude Code 的提炼是一个带受限工具的后台子会话，跑 4–5 轮，每 N 条消息触发一次，空闲时也补一次。它不阻塞对话；失败了你也看不见。</p>
+<p>我第一版是在生命周期钩子里同步写。这错在一个很容易忽略的地方：Pi 的 <code>agent_end</code> 不一定是终点，因为后面可能还有重试或排队的工作。在那里写，可能把一次后来被放弃的轮次记成永久记忆。</p>
+<p>真正能用的实现是这样的：</p>
+<ul>
+<li>在<strong>成功的</strong> <code>turn_end</code> 里准备候选，此时 abort signal 还活着；</li>
+<li>只在成功的 <code>agent_before_settle</code> 提交；</li>
+<li>取消、续跑、退出都丢弃；</li>
+<li>提炼独立运行，让这一轮立刻结束；</li>
+<li>同一时刻只跑一份，合并重叠请求，写前再校验 store revision；</li>
+<li>每 5 轮或空闲 120 秒触发；退出时最多再排空 15 秒。</li>
+</ul>
+<p>两种模式：<code>call</code> 发一次无工具的 JSON 请求；<code>fork</code> 跑一个最多 6 轮的子 agent，只给它 <code>read_memory</code> 和 <code>write_memory</code>，两者都限制在当前项目的记忆目录内，最后把它暂存的文件原子地落盘。提炼用专门的快模型（<code>qoder/fast</code>），不用会话模型。</p>
+<p>这些没有一条是 prompt 工程。全是生命周期，也正是照抄 prompt 抄不出来的部分。</p>
+<h3 id="bm25claude-code-的排序我照着重写了一遍">BM25：Claude Code 的排序，我照着重写了一遍</h3>
+<p>Claude Code 带一套真正的 <a href="https://en.wikipedia.org/wiki/Okapi_BM25">BM25</a> 索引。这块正好是我拿走的部分，所以值得说清楚它到底在哪、干什么。索引就落在<strong>记忆目录里面</strong>，文件叫 <code>.bm25-index.json</code>。它的职责是<strong>召回选择</strong>：agent 手里有一堆主题文件，需要判断这次请求该读哪几篇，索引给每个文档打分，分数最高的一小撮成为候选。它不参与写入，也不是 embedding 语义搜索。</p>
+<p>从 2.1.280 抽出来的参数：</p>
+<ul>
+<li><code>k1 = 1.2</code>、<code>b = 0.75</code></li>
+<li>字段权重：文件名 3、frontmatter 3、标题 2.5、正文 1</li>
+<li>引号短语必须命中，并且额外加 0.5；查询里的每个 term 都必需</li>
+<li><code>MEMORY.md</code> 被刻意排除：它是入口，直接读，不参与索引</li>
+<li>增量同步，带 added/updated/removed 计数、内容哈希，以及读到一半文件被改的重验证回路</li>
+<li>上限 2000 文件 / 单文件 1 MB / 索引 64 MB，超了按 mtime 保留最新的</li>
+</ul>
+<p>这套排序就是本插件用的排序，我在本地重写了一遍：标题权重 3，描述/正文权重 1，英文做后缀折叠，中文按单字和 bigram 建索引。我砍掉了短语加权和 frontmatter/标题的单独权重，因为在 128 条小笔记这个量级上，它们带来的收益我测不出来。不需要 embedding，不需要联网，这才是重点：一个只有四十条笔记的项目不需要向量数据库。</p>
+<h3 id="没做的东西dreaming">没做的东西：dreaming</h3>
+<p>Claude Code 有 <code>auto-dream</code>：一个后台 pass，合并重复、重写过期的笔记、做清理，靠 <code>.consolidate-lock</code> 和活进程 PID 检查保护。</p>
+<p>我没做，而且想把原因说清楚。现在重复主要来自同一个事实存了两个 id，内容指纹已经能抓住。真正需要 LLM 的场景是”换了个说法但意思一样”和”这条已经过期”，而这我可以用 <code>/pmem doctor</code> 的相似度报告零成本观测，再决定要不要为它上调度器、锁协议和第二次模型调用。现在加这套机器，等于为了一个还没测量过的问题把故障面翻倍。</p>
+<p>同样没做的：团队/组织同步、<code>/memory</code> 浏览 UI、per-subagent 独立 store。这些是真实的缺口，只是不是我现在的缺口。</p>
+<h2 id="试试">试试</h2>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">pi</span><span style="color:#9ECBFF"> install</span><span style="color:#9ECBFF"> git:github.com/adlternative/pi-in-chrome</span></span>
+<span class="line"><span style="color:#B392F0">pi</span><span style="color:#9ECBFF"> install</span><span style="color:#9ECBFF"> git:github.com/adlternative/pi-project-memory</span></span>
+<span class="line"></span></code></pre>
+<p><code>pi-in-chrome</code> 多一步：在仓库里跑 <code>npm run setup</code> 注册 native messaging host，再从 <code>chrome-extension/</code> 加载未打包扩展。<code>pi-project-memory</code> 开箱即用；想要后台提炼就把 <code>autoExtract</code> 打开。</p>
+<p>两个都只在 macOS + Pi 1.2.0 上验证过。Claude Code 那几列来自 2.1.280 的静态分析，会随着 Anthropic 发布新的门而漂移。漂移之后，真正有意思的问题还是同一个：到底什么在跑，为谁跑，以及由谁决定。</p>
+<p>还欠一件事：这两个包本来都该发到 <a href="https://www.npmjs.com">npm</a>，这样 <code>pi install pi-in-chrome</code> 就不用从 Git 拉。但 <code>npm publish</code> 的 2FA 不知道为什么不认，我先用 recovery code 把账号恢复回来，发布往后放。在那之前，从 Git 装。</p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag ai" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag ai</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  

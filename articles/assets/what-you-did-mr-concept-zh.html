@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What You Did — MR Review Concept</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* GitHub Nav */
+.gh-nav {
+  background: #010409;
+  border-bottom: 1px solid #21262d;
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.gh-nav .logo { width: 32px; height: 32px; fill: #f0f6fc; }
+.gh-nav .nav-items { display: flex; gap: 16px; font-size: 14px; color: #f0f6fc; }
+.gh-nav .nav-items span { opacity: 0.7; }
+
+/* Repo header */
+.repo-header {
+  padding: 16px 32px;
+  border-bottom: 1px solid #21262d;
+  font-size: 14px;
+  color: #8b949e;
+}
+.repo-header a { color: #58a6ff; text-decoration: none; }
+
+/* Tab bar */
+.tab-bar {
+  display: flex;
+  padding: 0 32px;
+  border-bottom: 1px solid #21262d;
+  background: #010409;
+}
+.tab-bar .tab {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #8b949e;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tab-bar .tab.active { color: #f0f6fc; border-bottom-color: #f78166; }
+.tab-bar .tab .count { background: #30363d; padding: 0 6px; border-radius: 10px; font-size: 12px; }
+
+/* Main */
+.main { max-width: 1012px; margin: 0 auto; padding: 24px 32px; }
+
+/* PR Title */
+.pr-title-section { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #21262d; }
+.pr-title-section h1 { font-size: 26px; font-weight: 400; color: #f0f6fc; margin-bottom: 8px; }
+.pr-title-section h1 .pr-number { color: #8b949e; }
+.pr-meta { display: flex; align-items: center; gap: 8px; font-size: 14px; flex-wrap: wrap; }
+.pr-state { background: #238636; color: #fff; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; }
+.pr-meta .desc { color: #8b949e; }
+.branch-ref {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  background: #388bfd26;
+  color: #58a6ff;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+/* AI Summary card */
+.ai-summary {
+  border: 1px solid #1f6feb55;
+  border-radius: 6px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.ai-summary-header {
+  background: #161b22;
+  padding: 12px 16px;
+  border-bottom: 1px solid #1f6feb33;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #58a6ff;
+}
+.ai-summary-body { padding: 16px; font-size: 14px; color: #c9d1d9; }
+
+/* Files header */
+.files-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.files-header h2 { font-size: 16px; font-weight: 600; }
+.files-header .stats { font-size: 13px; color: #8b949e; }
+.files-header .stats .add { color: #3fb950; }
+.files-header .stats .del { color: #f85149; }
+
+/* File tree */
+.file-tree-container { border: 1px solid #30363d; border-radius: 6px; }
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid #21262d;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.tree-item:last-child { border-bottom: none; }
+.tree-item.is-dir { background: #0d1117; }
+.tree-item:hover { background: #161b22; }
+
+.tree-item .chevron { width: 16px; color: #8b949e; font-size: 10px; margin-right: 4px; flex-shrink: 0; }
+.tree-item .file-icon { width: 16px; margin-right: 8px; flex-shrink: 0; font-size: 14px; }
+
+.tree-item .path {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  color: #e6edf3;
+  flex: 1;
+}
+.tree-item.is-dir .path { font-weight: 600; }
+
+.tree-item .diff-stat {
+  margin-left: auto;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+.tree-item .diff-stat .add { color: #3fb950; }
+.tree-item .diff-stat .del { color: #f85149; }
+
+.status-badge {
+  width: 20px; height: 20px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+  font-size: 10px; font-weight: 700;
+  margin-right: 8px; flex-shrink: 0;
+}
+.status-badge.A { background: #23863522; color: #3fb950; border: 1px solid #23863555; }
+.status-badge.M { background: #9e6a0322; color: #d29922; border: 1px solid #9e6a0355; }
+
+/* Popover — appended to body, positioned with JS */
+#popover {
+  position: fixed;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 14px 18px;
+  width: min(90vw, 500px);
+  max-width: 500px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6), 0 0 1px rgba(48,54,61,0.8);
+  z-index: 99999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  transform: translateY(4px);
+}
+#popover.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+#popover .pop-header {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 8px;
+  font-size: 11px; color: #58a6ff;
+  text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;
+}
+#popover .pop-body { color: #e6edf3; font-size: 13px; line-height: 1.7; word-break: break-word; }
+#popover .pop-meta {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #21262d;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#popover .pop-category {
+  font-size: 11px; padding: 2px 8px;
+  border-radius: 10px; background: #21262d; color: #8b949e;
+}
+#popover .pop-files {
+  font-size: 11px; color: #8b949e;
+}
+
+/* Annotation */
+.annotation-band {
+  margin: 24px 0;
+  padding: 12px 16px;
+  border-left: 3px solid #f0883e;
+  background: #f0883e08;
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: #f0883e;
+  line-height: 1.6;
+}
+.annotation-band code {
+  background: #f0883e15;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+}
+</style>
+</head>
+<body>
+
+<!-- GitHub Nav -->
+<div class="gh-nav">
+  <svg class="logo" viewBox="0 0 16 16"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+  <div class="nav-items">
+    <span>Pull requests</span>
+    <span>Issues</span>
+    <span>Marketplace</span>
+  </div>
+</div>
+
+<!-- Repo Header -->
+<div class="repo-header">
+  <a href="#">user</a> / <a href="#"><strong>cache-service</strong></a>
+</div>
+
+<!-- Tab bar -->
+<div class="tab-bar">
+  <div class="tab">💬 Conversation <span class="count">3</span></div>
+  <div class="tab">📝 Commits <span class="count">4</span></div>
+  <div class="tab">✓ Checks <span class="count">12</span></div>
+  <div class="tab active">📄 Files changed <span class="count">5</span></div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- PR Title -->
+  <div class="pr-title-section">
+    <h1>feat: 重构缓存模块为 L1/L2 双层架构 <span class="pr-number">#142</span></h1>
+    <div class="pr-meta">
+      <span class="pr-state">● Open</span>
+      <span class="desc">wants to merge 4 commits into</span>
+      <span class="branch-ref">main</span>
+      <span class="desc">from</span>
+      <span class="branch-ref">feat/cache-refactor</span>
+    </div>
+  </div>
+
+  <!-- AI Summary -->
+  <div class="ai-summary">
+    <div class="ai-summary-header">
+      <span>✨</span>
+      <span>AI Change Summary</span>
+      <span style="opacity:0.5; margin-left:4px; font-weight:400;">— powered by /what-you-did</span>
+    </div>
+    <div class="ai-summary-body">
+      将单层内存缓存重构为 L1(内存) + L2(磁盘) 双层架构，新增 TTL 淘汰策略和缓存预热机制。对外公共接口保持不变，调用方无需修改。
+    </div>
+  </div>
+
+  <!-- Files header -->
+  <div class="files-header">
+    <h2>Files changed</h2>
+    <div class="stats"><span class="add">+247</span>&nbsp;&nbsp;<span class="del">−89</span>&nbsp;&nbsp;in 5 files</div>
+  </div>
+
+  <!-- File tree -->
+  <div class="file-tree-container">
+
+    <div class="tree-item is-dir"
+         data-type="dir"
+         data-summary="缓存核心逻辑拆分：将原单文件实现拆为 L1(内存)、L2(磁盘) 独立模块，新增 TTL 淘汰策略，统一入口保持向后兼容。"
+         data-files="4">
+      <span class="chevron">▶</span>
+      <span class="file-icon">📂</span>
+      <span class="path">src/cache</span>
+      <span class="diff-stat"><span class="add">+198</span>&nbsp;<span class="del">−67</span></span>
+    </div>
+
+    <div class="tree-item"
+         data-type="file"
+         data-summary="实现内存级 L1 缓存，使用 LRU 淘汰策略，支持 TTL 过期和容量上限配置。"
+         data-category="feature">
+      <span class="chevron"></span>
+      <span class="status-badge A">A</span>
+      <span class="file-icon">📄</span>
+      <span class="path">src/cache/l1.ts</span>
+      <span class="diff-stat"><span class="add">+72</span></span>
+    </div>
+
+    <div class="tree-item"
+         data-type="file"
+         data-summary="实现磁盘级 L2 缓存，基于文件系统存储，支持序列化和 gzip 压缩，作为 L1 miss 时的 fallback 层。"
+         data-category="feature">
+      <span class="chevron"></span>
+      <span class="status-badge A">A</span>
+      <span class="file-icon">📄</span>
+      <span class="path">src/cache/l2.ts</span>
+      <span class="diff-stat"><span class="add">+85</span></span>
+    </div>
+
+    <div class="tree-item"
+         data-type="file"
+         data-summary="重构为路由层：读取时先查 L1 再查 L2，写入时同时更新两层。对外 API 签名不变，现有调用方无需修改。"
+         data-category="refactor">
+      <span class="chevron"></span>
+      <span class="status-badge M">M</span>
+      <span class="file-icon">📄</span>
+      <span class="path">src/cache/index.ts</span>
+      <span class="diff-stat"><span class="add">+31</span>&nbsp;<span class="del">−67</span></span>
+    </div>
+
+    <div class="tree-item"
+         data-type="file"
+         data-summary="新增缓存预热模块：应用启动时从 L2 批量加载热点 key 到 L1，减少冷启动后的缓存穿透。"
+         data-category="feature">
+      <span class="chevron"></span>
+      <span class="status-badge A">A</span>
+      <span class="file-icon">📄</span>
+      <span class="path">src/cache/warmup.ts</span>
+      <span class="diff-stat"><span class="add">+41</span></span>
+    </div>
+
+    <div class="tree-item"
+         data-type="file"
+         data-summary="新增 L1/L2 分层配置项：l1.maxSize、l2.diskPath、默认 TTL、预热开关 warmup.enabled。"
+         data-category="config">
+      <span class="chevron"></span>
+      <span class="status-badge M">M</span>
+      <span class="file-icon">📄</span>
+      <span class="path">config/cache.yaml</span>
+      <span class="diff-stat"><span class="add">+18</span>&nbsp;<span class="del">−22</span></span>
+    </div>
+
+  </div>
+
+  <!-- Annotation -->
+  <div class="annotation-band">
+    👆 Hover 任意文件或目录查看 AI 摘要。数据源自 <code>.what-you-did/feat-cache-refactor.json</code>，页面加载时已内联，零额外请求。
+  </div>
+
+</div>
+
+<!-- Popover (lives at body level, never clipped) -->
+<div id="popover">
+  <div class="pop-header"><span>✨</span> <span id="pop-label"></span></div>
+  <div class="pop-body" id="pop-body"></div>
+  <div class="pop-meta" id="pop-meta"></div>
+</div>
+
+<script>
+const popover = document.getElementById('popover');
+const popLabel = document.getElementById('pop-label');
+const popBody = document.getElementById('pop-body');
+const popMeta = document.getElementById('pop-meta');
+
+let currentTarget = null;
+
+document.querySelectorAll('.tree-item').forEach(item => {
+  item.addEventListener('mouseenter', function(e) {
+    const summary = this.dataset.summary;
+    if (!summary) return;
+
+    currentTarget = this;
+    const isDir = this.dataset.type === 'dir';
+
+    popLabel.textContent = isDir ? 'Directory Summary' : 'File Summary';
+    popBody.textContent = summary;
+
+    // Meta line
+    if (isDir) {
+      popMeta.innerHTML = '<span class="pop-files">' + this.dataset.files + ' files changed in this directory</span>';
+    } else if (this.dataset.category) {
+      popMeta.innerHTML = '<span class="pop-category">' + this.dataset.category + '</span>';
+    } else {
+      popMeta.innerHTML = '';
+    }
+
+    // Position: below the row, or above if near bottom
+    const rect = this.getBoundingClientRect();
+    const popHeight = 140; // estimated
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    let left = rect.left + 16;
+    let top;
+
+    if (spaceBelow > popHeight + 12 || spaceBelow > spaceAbove) {
+      // Show below
+      top = rect.bottom + 8;
+    } else {
+      // Show above
+      top = rect.top - popHeight - 8;
+    }
+
+    // Keep within viewport horizontally
+    const popWidth = Math.min(window.innerWidth * 0.9, 500);
+    if (left + popWidth > window.innerWidth - 8) {
+      left = window.innerWidth - popWidth - 8;
+    }
+    if (left < 8) left = 8;
+
+    // Keep within viewport vertically
+    if (top < 8) top = 8;
+    if (top + popHeight > window.innerHeight - 8) top = window.innerHeight - popHeight - 8;
+
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
+    popover.classList.add('show');
+  });
+
+  item.addEventListener('mouseleave', function(e) {
+    // Small delay to prevent flicker
+    setTimeout(() => {
+      if (currentTarget === this) {
+        popover.classList.remove('show');
+        currentTarget = null;
+      }
+    }, 80);
+  });
+});
+</script>
+
+</body>
+</html>
