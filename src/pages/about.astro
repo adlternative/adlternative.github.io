@@ -4,14 +4,105 @@ import Base from "../layouts/Base.astro";
 
 <Base current="About" title="About">
   <h1>About</h1>
-  <div class="textcontent">
+  <div class="textcontent" id="about-stream">
     <p>Hello, my name is ZheNing Hu.</p>
     <p>
-      I am a software developer interested in git internals, C++, linux and
-      performance. I participated in
+      I am a software developer, currently working at <b>Alibaba Qoder</b>. I
+      graduated from
+      <a href="https://www.xupt.edu.cn/" target="_blank"
+        >Xi'an University of Posts and Telecommunications</a
+      >.
+    </p>
+    <p>I love programming, AI and movies.</p>
+    <p>
+      I participated in
       <a href="https://summerofcode.withgoogle.com/" target="_blank"
         >Google Summer of Code</a
-      > working on Git.
+      > in 2021, working on the Git community.
     </p>
+    <p>I still have many things I want to do...</p>
   </div>
 </Base>
+
+<style is:global>
+  /* streaming reveal: words fade in one by one
+     (global on purpose — spans are created at runtime, outside Astro scoping) */
+  #about-stream .w {
+    opacity: 0;
+  }
+  #about-stream .w.on {
+    opacity: 1;
+    transition: opacity 0.18s ease;
+  }
+  #about-stream .stream-cursor {
+    display: inline-block;
+    width: 0.55em;
+    height: 1em;
+    margin-left: 0.1em;
+    vertical-align: text-bottom;
+    background: var(--fg, #b8ff5c);
+    animation: stream-blink 1s steps(1) infinite;
+  }
+  @keyframes stream-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #about-stream .stream-cursor {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  // Stream the About text word-by-word, like an LLM generating a reply.
+  const box = document.getElementById("about-stream");
+  if (box) {
+    const words: HTMLSpanElement[] = [];
+
+    // Wrap every word (preserving links/bold) in a hidden span.
+    function wrapWords(el: HTMLElement) {
+      for (const child of Array.from(el.childNodes)) {
+        if (child.nodeType === Node.TEXT_NODE) {
+          const text = child.textContent ?? "";
+          const frag = document.createDocumentFragment();
+          for (const part of text.split(/(\s+)/)) {
+            if (!part) continue;
+            if (/^\s+$/.test(part)) {
+              frag.append(part);
+            } else {
+              const s = document.createElement("span");
+              s.className = "w";
+              s.textContent = part;
+              frag.append(s);
+              words.push(s);
+            }
+          }
+          child.replaceWith(frag);
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          wrapWords(child as HTMLElement);
+        }
+      }
+    }
+
+    wrapWords(box);
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced || words.length === 0) {
+      words.forEach((w) => w.classList.add("on"));
+    } else {
+      const cursor = document.createElement("span");
+      cursor.className = "stream-cursor";
+      let i = 0;
+      const tick = () => {
+        const w = words[i];
+        w.classList.add("on");
+        w.after(cursor);
+        i++;
+        if (i >= words.length) clearInterval(timer); // cursor keeps blinking at the end
+      };
+      const timer = setInterval(tick, 110);
+    }
+  }
+</script>

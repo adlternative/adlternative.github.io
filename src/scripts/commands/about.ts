@@ -14,9 +14,10 @@ export const about: Cmd = {
         `    \\_/\\_/  |_| |_|\\___/|___/  \n` +
         `</pre>` +
         `<div class="t-mono">` +
-        `  <b>ZheNing Hu</b> — Software Developer<br/>` +
-        `  Interests: Git internals · C++ · Linux · perf<br/>` +
-        `  GSoC alum (Git) · loves the terminal<br/>` +
+        `  <b>ZheNing Hu</b> — Software Developer @ Alibaba Qoder<br/>` +
+        `  Graduated from Xi'an Univ. of Posts &amp; Telecommunications<br/>` +
+        `  Loves: programming · AI · movies<br/>` +
+        `  GSoC 2021 alum (Git) · loves the terminal<br/>` +
         `  More: <a href="/about" data-internal>/about</a> · ` +
         `<a href="/projects" data-internal>/projects</a> · ` +
         `<a href="/contact" data-internal>/contact</a> · ` +
