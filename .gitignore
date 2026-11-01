@@ -12,3 +12,6 @@ npm-debug.log*
 src/env.d.ts
 
 package-lock.json
+
+# Local agent workspace
+.pi/

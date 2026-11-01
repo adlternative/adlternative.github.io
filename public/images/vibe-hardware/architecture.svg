@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">
+  <rect width="960" height="470" fill="#000000"/>
+
+  <text x="24" y="34" fill="#00ff00" font-size="17">Qoduck = Muse body, Qoder Cloud Agent brain</text>
+  <text x="24" y="56" fill="#00b300" font-size="12">the same firmware that shipped from Meta, minus the cloud it talked to</text>
+
+  <!-- device panel -->
+  <rect x="24" y="76" width="286" height="330" fill="none" stroke="#00ff00" stroke-dasharray="6 4"/>
+  <text x="40" y="100" fill="#00ff00" font-size="13">DEVICE  ESP32-S3 / 8 MB PSRAM</text>
+
+  <rect x="48" y="118" width="150" height="34" fill="none" stroke="#00b300"/>
+  <text x="58" y="140" fill="#00ff00" font-size="12">mic  16 kHz PCM</text>
+
+  <rect x="48" y="164" width="150" height="34" fill="none" stroke="#00b300"/>
+  <text x="58" y="186" fill="#00ff00" font-size="12">VAD (本地门限)</text>
+
+  <rect x="48" y="210" width="150" height="34" fill="none" stroke="#00b300"/>
+  <text x="58" y="232" fill="#00ff00" font-size="12">ring 4 s (PSRAM)</text>
+
+  <rect x="48" y="256" width="150" height="34" fill="none" stroke="#00b300"/>
+  <text x="58" y="278" fill="#00ff00" font-size="12">playback queue</text>
+
+  <rect x="48" y="302" width="150" height="34" fill="none" stroke="#00b300"/>
+  <text x="58" y="324" fill="#00ff00" font-size="12">speaker 24 kHz</text>
+
+  <rect x="214" y="164" width="86" height="126" fill="none" stroke="#00b300" stroke-dasharray="3 3"/>
+  <text x="222" y="184" fill="#00b300" font-size="11">Qoduck</text>
+  <text x="222" y="200" fill="#00b300" font-size="11">avatar</text>
+  <text x="222" y="216" fill="#00b300" font-size="11">+ touch</text>
+  <text x="222" y="232" fill="#00b300" font-size="11">+ wheel</text>
+  <text x="222" y="248" fill="#00b300" font-size="11">emotes</text>
+
+  <text x="48" y="368" fill="#00b300" font-size="11">internal SRAM after TLS+WS:</text>
+  <text x="48" y="386" fill="#00ff00" font-size="12">largest free block ≈ 14 KB</text>
+
+  <!-- uplink / downlink -->
+  <line x1="312" y1="182" x2="556" y2="182" stroke="#00ff00" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="336" y="172" fill="#00ff00" font-size="11">16 kHz PCM ↑</text>
+  <text x="336" y="204" fill="#00b300" font-size="11">wss://api.qoder.com</text>
+
+  <line x1="556" y1="300" x2="312" y2="300" stroke="#00ff00" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="336" y="292" fill="#00ff00" font-size="11">24 kHz PCM ↓</text>
+  <text x="336" y="322" fill="#00b300" font-size="11">1.0 – 2.5 s 首帧</text>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#00ff00"/>
+    </marker>
+  </defs>
+
+  <!-- cloud panel -->
+  <rect x="556" y="76" width="380" height="330" fill="none" stroke="#00ff00" stroke-dasharray="6 4"/>
+  <text x="572" y="100" fill="#00ff00" font-size="13">QODER CLOUD · Cloud Agent</text>
+
+  <rect x="572" y="118" width="348" height="28" fill="none" stroke="#00b300"/>
+  <text x="582" y="137" fill="#00ff00" font-size="12">realtime gateway  /api/v1/forward/realtime</text>
+
+  <rect x="572" y="156" width="348" height="28" fill="none" stroke="#00b300"/>
+  <text x="582" y="175" fill="#00ff00" font-size="12">server VAD → ASR → agent loop → TTS</text>
+
+  <rect x="572" y="194" width="166" height="60" fill="none" stroke="#00b300"/>
+  <text x="582" y="214" fill="#00ff00" font-size="11">identity  idn_…</text>
+  <text x="582" y="232" fill="#00ff00" font-size="11">template  tmpl_…</text>
+  <text x="582" y="248" fill="#00b300" font-size="11">(模型 + 工具集)</text>
+
+  <rect x="754" y="194" width="166" height="60" fill="none" stroke="#00b300"/>
+  <text x="764" y="214" fill="#00ff00" font-size="11">conversation</text>
+  <text x="764" y="232" fill="#00ff00" font-size="11">conv_…</text>
+  <text x="764" y="248" fill="#00b300" font-size="11">可随时换一段新的</text>
+
+  <rect x="572" y="264" width="348" height="52" fill="none" stroke="#00ff00" stroke-dasharray="4 3"/>
+  <text x="582" y="284" fill="#00ff00" font-size="12">Memory Store  (identity × template)</text>
+  <text x="582" y="302" fill="#00b300" font-size="11">会话换了，记忆还在 —— 它还认得我叫什么</text>
+
+  <rect x="572" y="326" width="348" height="28" fill="none" stroke="#00b300"/>
+  <text x="582" y="345" fill="#00ff00" font-size="12">tools: Read / Write / WebSearch / WebFetch</text>
+
+  <!-- provisioning band -->
+  <rect x="24" y="424" width="912" height="32" fill="none" stroke="#00b300" stroke-dasharray="3 3"/>
+  <text x="36" y="445" fill="#00b300" font-size="11">配网：手机 Chrome 打开 Web Bluetooth 页面 → 推 Wi-Fi + Qoder PAT → 存进 NVS，重启不忘</text>
+</svg>
