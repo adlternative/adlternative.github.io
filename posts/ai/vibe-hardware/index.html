@@ -1,0 +1,385 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Vibe Hardware: One Day, One Duck, One Cloud Agent - ZheNing Hu</title><meta name="description" content="Vibe Hardware: One Day, One Duck, One Cloud Agent"><link rel="icon" href="/resources/favicon.ico"><link rel="alternate" type="application/rss+xml" title="ZheNing Hu's Blog" href="/rss.xml"><script data-goatcounter="https://adlternative.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script><link rel="stylesheet" href="/_astro/about.BJAoGGhS.css">
+<style>.term-cta{display:flex;align-items:center;gap:10px;margin:24px 0 16px;padding:10px 14px;font-family:JetBrains Mono,SFMono-Regular,ui-monospace,monospace;font-size:13px;line-height:1.4;background:rgb(var(--t-bg) / .6);border-left:3px solid rgb(var(--t-accent));border-radius:0 4px 4px 0;cursor:pointer;transition:background .15s ease,border-color .15s ease}.term-cta:hover{background:rgb(var(--t-bg) / .85)}.term-cta-prompt{color:rgb(var(--t-accent));font-weight:600}.term-cta-cmd{color:rgb(var(--t-fg))}.term-cta-hint{color:rgb(var(--t-fg-dim));font-size:11px;margin-left:auto}@media (max-width: 640px){.term-cta{display:none!important}}.lang-switcher[data-astro-cid-egg7nqdx]{margin-top:1em;display:inline-flex;gap:.5em}.lang-btn[data-astro-cid-egg7nqdx]{cursor:pointer}.lang-btn[data-astro-cid-egg7nqdx].selected{color:var(--bg);background-color:var(--fg);border-bottom:1px dashed var(--fg)}@media (max-width: 640px){.desktop-only[data-astro-cid-egg7nqdx]{display:none!important}}
+</style><script type="module" src="/_astro/hoisted.D6BGEuYJ.js"></script></head> <body> <div id="outerwrapper"> <header data-astro-cid-3ef6ksr2> <ul class="horizontallist" data-astro-cid-3ef6ksr2> <a href="/" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Home </li> </a><a href="/about" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> About </li> </a><a href="/projects" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Projects </li> </a><a href="/contact" data-astro-cid-3ef6ksr2> <li class="button" data-astro-cid-3ef6ksr2> Contact </li> </a><a href="/blog" data-astro-cid-3ef6ksr2> <li class="button selected" data-astro-cid-3ef6ksr2> Blog </li> </a> <a href="#" class="term-nav-link desktop-only" data-terminal-open data-astro-cid-3ef6ksr2> <li class="button term-nav-btn" data-astro-cid-3ef6ksr2>$ shell</li> </a> </ul> </header>   <main>  <a href="/blog" class="back-link button" data-astro-cid-egg7nqdx>&larr; back to blog</a> <article data-astro-cid-egg7nqdx> <div class="article-header" data-astro-cid-egg7nqdx> <h1 id="post-title" data-title-en="Vibe Hardware: One Day, One Duck, One Cloud Agent" data-title-zh="Vibe 硬件：一天时间，把一只塑料鸭子接上云端大脑" data-astro-cid-egg7nqdx> Vibe Hardware: One Day, One Duck, One Cloud Agent </h1> <div class="post-meta" data-astro-cid-egg7nqdx> <span data-astro-cid-egg7nqdx>2026-11-01 21:00:00</span>   <span class="tag" data-astro-cid-egg7nqdx>ai</span><span class="tag" data-astro-cid-egg7nqdx>hardware</span><span class="tag" data-astro-cid-egg7nqdx>esp32</span><span class="tag" data-astro-cid-egg7nqdx>agent</span><span class="tag" data-astro-cid-egg7nqdx>qoder</span><span class="tag" data-astro-cid-egg7nqdx>vibe-coding</span>   <span class="views" id="post-views" hidden data-astro-cid-egg7nqdx>
+&middot; <span id="post-views-count" data-astro-cid-egg7nqdx>&hellip;</span> views
+</span> </div> <div class="lang-switcher" role="group" aria-label="Language switcher" data-astro-cid-egg7nqdx> <button type="button" class="button lang-btn selected" data-lang="en" aria-pressed="true" data-astro-cid-egg7nqdx>
+English
+</button> <button type="button" class="button lang-btn" data-lang="zh" aria-pressed="false" data-astro-cid-egg7nqdx>
+中文
+</button> </div> </div> <div class="prose" data-astro-cid-egg7nqdx> <div class="lang-section" data-lang="en">
+<p>I have never soldered anything that worked. In university, hardware was the subject I hated most: analog circuits, digital circuits, signals and systems, and the labs that came with them. I moved to software and stopped thinking about it.</p>
+<p>Yesterday I turned a $60 plastic duck into a voice assistant backed by a cloud agent. It answers in about a second and a half, remembers my name across reboots, plays a goodbye animation when it powers off, and spins around with X-shaped eyes if you double-click its scroll wheel. When a question needs actual work — check a merge request, read a page, search the web — it goes quiet for a minute and then says the answer out loud. It took most of a day.</p>
+<figure style="margin: 2rem 0; text-align: center;">
+  <img src="/images/vibe-hardware/qoduck-device.jpg" alt="Qoduck on a desk" style="display:block;width:min(380px,100%);margin:0 auto;border-radius:50%;border:1px dashed var(--fg, lime);">
+  <figcaption style="margin-top:.6rem;opacity:.75;">The duck, a day after surgery. The caption says READY and “常听模式，直接说话” — always listening, just talk.</figcaption>
+</figure>
+<h2 id="the-patch-that-started-it">The patch that started it</h2>
+<p>It began with <a href="https://github.com/raullenchai/esp32-thinks">esp32-thinks</a>, a small repository of patches that takes <a href="https://github.com/facebookincubator/muse-gadget-sdk">muse-gadget-sdk</a> — Meta’s open-source SDK for gadgets with a screen, a mic and a speaker — and points its brain at any OpenAI-compatible endpoint.</p>
+<p>I took the Muse brain side apart to see what it actually needs. Three things, and no more:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>What it needs</th><th>Why</th></tr></thead><tbody><tr><td>voice in and out</td><td>mic up, speaker down, fast enough to feel like a conversation</td></tr><tr><td>a VM to run things in</td><td>the interesting half of an agent is what it <em>does</em> — commands, files, searches</td></tr><tr><td>an LLM API</td><td>the persona, and the judgement about what to say next</td></tr></tbody></table>
+<p>esp32-thinks answers all three with three separate HTTP services: a transcription endpoint, a chat completion, a speech endpoint. That is why the patch is small — and also why there is a patch at all. The device has to stitch the three together itself, and a stitched pipeline has no tools and no memory.</p>
+<p>Qoder Cloud Agent, which my employer happens to build, covers the same three needs inside a single session: realtime voice, a disposable sandbox per conversation, and the model behind it. It is the same shape as Anthropic’s Managed Agents — you do not host the agent, you connect to one.</p>
+<p>The docs are at <a href="https://docs.qoder.com/cloud-agents/overview">docs.qoder.com/cloud-agents</a>, and the two pages I actually lived in were <a href="https://docs.qoder.com/cloud-agents/api/forward/realtime/create-conversation">create a conversation</a> and <a href="https://docs.qoder.com/cloud-agents/api/forward/realtime/connect">connect to one</a>. Ignore the duck for a second — the whole thing is four commands:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#F97583">export</span><span style="color:#E1E4E8"> QODER_PAT</span><span style="color:#F97583">=</span><span style="color:#E1E4E8">...                   </span><span style="color:#6A737D"># https://qoder.com/cloud/pat-keys</span></span>
+<span class="line"><span style="color:#E1E4E8">API</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">https://api.qoder.com/api/v1/forward</span></span>
+<span class="line"><span style="color:#E1E4E8">AUTH</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">"Authorization: Bearer </span><span style="color:#E1E4E8">$QODER_PAT</span><span style="color:#9ECBFF">"</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D"># a sandbox environment and an agent template are the two halves of a brain</span></span>
+<span class="line"><span style="color:#B392F0">curl</span><span style="color:#79B8FF"> -s</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$API</span><span style="color:#9ECBFF">/environments"</span><span style="color:#79B8FF"> -H</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$AUTH</span><span style="color:#9ECBFF">"</span><span style="color:#F97583"> |</span><span style="color:#B392F0"> jq</span><span style="color:#79B8FF"> -r</span><span style="color:#9ECBFF"> '.data[] | "\(.id)  \(.config.type)"'</span></span>
+<span class="line"><span style="color:#B392F0">curl</span><span style="color:#79B8FF"> -s</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$API</span><span style="color:#9ECBFF">/templates"</span><span style="color:#79B8FF">    -H</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$AUTH</span><span style="color:#9ECBFF">"</span><span style="color:#F97583"> |</span><span style="color:#B392F0"> jq</span><span style="color:#79B8FF"> -r</span><span style="color:#9ECBFF"> '.data[] | "\(.id)  \(.name)"'</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D"># identity = who is talking, template = what it is allowed to do</span></span>
+<span class="line"><span style="color:#B392F0">curl</span><span style="color:#79B8FF"> -s</span><span style="color:#79B8FF"> -X</span><span style="color:#9ECBFF"> POST</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$API</span><span style="color:#9ECBFF">/realtime/conversations"</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#79B8FF">  -H</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$AUTH</span><span style="color:#9ECBFF">"</span><span style="color:#79B8FF"> -H</span><span style="color:#9ECBFF"> 'Content-Type: application/json'</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#79B8FF">  -H</span><span style="color:#9ECBFF"> "Idempotency-Key: $(</span><span style="color:#B392F0">uuidgen</span><span style="color:#9ECBFF">)"</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#79B8FF">  -d</span><span style="color:#9ECBFF"> '{"identity_id":"idn_xxx","template_id":"tmpl_xxx","title":"duck",</span></span>
+<span class="line"><span style="color:#9ECBFF">       "config":{"audio":{"output":{"voice":"longanqian"}}}}'</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#F97583">  |</span><span style="color:#B392F0"> jq</span><span style="color:#79B8FF"> -r</span><span style="color:#9ECBFF"> .id</span></span>
+<span class="line"><span style="color:#6A737D"># → conv_xxx</span></span>
+<span class="line"></span></code></pre>
+<p>That last command prints a <code>conv_…</code> id. Everything else is one WebSocket to <code>wss://api.qoder.com/api/v1/forward/realtime?conversation_id=conv_xxx</code>, carrying <code>audio.append</code> frames up at 16 kHz and <code>audio.delta</code> frames down at 24 kHz. The firmware in this post is that client, plus a screen and a speaker — there is no second protocol to learn.</p>
+<h2 id="why-one-session-instead-of-stt--chat--tts">Why one session instead of STT + chat + TTS</h2>
+<p>The obvious swap is still speech-to-text, one chat completion, then text-to-speech, over plain HTTPS. It works, and it is where most of these firmware patches stop. But it gives up the parts that make an agent an agent: tools, memory, and the ability to do things rather than describe them.</p>
+<p>Qoder Cloud Agents exposes a realtime voice endpoint — a single WebSocket, 16 kHz PCM up, 24 kHz PCM down, with VAD, ASR, LLM and TTS on the server — and it is the same session that can read files, write files, search the web and remember you. The duck is not a talking toy; it is a terminal with a mouth.</p>
+<p>Of that one session, the firmware leans on three properties:</p>
+<ul>
+<li><strong>One socket for everything.</strong> Audio up, audio down, captions and tool events all travel on the same WebSocket (<code>/api/v1/forward/realtime?conversation_id=…</code>). No stitching STT into a chat completion into TTS, no second control channel, no turn state machine on a device with 14 KB of contiguous RAM.</li>
+<li><strong>Every conversation is a fresh throwaway sandbox.</strong> Creating a conversation spins up an isolated machine with a shell and a filesystem, and it is destroyed when the conversation ends (sixty minutes at most). I do not run a server, I do not patch one, and nothing on a $60 gadget can do damage beyond one conversation.</li>
+<li><strong>Memory outlives the sandbox.</strong> Memory stores are mounted per <code>(identity, template)</code>, not per sandbox, so a reboot, a network drop or a brand-new conversation all land in the same memory.</li>
+</ul>
+<h2 id="what-actually-happens-on-that-socket">What actually happens on that socket</h2>
+<p>This is the part that made me buy the hardware. There is one long-lived WebSocket, and everything the duck does is a variation of the same four steps:</p>
+<ol>
+<li><strong>It listens.</strong> While awake, the device streams 16 kHz PCM up the socket continuously. The server runs the VAD and the transcription, so the firmware has no concept of a “turn” — no wake word, no button, no end-of-speech detection to get wrong.</li>
+<li><strong>The agent decides what this is.</strong> The transcript lands in the model inside the same session, with the same tools and the same memory. Most sentences are conversation and get answered in place, in about a second.</li>
+<li><strong>Some sentences start a session that works.</strong> “Check whether my MR broke CI”, “summarise what happened in the group chat”, “what is the weather in Hangzhou on Saturday”. That becomes a session running inside the conversation’s sandbox: the agent calls tools, reads files, runs commands. This is the part that takes minutes, and it happens entirely on the other side of the socket — the duck has nothing to do but keep the connection alive.</li>
+<li><strong>It reports back.</strong> When the session finishes, the result comes down the same connection as speech, with a caption on the round screen. No polling, no push notification, no second API, no “I’ll let you know” — it goes quiet for a while and then tells me what it found.</li>
+</ol>
+<p>That last step is the whole reason this design beats a chat box. A phone notification makes me look at a screen. This thing waits until I am in the same room and says it out loud. It also means the firmware never has to know what a task is: from the device’s point of view, the audio just takes longer sometimes.</p>
+<p>The rest is bookkeeping:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Object</th><th>Lives</th><th>Lifetime</th><th>Meaning</th></tr></thead><tbody><tr><td><code>identity</code></td><td>platform</td><td>forever</td><td>who the user is</td></tr><tr><td><code>template</code></td><td>platform</td><td>forever</td><td>model, system prompt, tool set</td></tr><tr><td><code>conversation</code></td><td>platform</td><td>one socket, 60 min max</td><td>one working context</td></tr></tbody></table>
+<p>Memory is not in the conversation. It is stored per <code>(identity, template)</code> and mounted into every session of that pair. That one design decision is why the duck still knows my name after a reboot, or after I throw away the conversation and start a new one.</p>
+<figure style="margin: 2rem 0;">
+  <img src="/images/vibe-hardware/architecture.svg" alt="Qoduck architecture" style="display:block;width:100%;border:1px dashed var(--fg, lime);border-radius:8px;">
+  <figcaption style="margin-top:.6rem;text-align:center;opacity:.75;">Everything left of the arrow is Meta's firmware. Everything right of it is one WebSocket.</figcaption>
+</figure>
+<h2 id="before-buying-hardware-i-built-a-simulator">Before buying hardware, I built a simulator</h2>
+<p>The temptation is to order the thing first and start hacking. I built a browser simulator first instead: a small Node server speaking the same realtime protocol, and a page that opens the microphone, runs a VAD, streams PCM up and plays back what comes down.</p>
+<p>Two hours later I had the only number that decides whether the project is worth doing: <strong>1.0–2.5 s from the end of my speech to the first audio frame</strong>. Below a second it feels like a conversation. Above four it feels like a walkie-talkie.</p>
+<p>Testing the cloud half in a browser also paid off later. When the hardware misbehaved, I already knew which half was misbehaving, and almost every bug in the following 24 hours turned out to be on the device side.</p>
+<h2 id="the-duck">The duck</h2>
+<p>The hardware is a <a href="https://www.seeedstudio.com/SenseCAP-Watcher-W1-A-p-5979.html">Seeed SenseCAP Watcher</a>: ESP32-S3 at 240 MHz, 8 MB of octal PSRAM, 32 MB of flash, a round 412×412 touch LCD, a camera I never use, a mic, a speaker, and — the part that matters — an enclosure you would leave on a desk. About $55–62 depending on the vendor. No soldering iron, just a USB-C cable.</p>
+<p>Muse supported this board already, so the day’s work was not hardware bring-up. It was talking an existing firmware into using a different cloud without breaking anything that made it pleasant.</p>
+<h2 id="seven-things-that-went-wrong">Seven things that went wrong</h2>
+<p><strong>1. Two owners for one microphone.</strong> Muse has push-to-talk and an always-listening mode, and its voice task owns the codec. My component wanted to own it too. The first symptom was silence: the state machine politely refused to record, because from its point of view Muse was never set up. The fix was a negotiation — a weak symbol, <code>qca_voice_owns_mic()</code>, so the old task stands down only when the new one is present.</p>
+<p><strong>2. The eight-minute-old voice.</strong> The uplink queue pulled audio from a ring buffer; when the ring was full, samples were dropped, but the accounting still counted them as delivered. Playback finished, the device never acknowledged the segment, the server stopped sending, and the queue grew silently. Minutes later someone spoke again, the pipeline flushed, and eight minutes of stored audio arrived at once. The duck answered a question I had forgotten asking.</p>
+<p>Same bug, second lesson: the ESP32-S3 has 512 KB of internal SRAM, and after Wi-Fi, TLS and a WebSocket only about 14 KB of it is still contiguous. A 1.5-second ring buffer allocated from internal RAM is a coin flip. It now lives in PSRAM, four seconds of it.</p>
+<p><strong>3. A startup race that boot-looped the device.</strong> The voice task started before the settings module was initialized and read NVS through a mutex that did not exist yet: <code>assert failed: xQueueSemaphoreTake</code>, then a reboot loop. It now waits for a <code>muse_settings_ready()</code> flag and does its one-time setup lazily.</p>
+<p><strong>4. Web Bluetooth that could not see the device.</strong> The provisioning page got an empty list from <code>requestDevice({filters:[{services:[…]}]})</code>, because the firmware advertises the vendor’s UUID and not mine. An advertisement is 31 bytes; you do not get to add what you like. Filtering by <code>namePrefix: 'Qoduck'</code>, which lives in the scan response, fixed it, plus a “show everything” button as a fallback.</p>
+<p><strong>5. Tokens are per-site, and TLS is not optional.</strong> The key I had was issued for <code>qoder.com</code>; the <code>.cn</code> deployment returned <code>TOKEN_INVALID</code>. And an ESP32 does not ship with a useful root store, so the firmware carries the actual certificate chain (SHECA DV TLS RSA CA A1, chaining to UCA Global G2 Root) and pins it.</p>
+<p><strong>6. Chinese text rendered as tofu.</strong> The UI was full of <code>[]</code>. LVGL’s built-in CJK font covers UI strings, not arbitrary Chinese. The SDK already ships a 16 px Unifont with the full <code>0x4E00–0x9FFF</code> range as a 6.5 MB C file, so the fix was to use it as an LVGL font <em>fallback</em> rather than replacing the nicer font everywhere.</p>
+<p><strong>7. Every experiment costs four minutes.</strong> Flashing this board over serial takes four minutes, and there is no faster path I know of. Software people forget how much of their iteration speed comes from a compiler that returns in 0.4 s. On hardware, one wrong hypothesis costs a coffee. The answer was to batch three changes per flash and to add a serial command for anything I might want to check, so most verification never needs a flash at all. Related: opening the serial port with default DTR/RTS handling resets the device, so the first thing you lose is the crash you wanted to see.</p>
+<h2 id="what-it-does-now">What it does now</h2>
+<p>Wake it, talk, and it answers in about a second and a half. It stays listening, so there is no button to press. Ask it for something that needs work — “is my merge request still green?” — and it goes quiet, then reads the result out when the session finishes. Swipe for a Chinese settings UI: Wi-Fi, the Qoder token, Bluetooth pairing, volume, brightness, screen timeout, battery. Say “my reports are due on Friday”, reboot, and it still knows.</p>
+<p>The scroll wheel is the only physical button, so we gave it a personality:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Gesture</th><th>Response</th></tr></thead><tbody><tr><td>tap</td><td>hops once, hearts float out of both ears</td></tr><tr><td>double-tap</td><td>spins around, stars orbit its head, eyes turn into X</td></tr><tr><td>turn</td><td>looks left and right</td></tr><tr><td>hold 1.2 s</td><td>dozes off, Zzz drifting up</td></tr><tr><td>hold 2.4 s</td><td>sleeps</td></tr><tr><td>hold 4.2 s</td><td>powers off: blink, sink, then the pixels dissolve with an ordered dither while the backlight fades on the same clock</td></tr></tbody></table>
+<div style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin:2rem 0;">
+  <figure style="flex:1 1 160px;max-width:210px;margin:0;text-align:center;">
+    <img src="/images/vibe-hardware/screen-awake.jpg" alt="Idle duck" style="width:100%;border-radius:14px;border:1px dashed var(--fg, lime);">
+    <figcaption style="margin-top:.4rem;font-size:.85em;opacity:.75;">idle — “always listening, just talk”</figcaption>
+  </figure>
+  <figure style="flex:1 1 160px;max-width:210px;margin:0;text-align:center;">
+    <img src="/images/vibe-hardware/screen-dizzy.jpg" alt="Dizzy duck" style="width:100%;border-radius:14px;border:1px dashed var(--fg, lime);">
+    <figcaption style="margin-top:.4rem;font-size:.85em;opacity:.75;">double-tap — eyes turn into X</figcaption>
+  </figure>
+  <figure style="flex:1 1 160px;max-width:210px;margin:0;text-align:center;">
+    <img src="/images/vibe-hardware/screen-doze.jpg" alt="Sleepy duck" style="width:100%;border-radius:14px;border:1px dashed var(--fg, lime);">
+    <figcaption style="margin-top:.4rem;font-size:.85em;opacity:.75;">hold 1.2 s — dozing off</figcaption>
+  </figure>
+  <figure style="flex:1 1 160px;max-width:210px;margin:0;text-align:center;">
+    <img src="/images/vibe-hardware/settings.jpg" alt="Settings page" style="width:100%;border-radius:14px;border:1px dashed var(--fg, lime);">
+    <figcaption style="margin-top:.4rem;font-size:.85em;opacity:.75;">swipe — settings: Wi-Fi, Qoder, Bluetooth, volume</figcaption>
+  </figure>
+</div>
+<p>The shutdown animation is my favourite, because it is the kind of thing that is easy in software and annoying in hardware: 1.5 seconds of animation that has to finish before the power rail is cut, on a device whose only debug output is a serial line. We tuned it by dumping the 64×64 avatar grid as ASCII over the console and reading the frames like a flipbook.</p>
+<h2 id="what-i-actually-learned">What I actually learned</h2>
+<p>The bottleneck was never typing. It was observation. In software, debugging is <code>printf</code> and a debugger. In hardware you cannot grep a speaker, and you cannot put a breakpoint on a scroll wheel. Most of the skill is building observation channels — serial logs, ASCII dumps, an <code>emote</code> console command — so that a machine that can only say one sentence at a time can still tell you what it is thinking. A four-minute flash is not a tooling annoyance; it is a tax on how many questions you are allowed to ask per hour.</p>
+<p>The other lesson is about the seam. Muse was open source except for the part that made it a product, and the moment that part became a socket, the product became a weekend.</p>
+<h2 id="vibe-software-is-tiring-vibe-hardware-has-barely-started">Vibe software is tiring. Vibe hardware has barely started</h2>
+<p>I am tired of vibe software. Another dashboard that generates another landing page for another agent that summarizes another inbox. Producing software got cheap, so the supply exploded, and “it works” stopped being interesting. Everyone has seen the demo.</p>
+<p>Hardware is different right now, in the way LLMs were different in 2023. The parts are absurdly capable and cheap: an ESP32-S3 with 8 MB of PSRAM costs less than lunch, 3D printing is a commodity, and the modules all speak documented protocols. What was missing was never the electronics. It was the glue — the few thousand lines of driver-fighting between “the board boots” and “the thing behaves”. Glue is exactly what an LLM is good at.</p>
+<p>Which suggests the next few years. Vibe mechanical: describe the joint, get the linkage, print it, watch it jam, describe the jam. Vibe furniture: a shelf that measures itself and gets reprinted when you move. Vibe city: a neighbourhood’s traffic timing tuned as a prompt and an eval instead of a five-year procurement. Vibe lab: an instrument that does not exist yet, assembled from modules and a little personality.</p>
+<p>I still cannot read a schematic, and I still flinch at the word “analog”. But there is a duck on my desk that remembers my name and got dizzy last night because I clicked its wheel twice, and I built it by talking. The firmware is at <a href="https://github.com/adlternative/esp32-qoduck">github.com/adlternative/esp32-qoduck</a> — a fork of <a href="https://github.com/facebookincubator/muse-gadget-sdk">muse-gadget-sdk</a> with the changes squashed into one commit (the setup guide, the BLE provisioning page and the serial commands are in <code>skills/qoduck-setup/SKILL.md</code>). The patch repository that started it is <a href="https://github.com/raullenchai/esp32-thinks">esp32-thinks</a>.</p>
+</div>
+<div class="lang-section" data-lang="zh">
+<p>我焊过的东西从来没有正常工作过。大学里硬件是我最讨厌的科目：电路分析、模电、数电、信号与系统，以及跟着它们的那些实验课。后来我转去做软件，就不再想这件事了。</p>
+<p>昨天我把一只六十美元的塑料鸭子改成了一个跑在云端 Agent 上的语音助手。它一秒半左右开始回答，重启之后还记得我叫什么，断电前会演一段告别动画，双击它的滚轮它会当场转晕。碰到真需要干活的请求 —— 查一个 MR、读一个网页、搜一下 —— 它会安静一分钟，然后把答案念出来。整个过程花了大约一天。</p>
+<figure style="margin: 2rem 0; text-align: center;">
+  <img src="/images/vibe-hardware/qoduck-device.jpg" alt="桌上的 Qoduck" style="display:block;width:min(380px,100%);margin:0 auto;border-radius:50%;border:1px dashed var(--fg, lime);">
+  <figcaption style="margin-top:.6rem;opacity:.75;">手术一天之后的鸭子。屏幕上写着 READY 和「常听模式，直接说话」。</figcaption>
+</figure>
+<h2 id="事情是从一个-patch-开始的">事情是从一个 patch 开始的</h2>
+<p>起点是一个叫 <a href="https://github.com/raullenchai/esp32-thinks">esp32-thinks</a> 的仓库：一小撮 patch，把 <a href="https://github.com/facebookincubator/muse-gadget-sdk">muse-gadget-sdk</a>（Meta 开源的、给“有屏幕有麦克风的小玩意儿”用的 SDK）的大脑指向任意 OpenAI 兼容端点。</p>
+<p>我先把 muse 的“大脑”那一侧拆了开来看：它到底需要什么。就三样，不多：</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>需要什么</th><th>干嘛用的</th></tr></thead><tbody><tr><td>语音输入输出</td><td>麦克风上行、扬声器下行，延迟要低到像在对话</td></tr><tr><td>一台能跑东西的虚拟机</td><td>agent 有意思的那一半是它<strong>做了什么</strong>：执行命令、读写文件、搜东西</td></tr><tr><td>一个 LLM 接口</td><td>人设，以及“下一句该说什么”的判断</td></tr></tbody></table>
+<p>esp32-thinks 用三个独立的 HTTP 服务回答了这三件事：一个转写接口、一次聊天补全、一个语音接口。这就是为什么这个 patch 很小 —— 也是为什么它必须得是个 patch：设备得自己把三段缝起来，而缝出来的流水线没有工具，也没有记忆。</p>
+<p>我们公司的 Qoder Cloud Agent 把这三件事装进同一个会话里：实时语音、每个会话一个随用随丢的沙箱、以及背后的模型。形状和 Anthropic 的 Managed Agents 一样 —— 你不去托管一个 agent，你连上一个 agent。</p>
+<p>文档在 <a href="https://docs.qoder.com/zh/cloud-agents/overview">docs.qoder.com/cloud-agents</a>，我真正用到的是两页：<a href="https://docs.qoder.com/zh/cloud-agents/api/forward/realtime/create-conversation">建一个会话</a> 和 <a href="https://docs.qoder.com/zh/cloud-agents/api/forward/realtime/connect">连上它</a>。先不管那只鸭子，整件事就是四条命令：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#F97583">export</span><span style="color:#E1E4E8"> QODER_PAT</span><span style="color:#F97583">=</span><span style="color:#E1E4E8">...                   </span><span style="color:#6A737D"># https://qoder.com/cloud/pat-keys</span></span>
+<span class="line"><span style="color:#E1E4E8">API</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">https://api.qoder.com/api/v1/forward</span></span>
+<span class="line"><span style="color:#E1E4E8">AUTH</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">"Authorization: Bearer </span><span style="color:#E1E4E8">$QODER_PAT</span><span style="color:#9ECBFF">"</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D"># 一个沙箱环境 + 一个 agent 模板，就是大脑的两半</span></span>
+<span class="line"><span style="color:#B392F0">curl</span><span style="color:#79B8FF"> -s</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$API</span><span style="color:#9ECBFF">/environments"</span><span style="color:#79B8FF"> -H</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$AUTH</span><span style="color:#9ECBFF">"</span><span style="color:#F97583"> |</span><span style="color:#B392F0"> jq</span><span style="color:#79B8FF"> -r</span><span style="color:#9ECBFF"> '.data[] | "\(.id)  \(.config.type)"'</span></span>
+<span class="line"><span style="color:#B392F0">curl</span><span style="color:#79B8FF"> -s</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$API</span><span style="color:#9ECBFF">/templates"</span><span style="color:#79B8FF">    -H</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$AUTH</span><span style="color:#9ECBFF">"</span><span style="color:#F97583"> |</span><span style="color:#B392F0"> jq</span><span style="color:#79B8FF"> -r</span><span style="color:#9ECBFF"> '.data[] | "\(.id)  \(.name)"'</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D"># identity = 谁在说话，template = 它被允许做什么</span></span>
+<span class="line"><span style="color:#B392F0">curl</span><span style="color:#79B8FF"> -s</span><span style="color:#79B8FF"> -X</span><span style="color:#9ECBFF"> POST</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$API</span><span style="color:#9ECBFF">/realtime/conversations"</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#79B8FF">  -H</span><span style="color:#9ECBFF"> "</span><span style="color:#E1E4E8">$AUTH</span><span style="color:#9ECBFF">"</span><span style="color:#79B8FF"> -H</span><span style="color:#9ECBFF"> 'Content-Type: application/json'</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#79B8FF">  -H</span><span style="color:#9ECBFF"> "Idempotency-Key: $(</span><span style="color:#B392F0">uuidgen</span><span style="color:#9ECBFF">)"</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#79B8FF">  -d</span><span style="color:#9ECBFF"> '{"identity_id":"idn_xxx","template_id":"tmpl_xxx","title":"duck",</span></span>
+<span class="line"><span style="color:#9ECBFF">       "config":{"audio":{"output":{"voice":"longanqian"}}}}'</span><span style="color:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#F97583">  |</span><span style="color:#B392F0"> jq</span><span style="color:#79B8FF"> -r</span><span style="color:#9ECBFF"> .id</span></span>
+<span class="line"><span style="color:#6A737D"># → conv_xxx</span></span>
+<span class="line"></span></code></pre>
+<p>最后那条命令会吐一个 <code>conv_…</code>。剩下的全部是一条 WebSocket：<code>wss://api.qoder.com/api/v1/forward/realtime?conversation_id=conv_xxx</code>，上行是 16 kHz 的 <code>audio.append</code> 帧，下行是 24 kHz 的 <code>audio.delta</code> 帧。这篇文章里的固件就是那个客户端，加一块屏和一个喇叭 —— 没有第二套协议要学。</p>
+<h2 id="为什么是一个会话而不是-stt--chat--tts">为什么是一个会话，而不是 STT + chat + TTS</h2>
+<p>最直觉的替换依然是：语音转文字，调一次聊天接口，再文字转语音，全走 HTTPS。它能用，大部分这类固件 patch 也都在这里停手。但它扔掉了让 agent 成为 agent 的部分：工具、记忆，以及“做事”而不只是“描述事”的能力。</p>
+<p>Qoder Cloud Agents 提供实时语音接口 —— 一条 WebSocket，上行 16 kHz PCM，下行 24 kHz PCM，VAD / ASR / LLM / TTS 都在服务端 —— 而且它就是那个能读写文件、能搜网页、能记住你的同一个会话。这只鸭子不是一个会说话的玩具，它是一个有嘴的终端。</p>
+<p>那条会话里，固件真正用上的只有三条性质：</p>
+<ul>
+<li><strong>一条 socket 什么都干。</strong> 上行音频、下行音频、字幕和工具事件都走同一条 WebSocket（<code>/api/v1/forward/realtime?conversation_id=…</code>）。不需要把 STT、聊天、TTS 缝合起来，不需要第二条控制通道，也不需要在只有 14 KB 连续内存的设备上维护回合状态机。</li>
+<li><strong>每个会话都是一个随用随丢的沙箱。</strong> 新建会话时平台起一台带 shell 和文件系统的隔离机器，会话结束（最长六十分钟）就销毁。我不用跑服务、不用给它打补丁，这块六十美元的板子上也没有任何东西能做出超过一个会话的危害。</li>
+<li><strong>记忆活得比沙箱久。</strong> 记忆按 <code>(identity, template)</code> 这一对挂载，不跟着沙箱走，所以重启、掉网、甚至开一个全新的会话，落到的都是同一份记忆。</li>
+</ul>
+<h2 id="这条-socket-上到底发生了什么">这条 socket 上到底发生了什么</h2>
+<p>这才是让我下单的部分。只有一条长连 WebSocket，鸭子做的一切都是同四步的变体：</p>
+<ol>
+<li><strong>它一直在听。</strong> 醒着的时候，设备把 16 kHz PCM 持续推到上行。VAD 和转写都在服务端，所以固件里根本没有“回合”这个概念 —— 没有唤醒词、没有按键、没有需要调对的断句检测。</li>
+<li><strong>Agent 判断这句话是什么。</strong> 转写结果落到同一个会话里的模型手上，带着同一套工具和同一份记忆。大多数句子是闲聊，一秒左右当场就答了。</li>
+<li><strong>有些句子会开一个真干活的会话。</strong> “看看我的 MR 是不是把 CI 搞挂了”、“帮我总结一下群里刚才聊了什么”、“周六杭州天气怎么样” —— 那就变成一个跑在会话沙箱里的 session：agent 调工具、读文件、执行命令。这一段是能跑几分钟的，而且全部发生在 socket 的那一头，鸭子只需要把连接保住。</li>
+<li><strong>它回来汇报。</strong> 会话结束时，结果通过同一条连接下来，变成语音，同时圆屏上出字幕。没有轮询、没有推送通知、没有第二个 API，也没有“我待会儿告诉你” —— 它安静一阵，然后开口告诉我它查到了什么。</li>
+</ol>
+<p>最后这一步才是这套设计胜过聊天框的全部原因。手机通知会让我去看屏幕；这个东西会等到我在同一个房间里，然后直接说出来。它还有个副作用：固件永远不需要知道“什么是一个任务” —— 从设备角度看，只是这次的音频回得慢一点。</p>
+<p>剩下的都是记账：</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>对象</th><th>在哪</th><th>生命周期</th><th>含义</th></tr></thead><tbody><tr><td><code>identity</code></td><td>平台</td><td>永久</td><td>你是谁</td></tr><tr><td><code>template</code></td><td>平台</td><td>永久</td><td>模型、system prompt、工具集</td></tr><tr><td><code>conversation</code></td><td>平台</td><td>单条 socket 最多 60 分钟</td><td>一段工作上下文</td></tr></tbody></table>
+<p>记忆不在 conversation 里，它按 <code>(identity, template)</code> 这一对存放，并挂到这一对的每个会话上。就是这个设计决定，让鸭子在重启之后、在我扔掉旧会话开新会话之后，依然知道我叫什么。</p>
+<figure style="margin: 2rem 0;">
+  <img src="/images/vibe-hardware/architecture.svg" alt="Qoduck 架构" style="display:block;width:100%;border:1px dashed var(--fg, lime);border-radius:8px;">
+  <figcaption style="margin-top:.6rem;text-align:center;opacity:.75;">箭头左边全是 Meta 的固件，右边只有一条 WebSocket。</figcaption>
+</figure>
+<h2 id="买硬件之前先写了个模拟器">买硬件之前，先写了个模拟器</h2>
+<p>人的本能是先把东西下单，然后开始改。我先写的是一个浏览器里的模拟器：一个说同一套实时协议的 Node 小服务，加一个页面 —— 打开麦克风、跑一个 VAD、把 PCM 推上去、把回来的音频播出来。</p>
+<p>两小时之后我拿到了唯一能决定这个项目值不值得做的数字：<strong>从我停止说话到第一帧声音，1.0–2.5 秒</strong>。一秒以内像对话，四秒以上像对讲机。</p>
+<p>先在浏览器里跑通云端那一半，后面还有回报。硬件出问题时，我已经知道是哪一半出了问题，而接下来 24 小时里的 bug 几乎全在设备端。</p>
+<h2 id="那只鸭子">那只鸭子</h2>
+<p>硬件是 <a href="https://www.seeedstudio.com/SenseCAP-Watcher-W1-A-p-5979.html">Seeed SenseCAP Watcher</a>：ESP32-S3 @240 MHz、8 MB 八线 PSRAM、32 MB flash、412×412 圆屏（带触摸）、一个我从来没用过的摄像头、麦克风、扬声器，以及最重要的部分 —— 一个你愿意放在桌上的外壳。价格 55–62 美元，看你从哪买。不需要电烙铁，一根 USB-C 线就够。</p>
+<p>Muse 本来就支持这块板子，所以这一天的活不是硬件 bring-up，而是说服一套现成的固件换一个云端，同时别把它原来让人舒服的部分弄坏。</p>
+<h2 id="七个出问题的地方">七个出问题的地方</h2>
+<p><strong>一、一个麦克风，两个主人。</strong> Muse 有 PTT 和常听两种模式，它的语音任务拥有 codec。我的组件也想要。第一个症状是沉默 —— 状态机很礼貌地拒绝录音，因为在它看来 Muse 从来没配置完成。解决办法是一次谈判：加一个弱符号 <code>qca_voice_owns_mic()</code>，只有新的大脑在场时旧语音任务才退下。</p>
+<p><strong>二、晚了八分钟的声音。</strong> 上行队列从环形缓冲取样；缓冲满了就丢采样，但账照记，被丢掉的也算成已送出。播放播完，设备永远不回执，服务端就不再加发，队列无声地涨。几分钟后谁又说了句话，链路一 flush，八分钟的库存音频一次性涌出来。鸭子回答了一个我早就忘了的问题。</p>
+<p>同一个 bug 还有第二课：ESP32-S3 只有 512 KB 内部 SRAM，而 Wi-Fi + TLS + WebSocket 之后，能拿出的连续块只剩大约 14 KB。用内部 RAM 分配一个 1.5 秒环形缓冲是在抛硬币。现在它在 PSRAM 里，四秒。</p>
+<p><strong>三、开机的竞态让设备进了重启循环。</strong> 语音任务在设置模块初始化之前就启动了，去读 NVS，而它等的那把锁还不存在：<code>assert failed: xQueueSemaphoreTake</code>，然后无限重启。现在它等一个 <code>muse_settings_ready()</code> 标志，把一次性初始化做成惰性的。</p>
+<p><strong>四、Web Bluetooth 看不见设备。</strong> 配网页从 <code>requestDevice({filters:[{services:[…]}]})</code> 拿回一个空列表，因为固件广播的是厂商的 UUID，不是我的。广播只有 31 个字节，不是想加什么就加什么。改成按 <code>namePrefix: 'Qoduck'</code> 过滤（名字在 scan response 里）就好了，另外加了一个“把全部设备列出来”的兜底按钮。</p>
+<p><strong>五、token 分站点，TLS 不是可选项。</strong> 我手里的 key 是 <code>qoder.com</code> 签的，打 <code>.cn</code> 直接 <code>TOKEN_INVALID</code>。而一块 ESP32 默认不认识那套 CA，所以固件里带着真正的证书链（SHECA DV TLS RSA CA A1 → UCA Global G2 Root）并做 pin。</p>
+<p><strong>六、中文全变成方块。</strong> 界面到处是 <code>[]</code>。LVGL 自带的中文字体覆盖 UI 文案，不覆盖任意中文。SDK 里其实已经有一个 16 px 的 Unifont，包含完整 <code>0x4E00–0x9FFF</code>，是一个 6.5 MB 的 C 文件 —— 所以正确的做法是把它设成 LVGL 字体的 <strong>fallback</strong>，而不是把好看的字体全换掉。</p>
+<p><strong>七、每个实验值四分钟。</strong> 这块板子串口刷一次四分钟，我不知道更快的办法。写软件的人忘了自己的迭代速度有多少来自 0.4 秒的编译器。在硬件上，一个错误的假设和一杯咖啡等价。最后的对策是：每次刷机攒三个改动，并且给任何想验证的东西加一条串口命令，让大部分验证根本不需要刷机。还有一个相关的坑：串口默认的 DTR/RTS 处理会复位设备，所以你丢掉的第一个现场，正是你想看的那个崩溃。</p>
+<h2 id="现在它会什么">现在它会什么</h2>
+<p>叫醒它、说话，一秒半之后它开始回答。它一直在听，所以没有按键这个动作。让它干点真活 —— 「我的 MR 还是绿的（CI 通过）吗」—— 它会安静下来，等会话跑完再把结果念出来。左右滑动是中文设置页：Wi-Fi、Qoder token、蓝牙配对、音量、亮度、息屏、电池。跟它说“我的周报周五要交”，重启，它还记得。</p>
+<p>滚轮是它唯一的实体按键，所以我们给了它一点性格：</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>手势</th><th>反应</th></tr></thead><tbody><tr><td>按一下</td><td>蹦一下，两只耳朵边飘出小心心</td></tr><tr><td>双击</td><td>当场转圈，头顶星星绕圈，眼睛变成 X</td></tr><tr><td>转一下</td><td>东张西望</td></tr><tr><td>按住 1.2 秒</td><td>打瞌睡，Zzz 往上飘</td></tr><tr><td>按住 2.4 秒</td><td>睡着</td></tr><tr><td>按住 4.2 秒</td><td>关机：闭眼、低头，然后像素按有序抖动散开，背光在同一时钟上淡出</td></tr></tbody></table>
+<div style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin:2rem 0;">
+  <figure style="flex:1 1 160px;max-width:210px;margin:0;text-align:center;">
+    <img src="/images/vibe-hardware/screen-awake.jpg" alt="待命" style="width:100%;border-radius:14px;border:1px dashed var(--fg, lime);">
+    <figcaption style="margin-top:.4rem;font-size:.85em;opacity:.75;">待命 —— 「常听模式，直接说话」</figcaption>
+  </figure>
+  <figure style="flex:1 1 160px;max-width:210px;margin:0;text-align:center;">
+    <img src="/images/vibe-hardware/screen-dizzy.jpg" alt="转晕" style="width:100%;border-radius:14px;border:1px dashed var(--fg, lime);">
+    <figcaption style="margin-top:.4rem;font-size:.85em;opacity:.75;">双击 —— 眼睛变成 X</figcaption>
+  </figure>
+  <figure style="flex:1 1 160px;max-width:210px;margin:0;text-align:center;">
+    <img src="/images/vibe-hardware/screen-doze.jpg" alt="打瞌睡" style="width:100%;border-radius:14px;border:1px dashed var(--fg, lime);">
+    <figcaption style="margin-top:.4rem;font-size:.85em;opacity:.75;">按住 1.2 秒 —— 打瞌睡</figcaption>
+  </figure>
+  <figure style="flex:1 1 160px;max-width:210px;margin:0;text-align:center;">
+    <img src="/images/vibe-hardware/settings.jpg" alt="设置页" style="width:100%;border-radius:14px;border:1px dashed var(--fg, lime);">
+    <figcaption style="margin-top:.4rem;font-size:.85em;opacity:.75;">滑动 —— 设置：无线网络、Qoder、蓝牙、声音</figcaption>
+  </figure>
+</div>
+<p>关机动画是我最喜欢的，因为它正好是“软件里容易、硬件里烦”的那类东西：1.5 秒的动画必须在电源被切断之前播完，而设备的全部调试输出只有一条串口线。我们的调法是：把 64×64 的头像网格打成 ASCII 打到串口，像翻页动画一样一帧一帧读。</p>
+<h2 id="我到底学到了什么">我到底学到了什么</h2>
+<p>瓶颈从来不是打字，是<strong>观察</strong>。软件里调试是 <code>printf</code> 和调试器；硬件里你没法 grep 一个扬声器，也没法给滚轮打断点。大部分的技能是给自己造观察通道 —— 串口日志、ASCII dump、一条 <code>emote</code> 控制台命令 —— 让一台一次只能说一句话的机器，仍然能告诉你它在想什么。四分钟一次的刷机不是工具的问题，它是对「每小时你能问几个问题」的征税。</p>
+<p>另一个教训关于那道缝。Muse 开源了除了“让它成为产品”的那个部分，而当那个部分变成一个 socket，这个产品就变成了一个周末。</p>
+<h2 id="vibe-软件让人累了vibe-硬件才刚开始">Vibe 软件让人累了，Vibe 硬件才刚开始</h2>
+<p>我对 vibe 软件已经腻了。又一个 dashboard 又生成了一个 landing page，给又一个 agent，去总结又一个收件箱。生产软件变便宜了，供给就爆炸，“它跑起来了”不再有意思，演示人人都看过。</p>
+<p>硬件现在不一样，像 2023 年的 LLM。零件强得离谱也便宜得离谱：带 8 MB PSRAM 的 ESP32-S3 比一顿午饭便宜，3D 打印是日用品，模组全都说着有文档的协议。缺的从来不是电子，缺的是<strong>胶水</strong> —— “板子能启动”和“东西真的有行为”之间那几千行的驱动缠斗。而那恰好是大模型真正擅长的地方。</p>
+<p>所以接下来几年大概是这个样子。Vibe 机械：描述一个关节，拿到连杆，打出来，看它卡住，描述卡住的样子。Vibe 家具：一个会自己量尺寸、你搬家它就重打的架子。Vibe 城市：一个小区的红绿灯配时当作 prompt 和 eval 来调，而不是走五年的采购流程。Vibe 实验室：一台还不存在的仪器，用模组和一点性格拼出来。</p>
+<p>我还是不会看原理图，听到“模电”两个字还是会本能地后仰。但我桌上有一只鸭子，它记得我的名字，而且昨天晚上因为我双击了它的滚轮，它当场转晕了 —— 而我是靠说话把它做出来的。固件在 <a href="https://github.com/adlternative/esp32-qoduck">github.com/adlternative/esp32-qoduck</a>：<a href="https://github.com/facebookincubator/muse-gadget-sdk">muse-gadget-sdk</a> 的 fork，改动压成了一个提交（接入指南、蓝牙配网页和串口命令都在 <code>skills/qoduck-setup/SKILL.md</code>）。最初点着我的那个 patch 仓库是 <a href="https://github.com/raullenchai/esp32-thinks">esp32-thinks</a>。</p>
+</div> </div> <!-- Terminal inline CTA --> <div class="term-cta desktop-only" data-launch-cmd="ls posts --tag ai" data-astro-cid-egg7nqdx> <span class="term-cta-prompt" data-astro-cid-egg7nqdx>$</span> <span class="term-cta-cmd" data-astro-cid-egg7nqdx>ls posts --tag ai</span> <span class="term-cta-hint" data-astro-cid-egg7nqdx>&larr; explore more in terminal</span> </div> </article>  </main> </div> <footer> <ul class="horizontallist"> <li> <a href="https://github.com/adlternative/" target="_blank"> <img src="/images/github.png" alt="Github Profile" height="32"> </a> </li> <li> <a href="https://www.linkedin.com/in/zhening-hu-10a0b1202/" target="_blank"> <img src="/images/linkedin.png" alt="LinkedIn Profile" height="32"> </a> </li> </ul> <div id="copyright">&copy; ZheNing Hu, 2026</div> </footer> <div id="term" class="term-overlay t-hidden" role="dialog" aria-modal="true" aria-label="adl.sh interactive terminal" aria-hidden="true"> <div class="t-grid"> <!-- pane[3]: sidebar tree (left 18%, hidden on mobile) --> <div class="t-pane t-pane-sidebar" data-pane="3"> <div class="t-pane-titlebar"><span class="t-pane-idx">[3]</span> :tree</div> <div class="t-pane-body t-tree-container"></div> </div> <!-- pane[0]: main shell (center 52%) — only pane shown on mobile --> <div class="t-pane t-pane-shell" data-pane="0"> <div class="t-pane-titlebar"> <span class="t-pane-idx">[0]</span> $ shell
+<button type="button" class="t-close-btn" id="term-close" aria-label="Close terminal">[<span class="t-close-x">&times;</span>&nbsp;close]</button> </div> <div class="t-pane-body t-shell-body"> <div class="t-screen" role="log" aria-live="polite"></div> <div class="t-quick-actions" role="toolbar" aria-label="Quick commands"> <button type="button" class="t-qa" data-cmd="help">help</button> <button type="button" class="t-qa" data-cmd="ls posts">ls&nbsp;posts</button> <button type="button" class="t-qa" data-cmd="whoami">whoami</button> <button type="button" class="t-qa" data-cmd="about">about</button> <button type="button" class="t-qa" data-cmd="clear">clear</button> </div> <div class="t-promptline"> <span class="t-prompt"></span> <input type="text" class="t-input" inputmode="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Terminal input" placeholder="type `help` and press Enter"> </div> </div> </div> <!-- pane[1]: help/manual (right 30%) --> <div class="t-pane t-pane-help" data-pane="1"> <div class="t-pane-titlebar"><span class="t-pane-idx">[1]</span> :help</div> <div class="t-pane-body t-help-container"></div> </div> <!-- pane[2]: preview (bottom full-width 35%) --> <div class="t-pane t-pane-preview" data-pane="2"> <div class="t-pane-titlebar"><span class="t-pane-idx">[2]</span> :preview</div> <div class="t-pane-body t-preview-container"></div> </div> <!-- status bar (bottom 28px) --> <div class="t-pane-statusbar" data-statusbar></div> </div> </div> <button type="button" class="t-launcher" id="term-launcher" aria-label="Open adl.sh terminal (⌘K)" aria-controls="term"> <span class="t-launcher-dots" aria-hidden="true"> <span class="t-launcher-dot r"></span> <span class="t-launcher-dot y"></span> <span class="t-launcher-dot g"></span> </span> <span class="t-launcher-label"><span class="t-launcher-prompt">_$</span> adl.sh</span> <kbd class="t-launcher-kbd" aria-hidden="true">⌘K</kbd> </button>  </body></html>  
